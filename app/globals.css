@@ -1,0 +1,33 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Design system colors — ledger/khata identity */
+@theme inline {
+  --color-paper: #FBF8F1;
+  --color-border: #E4DCC8;
+  --color-gold: #C9972D;
+  --color-ink: #1B4332;
+  --color-red: #A63D40;
+  --color-subtext: #8A8371;
+  --color-label: #7A7364;
+  --font-sans: "Hind Siliguri", sans-serif;
+  --font-heading: "Tiro Bangla", serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+@layer base {
+  * {
+    @apply border-[var(--border)];
+  }
+  body {
+    @apply bg-[#EDEAE0] text-[#2B2B26] font-sans m-0 p-0;
+  }
+}
+
+/* Receipt card styles for export */
+#receipt-card {
+  font-family: 'Hind Siliguri', sans-serif;
+}
