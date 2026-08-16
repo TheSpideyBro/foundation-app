@@ -59,24 +59,43 @@ let tokenCache: { token: string; expires: number } | null = null;
 async function getAccessToken(jsonKey: string): Promise<string> {
   if (tokenCache && Date.now() < tokenCache.expires - 60_000) return tokenCache.token;
   const key = parseKey(jsonKey);
-  const now = Math.floor(Date.now() / 1000);
   const privateKey = await importPKCS8(key.private_key, "RS256");
-  const jwt = await new SignJWT({ scope: SCOPE })
-    .setProtectedHeader({ alg: "RS256", typ: "JWT" })
-    .setIssuer(key.client_email)
-    .setSubject(key.client_email)
-    .setAudience(TOKEN_URL)
-    .setIssuedAt(now)
-    .setExpirationTime(now + 3600)
-    .sign(privateKey);
-  const res = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: GRANT_TYPE, assertion: jwt }).toString(),
-  });
-  const body = await res.json();
-  if (!body.access_token) throw new Error(`Google token error: ${body.error_description || JSON.stringify(body)}`);
-  tokenCache = { token: body.access_token, expires: Date.now() + body.expires_in * 1000 };
+
+  async function exchange(issuedAt: number) {
+    const jwt = await new SignJWT({ scope: SCOPE })
+      .setProtectedHeader({ alg: "RS256", typ: "JWT" })
+      .setIssuer(key.client_email)
+      .setSubject(key.client_email)
+      .setAudience(TOKEN_URL)
+      .setIssuedAt(issuedAt)
+      .setExpirationTime(issuedAt + 3600)
+      .sign(privateKey);
+    const res = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: GRANT_TYPE, assertion: jwt }).toString(),
+    });
+    const body = await res.json();
+    if (!body.access_token) return body;
+    tokenCache = { token: body.access_token, expires: Date.now() + body.expires_in * 1000 };
+    return body;
+  }
+
+  let body = await exchange(Math.floor(Date.now() / 1000));
+  // Google rejects the token when the host's clock has drifted beyond its
+  // ~10-minute tolerance ("Token must be a short-lived token..."). Retry once
+  // with a backdated iat to tolerate up to ~10 min of clock skew automatically.
+  if (!body.access_token && /short-lived|iat|not yet valid|invalid_grant/i.test(body.error_description || "")) {
+    body = await exchange(Math.floor(Date.now() / 1000) - 300);
+  }
+  if (!body.access_token) {
+    const desc = body.error_description || JSON.stringify(body);
+    let hint = "";
+    if (/short-lived|iat/i.test(desc)) {
+      hint = " | Fix: turn on 'Set time automatically' in Windows Date and time settings and press 'Sync now'";
+    }
+    throw new Error(`Google token error: ${desc}${hint}`);
+  }
   return body.access_token;
 }
 
