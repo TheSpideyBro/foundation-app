@@ -1,0 +1,278 @@
+/**
+ * Google Sheets backup/sync library
+ * ----------------------------------
+ * - Accesses Google Sheets via a Service Account (server-side only).
+ * - Used by API routes: /api/sync-sheets (full sync + incremental),
+ *   /api/restore-sheets (restore DB from sheet).
+ *
+ * One-time setup (documented in docs/google-sheets-setup.md):
+ *   1. Create service account in Google Cloud, download JSON key
+ *   2. Create a spreadsheet; share it with the service account email (Editor)
+ *   3. Add to .env.local:
+ *        GOOGLE_SERVICE_ACCOUNT_JSON=<contents of JSON key file>
+ *        GOOGLE_SHEET_ID=<spreadsheet id from its URL>
+ *   4. Tabs MUST be named: Members, Donations, Expenses (created by full-sync
+ *      if missing)
+ */
+
+import { SignJWT, importPKCS8, decodeProtectedHeader } from "jose";
+
+const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+const GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
+const TOKEN_URL = "https://oauth2.googleapis.com/token";
+const BASE = "https://sheets.googleapis.com/v4/spreadsheets";
+
+export interface SheetsConfig {
+  jsonKey: string;   // raw service account JSON (string)
+  spreadsheetId: string;
+}
+
+export function getSheetsConfig(): SheetsConfig | null {
+  const jsonKey = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+  if (!jsonKey || !spreadsheetId) return null;
+  return { jsonKey, spreadsheetId };
+}
+
+function parseKey(jsonKey: string) {
+  let raw = jsonKey.trim();
+  // Defense-in-depth: some env loaders / platforms deliver the value with
+  // stray outer quotes (e.g. JSON-encoded string) or mangled quotes.
+  try {
+    const key = JSON.parse(raw);
+    if (key.client_email && key.private_key) return key;
+  } catch {
+    // fall through to normalization attempts below
+  }
+  if (raw.startsWith('"') && raw.endsWith('"')) raw = raw.slice(1, -1);
+  // Only now convert literal \n sequences into real newlines (never on the
+  // first attempt — the private key's JSON escape \n must stay intact).
+  if (raw.includes("\\n")) raw = raw.replace(/\\n/g, "\n");
+  const key = JSON.parse(raw);
+  if (!key.client_email || !key.private_key) throw new Error("invalid service account key");
+  return key;
+}
+
+// ---------- JWT + access token (cached) ----------
+let tokenCache: { token: string; expires: number } | null = null;
+
+async function getAccessToken(jsonKey: string): Promise<string> {
+  if (tokenCache && Date.now() < tokenCache.expires - 60_000) return tokenCache.token;
+  const key = parseKey(jsonKey);
+  const now = Math.floor(Date.now() / 1000);
+  const privateKey = await importPKCS8(key.private_key, "RS256");
+  const jwt = await new SignJWT({ scope: SCOPE })
+    .setProtectedHeader({ alg: "RS256", typ: "JWT" })
+    .setIssuer(key.client_email)
+    .setSubject(key.client_email)
+    .setAudience(TOKEN_URL)
+    .setIssuedAt(now)
+    .setExpirationTime(now + 3600)
+    .sign(privateKey);
+  const res = await fetch(TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: GRANT_TYPE, assertion: jwt }).toString(),
+  });
+  const body = await res.json();
+  if (!body.access_token) throw new Error(`Google token error: ${body.error_description || JSON.stringify(body)}`);
+  tokenCache = { token: body.access_token, expires: Date.now() + body.expires_in * 1000 };
+  return body.access_token;
+}
+
+function headers(token: string) {
+  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+}
+
+// ---------- low-level helpers ----------
+export async function ensureTabs(cfg: SheetsConfig, token: string, tabs: string[]) {
+  // Read existing tab titles; create missing ones
+  const meta = await fetch(`${BASE}/${cfg.spreadsheetId}`, { headers: headers(token) });
+  const metaJson = await meta.json();
+  if (!metaJson.sheets) throw new Error(`sheet meta error: ${JSON.stringify(metaJson).slice(0, 200)}`);
+  const existing = (metaJson.sheets as any[]).map((s) => s.properties.title);
+  const toCreate = tabs.filter((t) => !existing.includes(t));
+  for (const t of toCreate) {
+    const r = await fetch(`${BASE}/${cfg.spreadsheetId}:batchUpdate`, {
+      method: "POST",
+      headers: headers(token),
+      body: JSON.stringify({
+        requests: [{ addSheet: { properties: { title: t, gridProperties: { rowCount: 1000, columnCount: 12 } } } }],
+      }),
+    });
+    if (!r.ok) throw new Error(`create tab ${t} failed: ${await r.text()}`);
+  }
+}
+
+/** Overwrite a whole sheet starting at A1 (header row = first array element). */
+export async function writeRange(
+  cfg: SheetsConfig, token: string, tab: string, values: (string | number)[][]
+) {
+  const r = await fetch(
+    `${BASE}/${cfg.spreadsheetId}/values/${encodeURIComponent(tab)}!A1:clear`,
+    { method: "POST", headers: headers(token) }
+  );
+  if (!r.ok) throw new Error(`clear ${tab}: ${await r.text()}`);
+  const w = await fetch(
+    `${BASE}/${cfg.spreadsheetId}/values/${encodeURIComponent(tab)}!A1?valueInputOption=RAW`,
+    {
+      method: "PUT",
+      headers: headers(token),
+      body: JSON.stringify({ majorDimension: "ROWS", values }),
+    }
+  );
+  if (!w.ok) throw new Error(`write ${tab}: ${await w.text()}`);
+  return await w.json();
+}
+
+/** Read a whole sheet. */
+export async function readRange(cfg: SheetsConfig, token: string, tab: string) {
+  const r = await fetch(`${BASE}/${cfg.spreadsheetId}/values/${encodeURIComponent(tab)}`, { headers: headers(token) });
+  if (!r.ok) throw new Error(`read ${tab}: ${await r.text()}`);
+  const body = await r.json();
+  return (body.values as (string | number)[][]) || [];
+}
+
+// ---------- typed row projections ----------
+export interface MemberRow { id: string; name: string; phone: string; address: string; join_date: string; status: string; monthly_pledge: number; created_at: string }
+export interface DonationRow { id: string; member_id: string; member_name: string; amount: number; date: string; method: string; receipt_no: string; received_by: string; donation_month: string; created_at: string }
+export interface ExpenseRow { id: string; category: string; amount: number; date: string; description: string; proof_url: string; created_at: string }
+
+export const MEMBERS_HEADER = ["id", "name", "phone", "address", "join_date", "status", "monthly_pledge", "created_at"];
+export const DONATIONS_HEADER = ["id", "member_id", "member_name", "amount", "date", "method", "receipt_no", "received_by", "donation_month", "created_at"];
+export const EXPENSES_HEADER = ["id", "category", "amount", "date", "description", "proof_url", "created_at"];
+
+// ---------- full sync (source of truth = DB) ----------
+import { createClient } from "@supabase/supabase-js";
+
+function serviceRoleClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
+export async function fullSync(cfg: SheetsConfig): Promise<{ sheets: Record<string, number>; tabStatus: string }> {
+  const token = await getAccessToken(cfg.jsonKey);
+  await ensureTabs(cfg, token, ["Members", "Donations", "Expenses"]);
+
+  const supa = serviceRoleClient();
+  const [members, donations, expenses] = await Promise.all([
+    supa.from("members").select("*").order("created_at", { ascending: true }),
+    supa.from("donations").select("*, members(name)").order("created_at", { ascending: true }),
+    supa.from("expenses").select("*").order("created_at", { ascending: true }),
+  ]);
+  if (members.error) throw new Error(`members read: ${members.error.message}`);
+  if (donations.error) throw new Error(`donations read: ${donations.error.message}`);
+  if (expenses.error) throw new Error(`expenses read: ${expenses.error.message}`);
+
+  const memById = new Map((members.data || []).map((m) => [m.id, m]));
+
+  const mRows = [MEMBERS_HEADER, ...(members.data || []).map((m: any) => [
+    m.id, m.name, m.phone ?? "", m.address ?? "", m.join_date, m.status, Number(m.monthly_pledge ?? 0), m.created_at,
+  ])];
+  const dRows = [DONATIONS_HEADER, ...(donations.data || []).map((d: any) => [
+    d.id, d.member_id, memById.get(d.member_id)?.name ?? "", Number(d.amount), d.date, d.method, d.receipt_no, d.received_by ?? "", d.donation_month ?? "", d.created_at,
+  ])];
+  const eRows = [EXPENSES_HEADER, ...(expenses.data || []).map((e: any) => [
+    e.id, e.category, Number(e.amount), e.date, e.description ?? "", e.proof_url ?? "", e.created_at,
+  ])];
+
+  await Promise.all([
+    writeRange(cfg, token, "Members", mRows),
+    writeRange(cfg, token, "Donations", dRows),
+    writeRange(cfg, token, "Expenses", eRows),
+  ]);
+
+  return {
+    sheets: { Members: mRows.length - 1, Donations: dRows.length - 1, Expenses: eRows.length - 1 },
+    tabStatus: "Members ✓ | Donations ✓ | Expenses ✓",
+  };
+}
+
+// ---------- restore (source of truth = Sheets) ----------
+export interface RestoreResult {
+  members: { added: number; updated: number };
+  donations: { added: number; updated: number };
+  expenses: { added: number; updated: number };
+}
+
+export async function restoreFromSheets(cfg: SheetsConfig, opts: { dryRun?: boolean } = {}): Promise<RestoreResult> {
+  const token = await getAccessToken(cfg.jsonKey);
+  const [mVals, dVals, eVals] = await Promise.all([
+    readRange(cfg, token, "Members"),
+    readRange(cfg, token, "Donations"),
+    readRange(cfg, token, "Expenses"),
+  ]);
+
+  const supa = serviceRoleClient();
+  const result: RestoreResult = {
+    members: { added: 0, updated: 0 },
+    donations: { added: 0, updated: 0 },
+    expenses: { added: 0, updated: 0 },
+  };
+
+  const dataRows = (vals: (string | number)[][]) => vals.slice(1).filter((r) => r && r.length > 0 && String(r[0]).trim() !== "");
+
+  // Members restore — members.user_id is NOT in the sheet. Restore only non-null
+  // user_id rows if present in sheet (legacy), else attach to first admin user.
+  const admins = await supa.from("users").select("id").eq("role", "admin").limit(1);
+  const fallbackUserId = admins.data?.[0]?.id ?? null;
+
+  const mRows = dataRows(mVals);
+  for (const r of mRows) {
+    const [id, name, phone, address, joinDate, status, pledge] = r;
+    const row: any = { id: String(id), name: String(name), phone: String(phone || ""), address: String(address || ""), join_date: joinDate || null, status: ["active", "inactive"].includes(String(status)) ? status : "active", monthly_pledge: Number(pledge ?? 0) };
+    const existing = await supa.from("members").select("id").eq("id", row.id);
+    if ((existing.data || []).length > 0) {
+      if (!opts.dryRun) await supa.from("members").update(row).eq("id", row.id);
+      result.members.updated++;
+    } else {
+      row.user_id = (r as any)[7] || fallbackUserId; // sheet col 8 (legacy) or admin fallback
+      if (row.user_id) {
+        if (!opts.dryRun) await supa.from("members").insert(row);
+        result.members.added++;
+      }
+    }
+  }
+
+  const dRows = dataRows(dVals);
+  for (const r of dRows) {
+    const [id, memberId, , amount, date, method, receiptNo, receivedBy, month] = r;
+    const row: any = {
+      id: String(id), member_id: String(memberId), amount: Number(amount), date: date || null,
+      method: ["cash", "bkash", "nagad", "bank"].includes(String(method)) ? method : "cash",
+      receipt_no: String(receiptNo || ""), received_by: String(receivedBy || ""), donation_month: month || null,
+    };
+    const existing = await supa.from("donations").select("id").eq("id", row.id);
+    if ((existing.data || []).length > 0) {
+      if (!opts.dryRun) await supa.from("donations").update(row).eq("id", row.id);
+      result.donations.updated++;
+    } else {
+      const mem = await supa.from("members").select("id").eq("id", row.member_id);
+      if ((mem.data || []).length > 0) {
+        if (!opts.dryRun) await supa.from("donations").insert(row);
+        result.donations.added++;
+      }
+    }
+  }
+
+  const eRows = dataRows(eVals);
+  for (const r of eRows) {
+    const [id, category, amount, date, description, proofUrl] = r;
+    const row: any = {
+      id: String(id), category: String(category), amount: Number(amount), date: date || null,
+      description: String(description || ""), proof_url: String(proofUrl || ""),
+    };
+    const existing = await supa.from("expenses").select("id").eq("id", row.id);
+    if ((existing.data || []).length > 0) {
+      if (!opts.dryRun) await supa.from("expenses").update(row).eq("id", row.id);
+      result.expenses.updated++;
+    } else {
+      if (!opts.dryRun) await supa.from("expenses").insert(row);
+      result.expenses.added++;
+    }
+  }
+
+  return result;
+}

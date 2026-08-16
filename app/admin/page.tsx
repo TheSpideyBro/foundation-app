@@ -6,7 +6,7 @@ import { getSupabase as supabase } from "@/lib/supabase-client";
 import AppLayout from "@/components/layout";
 import { useAuth } from "@/components/providers";
 import {
-  Users, ShieldCheck, Tag, Info, RefreshCw, Plus, Trash2, Edit2, X, Check, ScrollText, Download,
+  Users, ShieldCheck, Tag, Info, RefreshCw, Plus, Trash2, Edit2, X, Check, ScrollText, Download, Table2, AlertTriangle, FileUp,
 } from "lucide-react";
 import { formatMoney, formatDateBengali } from "@/lib/utils";
 
@@ -27,7 +27,7 @@ const roleColors: Record<string, string> = {
   member: C.sub,
 };
 
-type TabKey = "users" | "categories" | "audit" | "info";
+type TabKey = "users" | "categories" | "audit" | "sheets" | "info";
 
 export default function AdminPage() {
   const { user, role, loading: authLoading } = useAuth();
@@ -53,6 +53,7 @@ export default function AdminPage() {
     { key: "users", label: "ব্যবহারকারী", icon: Users },
     { key: "categories", label: "খরচের ক্যাটেগরি", icon: Tag },
     { key: "audit", label: "অডিট লগ", icon: ScrollText },
+    { key: "sheets", label: "Google Sheets", icon: Table2 },
     { key: "info", label: "সিস্টেম তথ্য", icon: Info },
   ];
 
@@ -82,6 +83,7 @@ export default function AdminPage() {
       {tab === "users" && <UsersTab />}
       {tab === "categories" && <CategoriesTab />}
       {tab === "audit" && <AuditTab />}
+      {tab === "sheets" && <SheetsTab />}
       {tab === "info" && <InfoTab />}
     </AppLayout>
   );
@@ -296,6 +298,164 @@ function CategoriesTab() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------ Google Sheets ------------------------------ */
+
+interface SheetsStatus {
+  enabled: boolean;
+  lastSyncAt?: string;
+  counts?: { Members: number; Donations: number; Expenses: number } | null;
+  working: boolean;
+  notice: string;
+}
+
+function SheetsTab() {
+  const [status, setStatus] = useState<SheetsStatus>({ enabled: false, working: false, notice: "" });
+
+  useEffect(() => { loadStatus(); }, []);
+
+  async function authHeaders(): Promise<Record<string, string>> {
+    // Primary auth: pass the current access token as a Bearer header so the
+    // server API can authorize the request regardless of cookie state.
+    // getSession() reassembles the token from the sb-*-auth-token cookie (and
+    // session chunks), which is the only reliable reading path; getSession()
+    // is preferred over getUser() on the client because getUser() performs a
+    // network round-trip on every call.
+    const headers: Record<string, string> = {};
+    try {
+      const { data } = await supabase().auth.getSession();
+      const token = data?.session?.access_token;
+      if (token && token.trim().split(".").length === 3) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+    } catch { /* ignore */ }
+    return headers;
+  }
+
+  async function loadStatus() {
+    try {
+      const r = await fetch("/api/sync-sheets", { method: "GET", headers: await authHeaders(), credentials: "include" });
+      const j = await r.json();
+      const lastSyncAt = typeof window !== "undefined" ? (localStorage.getItem("sheets_last_sync") || undefined) : undefined;
+      const countsRaw = typeof window !== "undefined" ? localStorage.getItem("sheets_counts") : null;
+      setStatus((s) => ({
+        ...s,
+        enabled: Boolean(j.enabled),
+        lastSyncAt,
+        counts: countsRaw ? JSON.parse(countsRaw) : null,
+      }));
+    } catch {
+      setStatus((s) => ({ ...s, notice: "স্ট্যাটাস লোড হচ্ছে না" }));
+    }
+  }
+
+  const runSync = async () => {
+    if (status.working) return;
+    setStatus((s) => ({ ...s, working: true, notice: "" }));
+    try {
+      const r = await fetch("/api/sync-sheets", { method: "POST", headers: await authHeaders(), credentials: "include" });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Sync failed");
+      const at = new Date(j.syncedAt).toLocaleString("bn-BD");
+      localStorage.setItem("sheets_last_sync", at);
+      localStorage.setItem("sheets_counts", JSON.stringify(j.sheets || null));
+      setStatus((s) => ({
+        ...s,
+        working: false,
+        lastSyncAt: at,
+        counts: j.sheets || null,
+        notice: `সফল! Members: ${j.sheets?.Members ?? 0} | Donations: ${j.sheets?.Donations ?? 0} | Expenses: ${j.sheets?.Expenses ?? 0}`,
+      }));
+    } catch (e: any) {
+      setStatus((s) => ({ ...s, working: false, notice: `সিন্ক ব্যর্থ: ${e.message}` }));
+    }
+  };
+
+  const runRestore = async () => {
+    const ok = confirm("Google Sheets থেকে ডাটাবেসে রিস্টোর করা হবে। বর্তমান ডাটাবেসের একই id-র রো মান পরিবর্তন হবে, নতুন id-র রো যোগ হবে। চালু করবেন? (মানুয়াল ব্যাকআপ রেখা বুদ্ধিমানের কাজ)");
+    if (!ok) return;
+    if (status.working) return;
+    setStatus((s) => ({ ...s, working: true, notice: "" }));
+    try {
+      const r = await fetch("/api/restore-sheets", { method: "POST", headers: await authHeaders(), credentials: "include", body: JSON.stringify({ dryRun: false }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Restore failed");
+      setStatus((s) => ({
+        ...s,
+        working: false,
+        notice: `রিস্টোর শেষ! সদস্য: +${j.members.added}/${j.members.updated} আপডেট | দান: +${j.donations.added}/${j.donations.updated} | খরচ: +${j.expenses.added}/${j.expenses.updated}`,
+      }));
+      setTimeout(() => alert("রিস্টোর হয়েছে। পেজ রিফ্রেশ করুন।"), 50);
+    } catch (e: any) {
+      setStatus((s) => ({ ...s, working: false, notice: `রিস্টোর ব্যর্থ: ${e.message}` }));
+    }
+  };
+
+  if (!status.enabled) {
+    return (
+      <div>
+        <div className="rounded-sm border px-5 py-4 mb-4" style={{ background: C.red + "14", borderColor: C.red, color: C.text }}>
+          <div className="flex items-center gap-2 mb-2"><AlertTriangle size={15} style={{ color: C.red }} /><span className="font-semibold text-[13.5px]">Google Sheets সেটআপ সম্পন্ন নয়</span></div>
+          <p className="text-[12.5px] leading-relaxed" style={{ color: C.text }}>
+            অটো ব্যাকআপ শুরু করতে <code className="px-1 rounded-sm text-[11.5px]" style={{ background: C.paper }}>.env.local</code>-এ দুটি ভ্যারিয়েবল যোগ করুন (বিস্তারিত <code className="px-1 rounded-sm text-[11.5px]" style={{ background: C.paper }}>docs/google-sheets-setup.md</code> ফাইলে):
+          </p>
+          <pre className="mt-2 text-[11.5px] p-3 rounded-sm overflow-x-auto" style={{ background: C.page, color: C.text }}>{`GOOGLE_SERVICE_ACCOUNT_JSON={...service account JSON key...}
+GOOGLE_SHEET_ID=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms`}</pre>
+          <p className="mt-2 text-[12px]" style={{ color: C.sub }}>সেটআপের পর এই পেজ রিফ্রেশ করুন।</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="rounded-sm border px-5 py-3.5 mb-4" style={{ background: C.gold + "1A", borderColor: C.gold, color: C.text }}>
+        <div className="flex items-center gap-2 mb-1"><Table2 size={15} /><span className="font-semibold text-[13px]">গুগল শিটস ব্যাকআপ</span></div>
+        <p className="text-[12.5px] leading-relaxed">অ্যাপের Member, Donation, Expense ডেটা সদাই সিন্ক হয়ে Google Sheets-এ রাখা হচ্ছে। ডাটাবেস হারালে "Sheets থেকে Restore" বাটন দিয়ে সব ফিরিয়ে আনা যাবে। আপনি যেকোনো সময় চাইলে "এখনই Sync" চেপে জোর করে সিন্ক করতে পারেন।</p>
+      </div>
+
+      {status.notice && (
+        <div className="rounded-sm border px-4 py-2.5 mb-3 text-[12.5px]" style={{ background: status.notice.includes("শেষ") || status.notice.includes("সফল") ? C.ink + "14" : C.red + "14", borderColor: status.notice.includes("শেষ") || status.notice.includes("সফল") ? C.ink : C.red, color: C.text }}>{status.notice}</div>
+      )}
+
+      <div className="grid sm:grid-cols-3 gap-3 mb-4">
+        {(["Members", "Donations", "Expenses"] as const).map((t) => (
+          <div key={t} className="rounded-sm border px-4 py-3" style={{ background: C.paper, borderColor: C.border }}>
+            <div className="text-[11px] uppercase tracking-wide" style={{ color: C.label }}>{t === "Members" ? "সদস্য" : t === "Donations" ? "দান" : "খরচ"}</div>
+            <div className="text-[20px] font-semibold" style={{ color: C.ink }}>{status.counts?.[t] ?? "—"}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={runSync}
+          disabled={status.working}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-sm text-[13px] font-semibold transition disabled:opacity-50"
+          style={{ background: C.ink, color: C.paper }}
+        >
+          <RefreshCw size={14} className={status.working ? "animate-spin" : ""} />
+          {status.working ? "সিন্ক হচ্ছে..." : "এখনই Sync"}
+        </button>
+        <button
+          onClick={runRestore}
+          disabled={status.working}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-sm text-[13px] font-semibold transition disabled:opacity-50"
+          style={{ background: C.paper, border: `1px solid ${C.gold}`, color: C.ink }}
+        >
+          <FileUp size={14} />
+          Sheets থেকে Restore
+        </button>
+      </div>
+
+      {status.lastSyncAt && <p className="mt-3 text-[11.5px]" style={{ color: C.sub }}>শেষ সফল সিন্ক: {status.lastSyncAt}</p>}
+
+      <div className="mt-5 rounded-sm border px-4 py-3 text-[12px]" style={{ background: C.paper, borderColor: C.border, color: C.text }}>
+        <b>কিভাবে কাজ করে:</b> সদস্য/দান/খরচ যোগ, এডিট বা ডিলিট করলে অ্যাপ নিজেই শিটস আপডেট করে (কিছু সেকেন্ডের মধ্যে)। শিটের তিনটি ট্যাব: <b>Members</b>, <b>Donations</b>, <b>Expenses</b>। ডাটাবেসে id-ভিত্তিক আপসার্ট হওয়ায় একই ডেটা দুবার এলে ডুপ্লিকেট হবে না।
+      </div>
     </div>
   );
 }

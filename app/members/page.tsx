@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { logAudit } from "@/lib/audit";
+import { triggerSheetsSync } from "@/lib/sheets-auto";
 import AppLayout from "@/components/layout";
 import { useAuth } from "@/components/providers";
 import { Phone, MapPin, Calendar, Plus, Search, Filter, X, Trash2, Edit2, History, HandCoins } from "lucide-react";
@@ -107,11 +108,13 @@ export default function MembersPage() {
       const { error } = await supabase().from("members").update(hasPledgeCol ? { name: formName, phone: formPhone, address: formAddress, status: formStatus, monthly_pledge: pledgeNum } : { name: formName, phone: formPhone, address: formAddress, status: formStatus }).eq("id", editingId);
       if (error) { console.error("Update error:", error); alert(rlsHint("সদস্য আপডেট করা যায়নি", error)); setLoading(false); return; }
       logAudit("member.update", "members", editingId, { name: formName, fields: ["name", "phone", "address", "status", "monthly_pledge"] });
+      triggerSheetsSync();
     } else {
       const { error, data } = await supabase().from("members").insert([hasPledgeCol ? { name: formName, phone: formPhone, address: formAddress, status: formStatus, monthly_pledge: pledgeNum, user_id: user.id } : { name: formName, phone: formPhone, address: formAddress, status: formStatus, user_id: user.id }]);
       if (error) { console.error("Insert error:", error); alert(rlsHint("সদস্য যোগ করা যায়নি", error)); setLoading(false); return; }
       console.log("Inserted member:", data);
       logAudit("member.insert", "members", (data as unknown as any[] | null)?.[0]?.id, { name: formName, monthly_pledge: pledgeNum });
+      triggerSheetsSync();
     }
     resetForm();
     fetchMembers().finally(() => setLoading(false));
@@ -125,6 +128,7 @@ export default function MembersPage() {
       return;
     }
     logAudit("member.delete", "members", id, { name: rows?.[0]?.name });
+    triggerSheetsSync();
     fetchMembers();
   };
 

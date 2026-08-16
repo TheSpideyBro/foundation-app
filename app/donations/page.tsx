@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { logAudit } from "@/lib/audit";
+import { triggerSheetsSync } from "@/lib/sheets-auto";
 import AppLayout from "@/components/layout";
 import { useAuth } from "@/components/providers";
 import { Search, Filter, Plus, X, Download, Trash2, CheckCircle2, Stamp } from "lucide-react";
@@ -199,6 +200,7 @@ export default function DonationsPage() {
       return;
     }
     logAudit("donation.insert", "donations", (data as unknown as any[] | null)?.[0]?.id, { amount: parseFloat(formAmount), method: formMethod, donor_id: formMemberId });
+    triggerSheetsSync();
     setShowForm(false);
     setFormMemberId(""); setFormAmount(""); setFormReceivedBy("");
     setFormMonth(new Date().toISOString().slice(0, 7));
@@ -213,6 +215,7 @@ export default function DonationsPage() {
       return;
     }
     logAudit("donation.delete", "donations", id, { receipt_no: rows?.[0]?.receipt_no, amount: rows?.[0]?.amount });
+    triggerSheetsSync();
     fetchData();
   };
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { logAudit } from "@/lib/audit";
+import { triggerSheetsSync } from "@/lib/sheets-auto";
 import AppLayout from "@/components/layout";
 import { useAuth } from "@/components/providers";
 import { ReceiptText, Plus, X, Trash2, Upload, Tag } from "lucide-react";
@@ -108,6 +109,7 @@ export default function ExpensesPage() {
       return;
     }
     logAudit("expense.insert", "expenses", (data as any)?.id, { category: finalCat, amount: parseFloat(amount) });
+    triggerSheetsSync();
     setShowForm(false); setAmount(""); setDescription(""); setProofFile(null);
     setUseCustom(false); setCustomCategory("");
     fetchExpenses();
@@ -121,6 +123,7 @@ export default function ExpensesPage() {
       return;
     }
     logAudit("expense.delete", "expenses", id, { category: rows?.[0]?.category, amount: rows?.[0]?.amount });
+    triggerSheetsSync();
     fetchExpenses();
   };
 
