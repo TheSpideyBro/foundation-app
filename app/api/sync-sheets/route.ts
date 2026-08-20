@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const out = await fullSync(cfg);
-    return NextResponse.json({ ok: true, ...out, syncedAt: new Date().toISOString() });
+    return NextResponse.json({ ok: true, ...out, syncedAt: new Date().toISOString()});
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e.message || String(e) }, { status: 500 });
   }

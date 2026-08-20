@@ -128,7 +128,7 @@ export async function writeRange(
   cfg: SheetsConfig, token: string, tab: string, values: (string | number)[][]
 ) {
   const r = await fetch(
-    `${BASE}/${cfg.spreadsheetId}/values/${encodeURIComponent(tab)}!A1:clear`,
+    `${BASE}/${cfg.spreadsheetId}/values/${encodeURIComponent(tab)}!A1:Z1000:clear`,
     { method: "POST", headers: headers(token) }
   );
   if (!r.ok) throw new Error(`clear ${tab}: ${await r.text()}`);
@@ -203,9 +203,14 @@ export async function fullSync(cfg: SheetsConfig): Promise<{ sheets: Record<stri
     writeRange(cfg, token, "Expenses", eRows),
   ]);
 
+    // Apply the modern Bengali header row + professional styling so the sheet
+  // always looks presentable after every sync (row-1 headers are display-only;
+  // restoreFromSheets reads rows by column position, so Bengali labels are safe).
+  const fmt = await formatSheets(cfg, token);
   return {
     sheets: { Members: mRows.length - 1, Donations: dRows.length - 1, Expenses: eRows.length - 1 },
     tabStatus: "Members ✓ | Donations ✓ | Expenses ✓",
+    formattedTabs: fmt.formattedTabs,
   };
 }
 
@@ -294,4 +299,186 @@ export async function restoreFromSheets(cfg: SheetsConfig, opts: { dryRun?: bool
   }
 
   return result;
+}
+
+// ---------- sheet styling (Bengali display headers + modern look) ----------
+const HEADER_DISPLAY: Record<string, string[]> = {
+  Members: ["সদস্য আইডি", "নাম", "ফোন", "ঠিকানা", "যোগদান", "অবস্থা", "মাসিক প্রতিশ্রুতি (৳)", "তৈরির তারিখ"],
+  Donations: ["দান আইডি", "সদস্য আইডি", "সদস্যের নাম", "পরিমাণ (৳)", "তারিখ", "পদ্ধতি", "রসিদ নম্বর", "গ্রহণকারী", "মাস", "তৈরির তারিখ"],
+  Expenses: ["খরচ আইডি", "ক্যাটাগরি", "পরিমাণ (৳)", "তারিখ", "বিবরণ", "প্রমাণ (URL)", "তৈরির তারিখ"],
+};
+const COL_WIDTHS: Record<string, number[]> = {
+  Members: [150, 140, 130, 180, 110, 90, 120, 150],
+  Donations: [150, 150, 120, 100, 110, 100, 110, 120, 120, 150],
+  Expenses: [150, 120, 100, 110, 220, 150, 150],
+};
+const AMOUNT_COL: Record<string, number> = { Members: 7, Donations: 4, Expenses: 3 };
+// column index (0-based) of the currency column per tab (last amount col)
+const GREEN: [number, number, number] = [0.106, 0.263, 0.2]; // #1B4332
+const GOLD: [number, number, number] = [0.788, 0.592, 0.176]; // #C9972D
+const CREAM: [number, number, number] = [0.969, 0.957, 0.933]; // #F7F4EE
+const MIST: [number, number, number] = [0.933, 0.945, 0.925]; // #EFF1EC
+const GRID: [number, number, number] = [0.8, 0.8, 0.77];
+
+function colLetter(i: number): string {
+  let s = "";
+  let n = i;
+  do {
+    s = String.fromCharCode(65 + (n % 26)) + s;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return s;
+}
+
+/**
+ * Puts friendly Bengali headers on row 1 and applies the modern template
+ * (dark-green header, banded rows, borders, currency format, widths, freeze).
+ * Safe to run after every fullSync — idempotent.
+ */
+export async function formatSheets(cfg: SheetsConfig, token: string): Promise<void> {
+  const meta = await fetch(`${BASE}/${cfg.spreadsheetId}`, { headers: headers(token) });
+  const metaJson = await meta.json();
+  const tabs: { id: number; title: string; hasBand: boolean }[] = (metaJson.sheets || []).map((s: any) => ({
+    id: s.properties.sheetId,
+    title: s.properties.title,
+    hasBand: ((s.bandedRanges || []) as any[]).some((b: any) => {
+      const r = b.bandedRange?.range ?? b.range;
+      if (!r) return false;
+      // Banding ranges may omit sheetId (applies to the sheet they belong to).
+      const sheetMatch = r.sheetId === s.properties.sheetId || r.sheetId === undefined || r.sheetId === null;
+      return sheetMatch && (r.startRowIndex ?? 0) <= 1 && (r.endRowIndex ?? 0) >= 1000;
+    }),
+  }));
+
+  // 1) Write Bengali display headers (row 1)
+  const writePromises: Promise<void>[] = [];
+  for (const t of tabs) {
+    const cols = HEADER_DISPLAY[t.title];
+    if (!cols) continue;
+    const range = `${t.title}!A1:${colLetter(cols.length - 1)}1`;
+    writePromises.push(
+      fetch(`${BASE}/${cfg.spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...headers(token) },
+        body: JSON.stringify({ range, majorDimension: "ROWS", values: [cols] }),
+      }).then(async (r) => {
+        console.error(`[formatSheets] Bengali header PUT ${t.title}: status ${r.status}`);
+        if (!r.ok) throw new Error(`write Bengali header ${t.title}: ${await r.text()}`);
+      })
+    );
+    // 2) Style the tab
+    const maxCol = cols.length;
+    const batch: Record<string, unknown>[] = [
+      {
+        updateCells: {
+          range: { sheetId: t.id, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: maxCol },
+          fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,borders)",
+          rows: [
+            {
+              values: Array.from({ length: maxCol }, () => ({
+                userEnteredFormat: {
+                  backgroundColor: { red: GREEN[0], green: GREEN[1], blue: GREEN[2] },
+                  horizontalAlignment: "CENTER",
+                  verticalAlignment: "MIDDLE",
+                  textFormat: { bold: true, fontSize: 10, foregroundColor: { red: 1, green: 1, blue: 1 }, fontFamily: "Noto Sans Bengali" },
+                  borders: { bottom: { style: "SOLID_MEDIUM", color: { red: GOLD[0], green: GOLD[1], blue: GOLD[2] } } },
+                },
+              })),
+            },
+          ],
+        },
+      },
+      {
+        repeatCell: {
+          range: { sheetId: t.id, startRowIndex: 1, endRowIndex: 1001, startColumnIndex: 0, endColumnIndex: maxCol },
+          cell: { userEnteredFormat: { backgroundColor: { red: CREAM[0], green: CREAM[1], blue: CREAM[2] } } },
+          fields: "userEnteredFormat.backgroundColor",
+        },
+      },
+      ...(t.hasBand
+        ? []
+        : [
+            {
+              addBanding: {
+                bandedRange: {
+                  range: { sheetId: t.id, startRowIndex: 1, endRowIndex: 1001, startColumnIndex: 0, endColumnIndex: maxCol },
+                  rowProperties: {
+                    firstBandColor: { red: MIST[0], green: MIST[1], blue: MIST[2] },
+                    secondBandColor: { red: CREAM[0], green: CREAM[1], blue: CREAM[2] },
+                  },
+                },
+              },
+            },
+          ]),
+      {
+        repeatCell: {
+          range: { sheetId: t.id, startRowIndex: 1, endRowIndex: 1001, startColumnIndex: AMOUNT_COL[t.title], endColumnIndex: AMOUNT_COL[t.title] + 1 },
+          cell: { userEnteredFormat: { numberFormat: { type: "CURRENCY", pattern: "৳#,##0.00" } } },
+          fields: "userEnteredFormat.numberFormat",
+        },
+      },
+      {
+        updateBorders: {
+          range: { sheetId: t.id, startRowIndex: 0, endRowIndex: 1001, startColumnIndex: 0, endColumnIndex: maxCol },
+          top: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } },
+          bottom: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } },
+          left: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } },
+          right: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } },
+          innerHorizontal: { style: "DOTTED", color: { red: 0.87, green: 0.87, blue: 0.84 } },
+          innerVertical: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } },
+        },
+      },
+    ];
+    (COL_WIDTHS[t.title] || []).forEach((w, i) => {
+      batch.push({
+        updateDimensionProperties: {
+          range: { sheetId: t.id, dimension: "COLUMNS", startIndex: i, endIndex: i + 1 },
+          properties: { pixelSize: w },
+          fields: "pixelSize",
+        },
+      });
+    });
+    batch.push(
+      {
+        updateSheetProperties: {
+          properties: { sheetId: t.id, gridProperties: { frozenRowCount: 1 } },
+          fields: "gridProperties.frozenRowCount",
+        },
+      },
+      {
+        updateDimensionProperties: {
+          range: { sheetId: t.id, dimension: "ROWS", startIndex: 0, endIndex: 1 },
+          properties: { pixelSize: 30 },
+          fields: "pixelSize",
+        },
+      }
+    );
+    const br = await fetch(`${BASE}/${cfg.spreadsheetId}:batchUpdate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers(token) },
+      body: JSON.stringify({ requests: batch }),
+    });
+    console.error(`[formatSheets] ${t.title}: batchUpdate status ${br.ok ? 200 : br.status}`);
+    if (!br.ok) throw new Error(`format ${t.title}: ${await br.text()}`);
+  }
+  await Promise.all(writePromises);
+
+  // Verification pass — ensure the friendly display headers really landed.
+  const verify: Promise<void>[] = [];
+  for (const t of tabs) {
+    const cols = HEADER_DISPLAY[t.title];
+    if (!cols) continue;
+    const range = `${t.title}!A1:${colLetter(cols.length - 1)}1`;
+    verify.push(
+      fetch(`${BASE}/${cfg.spreadsheetId}/values/${encodeURIComponent(range)}`, { headers: headers(token) })
+        .then(async (r) => {
+          const d = await r.json();
+          const got = d.values?.[0] || [];
+          const ok = cols.every((c, i) => String(got[i] ?? "") === c);
+          if (!ok) throw new Error(`display header verify failed for ${t.title}: got ${JSON.stringify(got).slice(0, 200)}`);
+        })
+    );
+  }
+  await Promise.all(verify);
+  return { formattedTabs: tabs.map((t) => t.title).filter((t) => HEADER_DISPLAY[t]) };
 }
