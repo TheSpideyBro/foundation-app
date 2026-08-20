@@ -206,7 +206,8 @@ export async function fullSync(cfg: SheetsConfig): Promise<{ sheets: Record<stri
     // Apply the modern Bengali header row + professional styling so the sheet
   // always looks presentable after every sync (row-1 headers are display-only;
   // restoreFromSheets reads rows by column position, so Bengali labels are safe).
-  const fmt = await formatSheets(cfg, token);
+  const dash = buildDashboardData(members.data || [], donations.data || []);
+  const fmt = await formatSheets(cfg, token, dash);
   return {
     sheets: { Members: mRows.length - 1, Donations: dRows.length - 1, Expenses: eRows.length - 1 },
     tabStatus: "Members ✓ | Donations ✓ | Expenses ✓",
@@ -322,6 +323,214 @@ const GRID: [number, number, number] = [0.8, 0.8, 0.77];
 
 const SUMMARY_WIDTHS: number[] = [300, 160, 70]; // label, value, unit
 const HIGHLIGHT: [number, number, number] = [0.937, 0.871, 0.659]; // gold-tint highlight row
+
+// ---------- সারসংক্ষেপ dashboard extensions (filter, donut data, overdue list) ----------
+// Layout plan (0-based rows; 1-based = +1):
+//   15 (row 16) — section banner "সময় ফিল্টার ও চার্ট" (merged A1:E)
+//   16 (row 17) — "ফিল্টার পর্যন্ত" | filter date (B17, gold) | note | —
+//   17 (row 18) — "ফিল্টারড দানের মোট" | SUMIFS formula | ৳ | "পে করছে" | COUNTIFS formula
+//   18 (row 19) — — | — | — | "বাকি আছে" | COUNTA−COUNTIFS formula
+//   19 (row 20) — "বাকি চাঁদাদার সতর্কতা" banner (gold, merged)
+//   20 (row 21) — overdue column header (dark green): নাম | প্লেজ | শেষ পরিশোধ | মাস বাকি
+//   21+ (row 22+) — one row per overdue member (built live from DB at sync time, up to 10)
+
+interface DashboardData {
+  currentMonth: string;            // YYYY-MM (e.g. 2026-08)
+  overdue: { name: string; pledge: number; lastMonth: string; monthsMissed: number }[];
+}
+
+function buildDashboardData(members: any[], donations: any[]): DashboardData {
+  const now = new Date();
+  const ym = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  const currentMonth = ym(now);
+
+  // last donation month per member (only active pledgers matter)
+  const lastPay = new Map<string, { month: string; count: number }>();
+  for (const d of donations || []) {
+    if (!d.donation_month || !d.member_id) continue;
+    const prev = lastPay.get(d.member_id) || { month: d.donation_month, count: 0 };
+    prev.count += 1;
+    if (d.donation_month > prev.month) prev.month = d.donation_month;
+    lastPay.set(d.member_id, prev);
+  }
+
+  const overdue: DashboardData["overdue"] = [];
+  for (const m of members || []) {
+    if (m.status !== "active" || !Number(m.monthly_pledge)) continue;
+    const lp = lastPay.get(m.id);
+    if (lp && lp.month >= currentMonth) continue; // paid this month (or future)
+    const last = lp?.month ?? null;
+    let missed = 0;
+    // count months from the month after last payment up to currentMonth
+    if (!last) {
+      // never paid: count months since join (capped by currentMonth)
+      const j = m.join_date ? new Date(String(m.join_date)) : null;
+      const start = j && j < new Date() ? ym(j) : currentMonth;
+      const [sy, sm] = start.split("-").map(Number);
+      const [cy, cm] = currentMonth.split("-").map(Number);
+      missed = (cy - sy) * 12 + (cm - sm) + 1;
+    } else {
+      const [ly, lm] = last.split("-").map(Number);
+      const [cy, cm] = currentMonth.split("-").map(Number);
+      missed = (cy - ly) * 12 + (cm - lm);
+    }
+    if (missed <= 0) continue;
+    overdue.push({ name: String(m.name), pledge: Number(m.monthly_pledge), lastMonth: last || "—", monthsMissed: Math.min(missed, 99) });
+  }
+  overdue.sort((a, b) => b.monthsMissed - a.monthsMissed);
+  return { currentMonth, overdue: overdue.slice(0, 10) };
+}
+
+async function writeDashboardExtensions(cfg: SheetsConfig, token: string, dash: DashboardData): Promise<void> {
+  const tab = "সারসংক্ষেপ";
+  // rows: 16 banner, 17 filter date, 18 filtered sum + donut row1, 19 donut row2, 20 overdue banner,
+  // 21 overdue header, 22.. = overdue data (1-based). End = 21 + overdue.length
+  const range = `${tab}!A16:E${21 + Math.max(dash.overdue.length, 0)}`;
+  const paidF = `=COUNTIFS(Donations!B2:B1001,"<>",Donations!I2:I1001,">="&$B$17)`;
+  const unpaidF = `=COUNTA(Members!A2:A1001)-COUNTIFS(Donations!B2:B1001,"<>",Donations!I2:I1001,">="&$B$17)`;
+  const filteredDonationSum = `=SUMIFS(Donations!D2:D1001,Donations!E2:E1001,">="&$B$17)`;
+  const rows: (string | number)[][] = [
+    ["সময় ফিল্টার ও চার্ট", "", "", "", ""],
+    ["ফিল্টার পর্যন্ত (সেল B17 এডিট করুন)", "=TEXT(TODAY(),\"yyyy-mm-dd\")", "তারিখ পরিবর্তন করে পুনরায় সিন্ক করুন", "শেষ পরিশোধ মাস (সদস্যভিত্তিক)", ""],
+    ["ফিল্টারড দানের মোট", filteredDonationSum, "৳", "পে করছে (ডোনাট চার্ট: পে)", paidF],
+    ["", "", "", "বাকি আছে (ডোনাট চার্ট: বাকি)", unpaidF],
+    ["বাকি চাঁদাদার সতর্কতা", "", "", "", ""],
+    ["সদস্যের নাম", "মাসিক প্লেজ", "শেষ পরিশোধ", "কত মাস বাকি", ""],
+    ...dash.overdue.map((o) => [o.name, o.pledge, o.lastMonth, o.monthsMissed, ""]),
+  ];
+  const w = await fetch(`${BASE}/${cfg.spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...headers(token) },
+    body: JSON.stringify({ range, majorDimension: "ROWS", values: rows }),
+  });
+  console.error(`[formatSheets] সারসংক্ষেপ extensions PUT: status ${w.status}`);
+  if (!w.ok) throw new Error(`write summary extensions: ${await w.text()}`);
+  // Store computed dashboard data in a comment-free cell so restyling can size rows correctly:
+  // (we rely on the row count passed to styling below)
+}
+
+function summaryExtensionStyleBatch(sheetId: number, rows: number): Record<string, unknown>[] {
+  const batch: Record<string, unknown>[] = [];
+  const R = (s: number, e: number) => ({ sheetId, startRowIndex: s, endRowIndex: e, startColumnIndex: 0, endColumnIndex: 5 });
+  // Row 16 (0-based 15) — section banner (dark green, white bold 12pt, merged)
+  batch.push(
+    { updateCells: {
+      range: R(15, 16),
+      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)",
+      rows: [{ values: Array.from({ length: 5 }, () => ({ userEnteredFormat: {
+        backgroundColor: { red: GREEN[0], green: GREEN[1], blue: GREEN[2] },
+        horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE",
+        textFormat: { bold: true, fontSize: 12, foregroundColor: { red: 1, green: 1, blue: 1 }, fontFamily: "Noto Sans Bengali" },
+      } })) }],
+    } },
+    { mergeCells: { range: R(15, 16), mergeType: "MERGE_ALL" } },
+    { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 15, endIndex: 16 }, properties: { pixelSize: 28 }, fields: "pixelSize" } },
+    // Row 17 (0-based 16) — filter row: label + date cell + note; date cell (B17) gold tint
+    { updateCells: {
+      range: R(16, 17),
+      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,borders)",
+      rows: [{ values: [
+        { userEnteredFormat: { backgroundColor: { red: MIST[0], green: MIST[1], blue: MIST[2] }, horizontalAlignment: "LEFT", textFormat: { bold: true, fontSize: 10, foregroundColor: { red: 0.1, green: 0.35, blue: 0.25 }, fontFamily: "Noto Sans Bengali" } } },
+        { userEnteredFormat: { backgroundColor: { red: HIGHLIGHT[0], green: HIGHLIGHT[1], blue: HIGHLIGHT[2] }, horizontalAlignment: "CENTER", textFormat: { bold: true, fontSize: 10, fontFamily: "Noto Sans Bengali" }, numberFormat: { type: "TEXT" }, borders: { bottom: { style: "SOLID", color: { red: GOLD[0], green: GOLD[1], blue: GOLD[2] } } } } },
+        { userEnteredFormat: { horizontalAlignment: "LEFT", textFormat: { fontSize: 9, foregroundColor: { red: 0.45, green: 0.45, blue: 0.43 }, fontFamily: "Noto Sans Bengali" } } },
+        { userEnteredFormat: { horizontalAlignment: "LEFT", textFormat: { fontSize: 9, foregroundColor: { red: 0.45, green: 0.45, blue: 0.43 }, fontFamily: "Noto Sans Bengali" } } },
+        { userEnteredFormat: { horizontalAlignment: "LEFT", textFormat: { fontSize: 9, foregroundColor: { red: 0.45, green: 0.45, blue: 0.43 }, fontFamily: "Noto Sans Bengali" } } },
+      ] }],
+    } },
+    // Row 17 (0-based 16) — donut helper labels D/E are painted below; filter row note cells C-E covered above
+    // Row 18 (0-based 17) — filtered sum + donut source values (alternating tint)
+    { updateCells: {
+      range: R(17, 18),
+      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,borders)",
+      rows: [{ values: [
+        { userEnteredFormat: { backgroundColor: { red: CREAM[0], green: CREAM[1], blue: CREAM[2] }, horizontalAlignment: "LEFT", textFormat: { bold: true, fontSize: 10, fontFamily: "Noto Sans Bengali" } } },
+        { userEnteredFormat: { backgroundColor: { red: CREAM[0], green: CREAM[1], blue: CREAM[2] }, horizontalAlignment: "CENTER", textFormat: { bold: true, fontSize: 12, fontFamily: "Noto Sans Bengali" }, numberFormat: { type: "CURRENCY", pattern: "৳#,##0" } } },
+        { userEnteredFormat: { backgroundColor: { red: CREAM[0], green: CREAM[1], blue: CREAM[2] }, horizontalAlignment: "CENTER", textFormat: { fontSize: 9, foregroundColor: { red: 0.4, green: 0.4, blue: 0.38 }, fontFamily: "Noto Sans Bengali" } } },
+        { userEnteredFormat: { backgroundColor: { red: MIST[0], green: MIST[1], blue: MIST[2] }, horizontalAlignment: "LEFT", textFormat: { bold: true, fontSize: 10, foregroundColor: { red: 0.1, green: 0.35, blue: 0.25 }, fontFamily: "Noto Sans Bengali" } } },
+        { userEnteredFormat: { backgroundColor: { red: MIST[0], green: MIST[1], blue: MIST[2] }, horizontalAlignment: "CENTER", textFormat: { bold: true, fontSize: 10, fontFamily: "Noto Sans Bengali" } } },
+      ] }],
+    } },
+    // Row 19 (0-based 18) — donut: paid/unpaid row 2 (alternating tint; label D, value E)
+    { updateCells: {
+      range: R(18, 19),
+      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)",
+      rows: [{ values: [
+        { userEnteredFormat: { horizontalAlignment: "LEFT" } },
+        { userEnteredFormat: { horizontalAlignment: "LEFT" } },
+        { userEnteredFormat: { horizontalAlignment: "LEFT" } },
+        { userEnteredFormat: { backgroundColor: { red: CREAM[0], green: CREAM[1], blue: CREAM[2] }, horizontalAlignment: "LEFT", textFormat: { bold: true, fontSize: 10, foregroundColor: { red: 0.1, green: 0.35, blue: 0.25 }, fontFamily: "Noto Sans Bengali" } } },
+        { userEnteredFormat: { backgroundColor: { red: CREAM[0], green: CREAM[1], blue: CREAM[2] }, horizontalAlignment: "CENTER", textFormat: { bold: true, fontSize: 10, fontFamily: "Noto Sans Bengali" } } },
+      ] }],
+    } },
+    { updateBorders: { range: R(18, 19), left: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } }, right: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } }, innerVertical: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } } } },
+    { updateBorders: { range: R(15, 19), left: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } }, right: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } }, innerVertical: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } }, innerHorizontal: { style: "DOTTED", color: { red: 0.87, green: 0.87, blue: 0.84 } } } },
+    // Overdue banner row 20 (0-based 19)
+    { updateCells: {
+      range: R(19, 20),
+      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)",
+      rows: [{ values: Array.from({ length: 5 }, () => ({ userEnteredFormat: {
+        backgroundColor: { red: GOLD[0], green: GOLD[1], blue: GOLD[2] },
+        horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE",
+        textFormat: { bold: true, fontSize: 11, foregroundColor: { red: 0.1, green: 0.1, blue: 0.1 }, fontFamily: "Noto Sans Bengali" },
+      } })) }],
+    } },
+    { mergeCells: { range: R(19, 20), mergeType: "MERGE_ALL" } },
+    { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 19, endIndex: 20 }, properties: { pixelSize: 26 }, fields: "pixelSize" } },
+    // Overdue header row 21 (0-based 20) (dark green, white)
+    { updateCells: {
+      range: R(20, 21),
+      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)",
+      rows: [{ values: Array.from({ length: 4 }, () => ({ userEnteredFormat: {
+        backgroundColor: { red: GREEN[0], green: GREEN[1], blue: GREEN[2] },
+        horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE",
+        textFormat: { bold: true, fontSize: 10, foregroundColor: { red: 1, green: 1, blue: 1 }, fontFamily: "Noto Sans Bengali" },
+        borders: { bottom: { style: "SOLID_MEDIUM", color: { red: GOLD[0], green: GOLD[1], blue: GOLD[2] } } },
+      } })) }],
+    } },
+    // Overdue data rows 25..25+rows — alternating red-tint (urgent) / cream
+    ...(rows > 0
+      ? [
+          { repeatCell: {
+            range: { sheetId, startRowIndex: 21, endRowIndex: 21 + rows, startColumnIndex: 0, endColumnIndex: 4 },
+            cell: { userEnteredFormat: { backgroundColor: { red: 0.97, green: 0.9, blue: 0.9 } } },
+            fields: "userEnteredFormat.backgroundColor",
+          } },
+          { repeatCell: {
+            range: { sheetId, startRowIndex: 22, endRowIndex: 21 + rows, startColumnIndex: 0, endColumnIndex: 4 },
+            cell: { userEnteredFormat: { backgroundColor: { red: CREAM[0], green: CREAM[1], blue: CREAM[2] } } },
+            fields: "userEnteredFormat.backgroundColor",
+          } },
+        ]
+      : []),
+    { updateBorders: {
+      range: { sheetId, startRowIndex: 19, endRowIndex: 21 + rows, startColumnIndex: 0, endColumnIndex: 4 },
+      top: { style: "SOLID_MEDIUM", color: { red: GOLD[0], green: GOLD[1], blue: GOLD[2] } },
+      bottom: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } },
+      left: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } },
+      right: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } },
+      innerHorizontal: { style: "DOTTED", color: { red: 0.87, green: 0.87, blue: 0.84 } },
+      innerVertical: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } },
+    } },
+    // text formats for overdue rows: name bold dark-red, numbers centered bold
+    ...(rows > 0
+      ? [
+          { repeatCell: {
+            range: { sheetId, startRowIndex: 21, endRowIndex: 21 + rows, startColumnIndex: 0, endColumnIndex: 1 },
+            cell: { userEnteredFormat: { horizontalAlignment: "LEFT", verticalAlignment: "MIDDLE", textFormat: { bold: true, fontSize: 10, foregroundColor: { red: 0.55, green: 0.15, blue: 0.1 }, fontFamily: "Noto Sans Bengali" } } },
+            fields: "userEnteredFormat(horizontalAlignment,textFormat,verticalAlignment)",
+          } },
+          { repeatCell: {
+            range: { sheetId, startRowIndex: 21, endRowIndex: 21 + rows, startColumnIndex: 1, endColumnIndex: 4 },
+            cell: { userEnteredFormat: { horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE", textFormat: { bold: true, fontSize: 10, fontFamily: "Noto Sans Bengali" } } },
+            fields: "userEnteredFormat(horizontalAlignment,textFormat,verticalAlignment)",
+          } },
+        ]
+      : []),
+  );
+  // column widths for D (৳ 110px)
+  batch.push({ updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 3, endIndex: 4 }, properties: { pixelSize: 110 }, fields: "pixelSize" } });
+  return batch;
+}
 
 function styleSummaryRequestBatch(sheetId: number): Record<string, unknown>[] {
   const batch: Record<string, unknown>[] = [];
@@ -443,15 +652,27 @@ function styleSummaryRequestBatch(sheetId: number): Record<string, unknown>[] {
   return batch;
 }
 
-async function styleSummaryTab(cfg: SheetsConfig, token: string, sheetId: number): Promise<void> {
-  const batch = styleSummaryRequestBatch(sheetId);
-  const br = await fetch(`${BASE}/${cfg.spreadsheetId}:batchUpdate`, {
+async function styleSummaryTab(cfg: SheetsConfig, token: string, sheetId: number, dash: DashboardData): Promise<void> {
+  // 1) write the dynamic dashboard extensions (filter, donut data, overdue list)
+  await writeDashboardExtensions(cfg, token, dash);
+  // 2) base stats styling
+  let batch = styleSummaryRequestBatch(sheetId);
+  let br = await fetch(`${BASE}/${cfg.spreadsheetId}:batchUpdate`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...headers(token) },
     body: JSON.stringify({ requests: batch }),
   });
   console.error(`[formatSheets] সারসংক্ষেপ: batchUpdate status ${br.ok ? 200 : br.status}`);
   if (!br.ok) throw new Error(`format সারসংক্ষেপ: ${await br.text()}`);
+  // 3) extension styling (section banner, filter rows, overdue table)
+  batch = summaryExtensionStyleBatch(sheetId, Math.min(dash.overdue.length, 10));
+  br = await fetch(`${BASE}/${cfg.spreadsheetId}:batchUpdate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers(token) },
+    body: JSON.stringify({ requests: batch }),
+  });
+  console.error(`[formatSheets] সারসংক্ষেপ extensions: batchUpdate status ${br.ok ? 200 : br.status}`);
+  if (!br.ok) throw new Error(`format সারসংক্ষেপ extensions: ${await br.text()}`);
 }
 
 function colLetter(i: number): string {
@@ -469,7 +690,7 @@ function colLetter(i: number): string {
  * (dark-green header, banded rows, borders, currency format, widths, freeze).
  * Safe to run after every fullSync — idempotent.
  */
-export async function formatSheets(cfg: SheetsConfig, token: string): Promise<string[]> {
+export async function formatSheets(cfg: SheetsConfig, token: string, dash?: DashboardData | null): Promise<string[]> {
   const meta = await fetch(`${BASE}/${cfg.spreadsheetId}`, { headers: headers(token) });
   const metaJson = await meta.json();
   const tabs: { id: number; title: string; hasBand: boolean }[] = (metaJson.sheets || []).map((s: any) => ({
@@ -618,7 +839,7 @@ export async function formatSheets(cfg: SheetsConfig, token: string): Promise<st
   // 3) Style the সারসংক্ষেপ (summary dashboard) tab if present
   const summaryTab = tabs.find((t) => t.title === "সারসংক্ষেপ");
   if (summaryTab) {
-    await styleSummaryTab(cfg, token, summaryTab.id);
+    await styleSummaryTab(cfg, token, summaryTab.id, dash ?? { currentMonth: "", overdue: [] });
   }
 
   return tabs.map((t) => t.title).filter((t) => HEADER_DISPLAY[t] || t === "সারসংক্ষেপ");
