@@ -35,9 +35,21 @@ export async function POST(req: NextRequest) {
   // PRIMARY: Authorization header (sent by the client from getSession());
   // FALLBACK: token cookie. A broken/stale cookie must never beat a valid
   // header.
-  const rawToken = (bearer || tokenCookie?.value || "").trim();
+  let rawToken = (bearer || tokenCookie?.value || "").trim();
   // Normalize a token cookie that got percent-decoded as "undefined".
-  const accessToken = rawToken === "undefined" ? "" : rawToken;
+  if (rawToken === "undefined") rawToken = "";
+  // The browser may store the whole session object in a chunked cookie as
+  // "base64-<base64url-json>". Decode it and pull out access_token.
+  let accessToken = rawToken;
+  if (rawToken.startsWith("base64-")) {
+    try {
+      const json = Buffer.from(rawToken.slice(7), "base64url").toString("utf8");
+      const parsed = JSON.parse(json);
+      accessToken = typeof parsed?.access_token === "string" ? parsed.access_token : "";
+    } catch {
+      accessToken = "";
+    }
+  }
   if (!accessToken) {
     return NextResponse.json({ error: "অনুমিতি নেই: লগইন করুন" }, { status: 401 });
   }

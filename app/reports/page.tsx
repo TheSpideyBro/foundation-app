@@ -24,7 +24,7 @@ function Stub({ icon: Icon, label, value, sub, accent }: {
       <div className="pl-6 pr-5 py-5 flex items-start justify-between">
         <div>
           <p className="text-[11px] tracking-[0.14em] uppercase font-medium" style={{ fontFamily: "'Hind Siliguri', sans-serif", color: C.label }}>{label}</p>
-          <p className="mt-2 text-[26px] leading-none font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace", color: C.text }}>{formatMoney(value)}</p>
+          <p className="mt-2 text-[26px] leading-none font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace", color: C.text }}>{label.includes("সদস্য") ? toBengaliNumber(String(value)) : formatMoney(value)}</p>
           {sub && <p className="mt-1.5 text-[12px]" style={{ fontFamily: "'Hind Siliguri', sans-serif", color: C.sub }}>{sub}</p>}
         </div>
         <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: accent + "1A" }}>

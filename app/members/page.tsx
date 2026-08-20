@@ -150,9 +150,11 @@ export default function MembersPage() {
     <AppLayout>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-[19px] font-semibold" style={{ fontFamily: "'Tiro Bangla', serif", color: C.text }}>সদস্য তালিকা</h1>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 text-[13px] font-semibold px-4 py-2 rounded-sm hover:brightness-105 transition" style={{ background: C.gold, color: C.ink }}>
-          <Plus size={15} strokeWidth={2.5} /> নতুন সদস্য
-        </button>
+        {(role === "admin" || role === "treasurer") && (
+          <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 text-[13px] font-semibold px-4 py-2 rounded-sm hover:brightness-105 transition" style={{ background: C.gold, color: C.ink }}>
+            <Plus size={15} strokeWidth={2.5} /> নতুন সদস্য
+          </button>
+        )}
       </div>
 
       {/* Search */}

@@ -31,8 +31,19 @@ export async function POST(req: NextRequest) {
   const tokenCookie = req.cookies.getAll().find((c) => /^sb-.*-auth-token$/.test(c.name));
   const authHeader = req.headers.get("Authorization") || "";
   const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  const rawToken = (bearer || tokenCookie?.value || "").trim();
-  const accessToken = rawToken === "undefined" ? "" : rawToken;
+  let rawToken = (bearer || tokenCookie?.value || "").trim();
+  if (rawToken === "undefined") rawToken = "";
+  // Chunked session cookie: "base64-<base64url-json>" → decode & use access_token
+  let accessToken = rawToken;
+  if (rawToken.startsWith("base64-")) {
+    try {
+      const json = Buffer.from(rawToken.slice(7), "base64url").toString("utf8");
+      const parsed = JSON.parse(json);
+      accessToken = typeof parsed?.access_token === "string" ? parsed.access_token : "";
+    } catch {
+      accessToken = "";
+    }
+  }
   if (!accessToken) {
     return NextResponse.json({ error: "অনুমিতি নেই: লগইন করুন" }, { status: 401 });
   }
