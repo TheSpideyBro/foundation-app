@@ -171,7 +171,7 @@ function serviceRoleClient() {
   );
 }
 
-export async function fullSync(cfg: SheetsConfig): Promise<{ sheets: Record<string, number>; tabStatus: string }> {
+export async function fullSync(cfg: SheetsConfig): Promise<{ sheets: Record<string, number>; tabStatus: string; formattedTabs: string[] }> {
   const token = await getAccessToken(cfg.jsonKey);
   await ensureTabs(cfg, token, ["Members", "Donations", "Expenses"]);
 
@@ -210,7 +210,7 @@ export async function fullSync(cfg: SheetsConfig): Promise<{ sheets: Record<stri
   return {
     sheets: { Members: mRows.length - 1, Donations: dRows.length - 1, Expenses: eRows.length - 1 },
     tabStatus: "Members ✓ | Donations ✓ | Expenses ✓",
-    formattedTabs: fmt.formattedTabs,
+    formattedTabs: fmt,
   };
 }
 
@@ -320,6 +320,140 @@ const CREAM: [number, number, number] = [0.969, 0.957, 0.933]; // #F7F4EE
 const MIST: [number, number, number] = [0.933, 0.945, 0.925]; // #EFF1EC
 const GRID: [number, number, number] = [0.8, 0.8, 0.77];
 
+const SUMMARY_WIDTHS: number[] = [300, 160, 70]; // label, value, unit
+const HIGHLIGHT: [number, number, number] = [0.937, 0.871, 0.659]; // gold-tint highlight row
+
+function styleSummaryRequestBatch(sheetId: number): Record<string, unknown>[] {
+  const batch: Record<string, unknown>[] = [];
+  // Row 1 — title banner: dark green, merged, white bold 14pt
+  batch.push(
+    { updateCells: {
+      range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 5 },
+      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)",
+      rows: [{ values: Array.from({ length: 5 }, () => ({ userEnteredFormat: {
+        backgroundColor: { red: GREEN[0], green: GREEN[1], blue: GREEN[2] },
+        horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE",
+        textFormat: { bold: true, fontSize: 14, foregroundColor: { red: 1, green: 1, blue: 1 }, fontFamily: "Noto Sans Bengali" },
+      } })) }],
+    } },
+    { mergeCells: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 5 }, mergeType: "MERGE_ALL" } },
+    { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 40 }, fields: "pixelSize" } },
+    // Row 2 — subtitle banner: gold, merged, dark bold 11pt
+    { updateCells: {
+      range: { sheetId, startRowIndex: 1, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 5 },
+      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)",
+      rows: [{ values: Array.from({ length: 5 }, () => ({ userEnteredFormat: {
+        backgroundColor: { red: GOLD[0], green: GOLD[1], blue: GOLD[2] },
+        horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE",
+        textFormat: { bold: true, fontSize: 11, foregroundColor: { red: 0.1, green: 0.1, blue: 0.1 }, fontFamily: "Noto Sans Bengali" },
+      } })) }],
+    } },
+    { mergeCells: { range: { sheetId, startRowIndex: 1, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 5 }, mergeType: "MERGE_ALL" } },
+    { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 1, endIndex: 2 }, properties: { pixelSize: 26 }, fields: "pixelSize" } },
+    // Row 4 — column header: dark green band with gold bottom border
+    { updateCells: {
+      range: { sheetId, startRowIndex: 3, endRowIndex: 4, startColumnIndex: 0, endColumnIndex: 3 },
+      fields: "userEnteredFormat(backgroundColor,textFormat,borders)",
+      rows: [{ values: Array.from({ length: 3 }, () => ({ userEnteredFormat: {
+        backgroundColor: { red: GREEN[0], green: GREEN[1], blue: GREEN[2] },
+        horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE",
+        textFormat: { bold: true, fontSize: 10, foregroundColor: { red: 1, green: 1, blue: 1 }, fontFamily: "Noto Sans Bengali" },
+        borders: { bottom: { style: "SOLID_MEDIUM", color: { red: GOLD[0], green: GOLD[1], blue: GOLD[2] } } },
+      } })) }],
+    } },
+    // Rows 5-12 — data rows: alternating mist/cream
+    { repeatCell: {
+      range: { sheetId, startRowIndex: 4, endRowIndex: 12, startColumnIndex: 0, endColumnIndex: 3 },
+      cell: { userEnteredFormat: { backgroundColor: { red: MIST[0], green: MIST[1], blue: MIST[2] } } },
+      fields: "userEnteredFormat.backgroundColor",
+    } },
+    // Rows 5-12 even rows — cream
+    { repeatCell: {
+      range: { sheetId, startRowIndex: 5, endRowIndex: 12, startColumnIndex: 0, endColumnIndex: 3 },
+      cell: { userEnteredFormat: { backgroundColor: { red: CREAM[0], green: CREAM[1], blue: CREAM[2] } } },
+      fields: "userEnteredFormat.backgroundColor",
+    } },
+    // Row 13 — total/balance highlight: gold tint, bold, gold top border
+    { updateCells: {
+      range: { sheetId, startRowIndex: 12, endRowIndex: 13, startColumnIndex: 0, endColumnIndex: 3 },
+      fields: "userEnteredFormat(backgroundColor,textFormat,borders)",
+      rows: [{ values: Array.from({ length: 3 }, () => ({ userEnteredFormat: {
+        backgroundColor: { red: HIGHLIGHT[0], green: HIGHLIGHT[1], blue: HIGHLIGHT[2] },
+        horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE",
+        textFormat: { bold: true, fontSize: 11, foregroundColor: { red: 0.1, green: 0.1, blue: 0.1 }, fontFamily: "Noto Sans Bengali" },
+        borders: { top: { style: "SOLID_MEDIUM", color: { red: GOLD[0], green: GOLD[1], blue: GOLD[2] } } },
+      } })) }],
+    } },
+    // Stat labels (col A, rows 5-13) — bold green, left aligned; values (col B) — big bold centered; units (col C) — small centered
+    { repeatCell: {
+      range: { sheetId, startRowIndex: 4, endRowIndex: 13, startColumnIndex: 0, endColumnIndex: 1 },
+      cell: { userEnteredFormat: {
+        horizontalAlignment: "LEFT", verticalAlignment: "MIDDLE",
+        textFormat: { bold: true, fontSize: 10, foregroundColor: { red: 0.1, green: 0.35, blue: 0.25 }, fontFamily: "Noto Sans Bengali" },
+      } },
+      fields: "userEnteredFormat(horizontalAlignment,textFormat,verticalAlignment)",
+    } },
+    { repeatCell: {
+      range: { sheetId, startRowIndex: 4, endRowIndex: 13, startColumnIndex: 1, endColumnIndex: 2 },
+      cell: { userEnteredFormat: {
+        horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE",
+        textFormat: { bold: true, fontSize: 12, fontFamily: "Noto Sans Bengali" },
+      } },
+      fields: "userEnteredFormat(horizontalAlignment,textFormat,verticalAlignment)",
+    } },
+    { repeatCell: {
+      range: { sheetId, startRowIndex: 4, endRowIndex: 13, startColumnIndex: 2, endColumnIndex: 3 },
+      cell: { userEnteredFormat: {
+        horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE",
+        textFormat: { bold: false, fontSize: 9, foregroundColor: { red: 0.4, green: 0.4, blue: 0.38 }, fontFamily: "Noto Sans Bengali" },
+      } },
+      fields: "userEnteredFormat(horizontalAlignment,textFormat,verticalAlignment)",
+    } },
+    // Borders around the stats block A4:C13
+    { updateBorders: {
+      range: { sheetId, startRowIndex: 3, endRowIndex: 13, startColumnIndex: 0, endColumnIndex: 3 },
+      top: { style: "SOLID_MEDIUM", color: { red: GOLD[0], green: GOLD[1], blue: GOLD[2] } },
+      bottom: { style: "SOLID_MEDIUM", color: { red: GOLD[0], green: GOLD[1], blue: GOLD[2] } },
+      left: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } },
+      right: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } },
+      innerHorizontal: { style: "DOTTED", color: { red: 0.87, green: 0.87, blue: 0.84 } },
+      innerVertical: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } },
+    } },
+    // Row 15 — note: merged, italic gray, left aligned
+    { updateCells: {
+      range: { sheetId, startRowIndex: 14, endRowIndex: 15, startColumnIndex: 0, endColumnIndex: 5 },
+      fields: "userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment)",
+      rows: [{ values: Array.from({ length: 5 }, () => ({ userEnteredFormat: {
+        horizontalAlignment: "LEFT", verticalAlignment: "MIDDLE",
+        textFormat: { italic: true, fontSize: 9, foregroundColor: { red: 0.45, green: 0.45, blue: 0.43 }, fontFamily: "Noto Sans Bengali" },
+      } })) }],
+    } },
+    { mergeCells: { range: { sheetId, startRowIndex: 14, endRowIndex: 15, startColumnIndex: 0, endColumnIndex: 5 }, mergeType: "MERGE_ALL" } },
+  );
+  // Column widths
+  SUMMARY_WIDTHS.forEach((w, i) => {
+    batch.push({
+      updateDimensionProperties: {
+        range: { sheetId, dimension: "COLUMNS", startIndex: i, endIndex: i + 1 },
+        properties: { pixelSize: w },
+        fields: "pixelSize",
+      },
+    });
+  });
+  return batch;
+}
+
+async function styleSummaryTab(cfg: SheetsConfig, token: string, sheetId: number): Promise<void> {
+  const batch = styleSummaryRequestBatch(sheetId);
+  const br = await fetch(`${BASE}/${cfg.spreadsheetId}:batchUpdate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers(token) },
+    body: JSON.stringify({ requests: batch }),
+  });
+  console.error(`[formatSheets] সারসংক্ষেপ: batchUpdate status ${br.ok ? 200 : br.status}`);
+  if (!br.ok) throw new Error(`format সারসংক্ষেপ: ${await br.text()}`);
+}
+
 function colLetter(i: number): string {
   let s = "";
   let n = i;
@@ -335,7 +469,7 @@ function colLetter(i: number): string {
  * (dark-green header, banded rows, borders, currency format, widths, freeze).
  * Safe to run after every fullSync — idempotent.
  */
-export async function formatSheets(cfg: SheetsConfig, token: string): Promise<void> {
+export async function formatSheets(cfg: SheetsConfig, token: string): Promise<string[]> {
   const meta = await fetch(`${BASE}/${cfg.spreadsheetId}`, { headers: headers(token) });
   const metaJson = await meta.json();
   const tabs: { id: number; title: string; hasBand: boolean }[] = (metaJson.sheets || []).map((s: any) => ({
@@ -480,5 +614,12 @@ export async function formatSheets(cfg: SheetsConfig, token: string): Promise<vo
     );
   }
   await Promise.all(verify);
-  return { formattedTabs: tabs.map((t) => t.title).filter((t) => HEADER_DISPLAY[t]) };
+
+  // 3) Style the সারসংক্ষেপ (summary dashboard) tab if present
+  const summaryTab = tabs.find((t) => t.title === "সারসংক্ষেপ");
+  if (summaryTab) {
+    await styleSummaryTab(cfg, token, summaryTab.id);
+  }
+
+  return tabs.map((t) => t.title).filter((t) => HEADER_DISPLAY[t] || t === "সারসংক্ষেপ");
 }
