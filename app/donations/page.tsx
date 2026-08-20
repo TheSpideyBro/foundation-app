@@ -155,6 +155,7 @@ export default function DonationsPage() {
   const [formMethod, setFormMethod] = useState("cash");
   const [formReceivedBy, setFormReceivedBy] = useState("");
   const [formMonth, setFormMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [formMonths, setFormMonths] = useState(1); // how many months covered (1 = single, >1 = multi-month chada)
   const [loading, setLoading] = useState(true);
   const receiptRef = useRef<HTMLDivElement>(null);
 
@@ -194,12 +195,30 @@ export default function DonationsPage() {
     // body for HEAD 400 errors, so the error message would be empty.
     const schemaCheck = await supabase().from("donations").select("donation_month").limit(1);
     const hasMonthCol = !(schemaCheck.error && String(schemaCheck.error.message).includes("donation_month"));
-    const { error, data } = await supabase().from("donations").insert([{ ...(hasMonthCol && formMonth ? { donation_month: formMonth } : {}), member_id: formMemberId, amount: parseFloat(formAmount), date: formDate, method: formMethod, received_by: formReceivedBy, created_by: user.id }]);
+    // Multi-month chada support: split the payment into ONE ROW PER MONTH so the
+    // dashboard donut counts (per-month donation_month) and the overdue list stay accurate.
+    const amount = parseFloat(formAmount);
+    const isChada = hasMonthCol && formMonth && formMonths >= 1;
+    const rows: Record<string, unknown>[] = Array.from({ length: isChada ? formMonths : 1 }, (_, i) => {
+      const d = new Date(formMonth + "-01");
+      d.setMonth(d.getMonth() + i);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return {
+        ...(isChada ? { donation_month: monthKey } : {}),
+        member_id: formMemberId,
+        amount: isChada ? Number((amount / formMonths).toFixed(2)) : amount,
+        date: formDate,
+        method: formMethod,
+        received_by: formReceivedBy,
+        created_by: user.id,
+      };
+    });
+    const { error, data } = await supabase().from("donations").insert(rows);
     if (error) {
       alert("দান এন্ট্রি যোগ করা যায়নি: " + error.message);
       return;
     }
-    logAudit("donation.insert", "donations", (data as unknown as any[] | null)?.[0]?.id, { amount: parseFloat(formAmount), method: formMethod, donor_id: formMemberId });
+    logAudit("donation.insert", "donations", (data as unknown as any[] | null)?.[0]?.id, { amount, months: formMonths, method: formMethod, donor_id: formMemberId });
     triggerSheetsSync();
     setShowForm(false);
     setFormMemberId(""); setFormAmount(""); setFormReceivedBy("");
@@ -298,10 +317,21 @@ export default function DonationsPage() {
                 <input type="date" required value={formDate} onChange={(e) => setFormDate(e.target.value)} className="w-full rounded-sm px-3 py-2.5 text-[13px] outline-none" style={{ background: "#fff", borderColor: C.border }} />
               </div>
               <div>
-                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>কোন মাসের দান</label>
+                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>শুরুর মাস</label>
                 <select value={formMonth} onChange={(e) => setFormMonth(e.target.value)} className="w-full rounded-sm px-3 py-2.5 text-[13px] outline-none" style={{ background: "#fff", borderColor: C.border }}>
                   {monthOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>কত মাস পরিশোধ</label>
+                <select value={formMonths} onChange={(e) => setFormMonths(Number(e.target.value))} className="w-full rounded-sm px-3 py-2.5 text-[13px] outline-none" style={{ background: "#fff", borderColor: C.border }}>
+                  {[1, 2, 3, 4, 5, 6, 12].map((n) => <option key={n} value={n}>{n} মাস</option>)}
+                </select>
+                {selectedMemberPledge > 0 && Number(formAmount) > 0 && (
+                  <div className="text-[11px] mt-1" style={{ color: C.sub }}>
+                    প্রতি মাস ৳{selectedMemberPledge} — পরিশোধের পর প্রতি মাসের জন্য আলাদা এন্ট্রি হবে (মোট ৳{formMonths * selectedMemberPledge})
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>মাধ্যম</label>

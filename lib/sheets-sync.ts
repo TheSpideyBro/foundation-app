@@ -386,13 +386,24 @@ async function writeDashboardExtensions(cfg: SheetsConfig, token: string, dash: 
   // rows: 16 banner, 17 filter date, 18 filtered sum + donut row1, 19 donut row2, 20 overdue banner,
   // 21 overdue header, 22.. = overdue data (1-based). End = 21 + overdue.length
   const range = `${tab}!A16:E${21 + Math.max(dash.overdue.length, 0)}`;
-  const paidF = `=COUNTIFS(Donations!B2:B1001,"<>",Donations!I2:I1001,">="&$B$17)`;
-  const unpaidF = `=COUNTA(Members!A2:A1001)-COUNTIFS(Donations!B2:B1001,"<>",Donations!I2:I1001,">="&$B$17)`;
-  const filteredDonationSum = `=SUMIFS(Donations!D2:D1001,Donations!E2:E1001,">="&$B$17)`;
+  // donation_month is YYYY-MM per row (multi-month payments are split into one row per month),
+  // so counting rows on the month column == counting months paid. B17 holds a month key
+  // string (yyyy-mm), compared directly against the month column.
+  // Donut counts UNIQUE members (not rows): a member counts as "পে করছে" when they
+  // have at least one donation row with donation_month >= B17. Multi-month payments
+  // (split into per-month rows) are still counted once per member.
+  // NOTE: COUNTIFS("<="/">=" criteria with month strings like "2026-08" are coerced
+  // to dates by Sheets and return 0 — so we use SUMPRODUCT element-wise comparison
+  // (which compares strings correctly) wrapped in ISNUMBER(MATCH(...)) for uniqueness.
+  const paidF = `=SUMPRODUCT(--(ISNUMBER(MATCH(Members!A2:A1001,IF((Donations!I2:I1001>=$B$17)*(Donations!B2:B1001<>""),Donations!B2:B1001),0))))`;
+  const unpaidF = `=COUNTA(Members!A2:A1001)-SUMPRODUCT(--(ISNUMBER(MATCH(Members!A2:A1001,IF((Donations!I2:I1001>=$B$17)*(Donations!B2:B1001<>""),Donations!B2:B1001),0))))`;
+  // Total amount donated in the filtered month(s) — month-key strings up to the
+  // end of the month (appending "z" keeps the text comparison within the month)
+  const filteredDonationSum = `=SUMPRODUCT((Donations!D2:D1001)*(Donations!I2:I1001>=$B$17)*(Donations!I2:I1001<$B$17&"z"))`;
   const rows: (string | number)[][] = [
     ["সময় ফিল্টার ও চার্ট", "", "", "", ""],
-    ["ফিল্টার পর্যন্ত (সেল B17 এডিট করুন)", "=TEXT(TODAY(),\"yyyy-mm-dd\")", "তারিখ পরিবর্তন করে পুনরায় সিন্ক করুন", "শেষ পরিশোধ মাস (সদস্যভিত্তিক)", ""],
-    ["ফিল্টারড দানের মোট", filteredDonationSum, "৳", "পে করছে (ডোনাট চার্ট: পে)", paidF],
+    ["ফিল্টার মাস (সেল B17 এ মাস পরিবর্তন করুন, ফরম্যাট: yyyy-mm)", "=TEXT(TODAY(),\"yyyy-mm\")", "মাস পরিবর্তন করে পুনরায় সিন্ক করুন", "শেষ পরিশোধ মাস (সদস্যভিত্তিক)", ""],
+    ["ফিল্টারড মাসের দানের মোট", filteredDonationSum, "৳", "পে করছে (ডোনাট চার্ট: পে)", paidF],
     ["", "", "", "বাকি আছে (ডোনাট চার্ট: বাকি)", unpaidF],
     ["বাকি চাঁদাদার সতর্কতা", "", "", "", ""],
     ["সদস্যের নাম", "মাসিক প্লেজ", "শেষ পরিশোধ", "কত মাস বাকি", ""],
