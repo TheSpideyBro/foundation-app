@@ -473,6 +473,16 @@ function summaryExtensionStyleBatch(sheetId: number, rows: number): Record<strin
         { userEnteredFormat: { backgroundColor: { red: CREAM[0], green: CREAM[1], blue: CREAM[2] }, horizontalAlignment: "CENTER", textFormat: { bold: true, fontSize: 10, fontFamily: "Noto Sans Bengali" } } },
       ] }],
     } },
+    // B17 — month filter dropdown (yyyy-mm list for the current year)
+    { setDataValidation: {
+      range: { sheetId, startRowIndex: 16, endRowIndex: 17, startColumnIndex: 1, endColumnIndex: 2 },
+      rule: {
+        condition: { type: "ONE_OF_LIST", values: Array.from({ length: 12 }, (_, i) => ({ userEnteredValue: `${new Date().getFullYear()}-${String(i + 1).padStart(2, "0")}` })) },
+        showCustomUi: true,
+        strict: false,
+        inputMessage: "ফিল্টার মাস (yyyy-mm)",
+      },
+    } },
     { updateBorders: { range: R(18, 19), left: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } }, right: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } }, innerVertical: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } } } },
     { updateBorders: { range: R(15, 19), left: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } }, right: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } }, innerVertical: { style: "SOLID", color: { red: GRID[0], green: GRID[1], blue: GRID[2] } }, innerHorizontal: { style: "DOTTED", color: { red: 0.87, green: 0.87, blue: 0.84 } } } },
     // Overdue banner row 20 (0-based 19)
@@ -701,6 +711,30 @@ function colLetter(i: number): string {
  * (dark-green header, banded rows, borders, currency format, widths, freeze).
  * Safe to run after every fullSync — idempotent.
  */
+// Dropdown (data validation) options per tab — must match canonical app values.
+const TAB_VALIDATIONS: Record<string, { col: number; options: string[] }> = {
+  Members: { col: 5, options: ["active", "inactive"] }, // status
+  Donations: { col: 5, options: ["ক্যাশ", "বিকাশ", "নগদ (Nagad)", "ব্যাংক"] }, // method (Bengali display, app maps back via methodLabels inverse in restore)
+  Expenses: { col: 1, options: ["চিকিৎসা", "খাদ্য", "শিক্ষা", "জরুরি সহায়তা", "পরিবহন", "অন্যান্য"] }, // category
+};
+
+function dataValidationRequests(title: string, sheetId: number): Record<string, unknown>[] {
+  const v = TAB_VALIDATIONS[title];
+  if (!v) return [];
+  return [
+    {
+      setDataValidation: {
+        range: { sheetId, startRowIndex: 1, endRowIndex: 1001, startColumnIndex: v.col, endColumnIndex: v.col + 1 },
+        rule: {
+          condition: { type: "ONE_OF_LIST", values: v.options.map((o) => ({ userEnteredValue: o })) },
+          showCustomUi: true,
+          strict: false,
+        },
+      },
+    },
+  ];
+}
+
 export async function formatSheets(cfg: SheetsConfig, token: string, dash?: DashboardData | null): Promise<string[]> {
   const meta = await fetch(`${BASE}/${cfg.spreadsheetId}`, { headers: headers(token) });
   const metaJson = await meta.json();
@@ -776,6 +810,9 @@ export async function formatSheets(cfg: SheetsConfig, token: string, dash?: Dash
               },
             },
           ]),
+      // Per-tab dropdown (data validation) — members: status, donations: payment method,
+      // expenses: category. Values must match the canonical strings the app stores.
+      ...dataValidationRequests(t.title, t.id),
       {
         repeatCell: {
           range: { sheetId: t.id, startRowIndex: 1, endRowIndex: 1001, startColumnIndex: AMOUNT_COL[t.title], endColumnIndex: AMOUNT_COL[t.title] + 1 },
