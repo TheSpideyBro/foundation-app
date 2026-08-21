@@ -374,9 +374,9 @@ export default function DonationsPage() {
                     <button onClick={() => { setSelectedDonation(d); setShowReceipt(true); }} className="p-1.5 rounded-sm hover:brightness-95" style={{ background: C.ink + "14" }} title="রসিদ দেখুন">
                       <Download size={13} style={{ color: C.ink }} />
                     </button>
-                    <a href={`/api/receipts/${d.id}`} target="_blank" className="p-1.5 rounded-sm hover:brightness-95 flex items-center gap-0.5" style={{ background: "#A63D4014" }} title="PDF ডাউনলোড">
-                      <Download size={13} style={{ color: "#A63D40" }} />
-                      <span className="text-[9px] font-bold" style={{ color: "#A63D40" }}>PDF</span>
+                    <a href={`/api/receipts/${d.id}`} target="_blank" className="p-1.5 rounded-sm hover:brightness-95 flex items-center gap-0.5" style={{ background: "#1B433214" }} title="ছবি ডাউনলোড">
+                      <Download size={13} style={{ color: "#1B4332" }} />
+                      <span className="text-[9px] font-bold" style={{ color: "#1B4332" }}>JPG</span>
                     </a>
                   </div>
                   {role === "admin" && <button onClick={() => handleDelete(d.id)} className="p-1.5 rounded-sm hover:brightness-95" style={{ background: C.red + "14" }}>

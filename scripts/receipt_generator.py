@@ -1,39 +1,56 @@
 import os
-import sys
 import argparse
-from reportlab.lib.pagesizes import A5
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import cm
+from PIL import Image, ImageDraw, ImageFont
 
-def generate_receipt(receipt_no, member_name, amount, date, payment_method, received_by, output_path):
-    c = canvas.Canvas(output_path, pagesize=A5)
-    width, height = A5
+def generate_receipt_image(receipt_no, member_name, amount, date, payment_method, received_by, output_path):
+    # Canvas size (approx A5 ratio at 150 DPI)
+    width, height = 800, 1131
+    bg_color = (250, 246, 236) # Light Paper Color
+    img = Image.new('RGB', (width, height), color=bg_color)
+    draw = ImageDraw.Draw(img)
 
+    # Colors
+    dark_green = (15, 61, 51)
+    brass = (201, 162, 39)
+    ink = (28, 27, 23)
+    
     # Border
-    c.setStrokeColorRGB(0.1, 0.26, 0.2) # Dark Green
-    c.setLineWidth(2)
-    c.rect(0.5*cm, 0.5*cm, width-1*cm, height-1*cm)
+    draw.rectangle([20, 20, width-20, height-20], outline=dark_green, width=4)
 
     # Header
-    c.setFillColorRGB(0.1, 0.26, 0.2)
-    c.rect(0.5*cm, height-3*cm, width-1*cm, 2.5*cm, fill=1)
+    draw.rectangle([20, 20, width-20, 180], fill=dark_green)
     
-    c.setFillColorRGB(1, 1, 1)
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(width/2, height-1.8*cm, "Doulkhand East Hilful Fuzul Foundation")
-    c.setFont("Helvetica", 10)
-    c.drawCentredString(width/2, height-2.4*cm, "Charity & Community Development")
+    # Try to load fonts, fallback to default
+    try:
+        # Note: In a real environment, provide path to specific .ttf files
+        font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 36)
+        font_sub = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
+        font_bold = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+        font_regular = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
+    except:
+        font_title = ImageFont.load_default()
+        font_sub = ImageFont.load_default()
+        font_bold = ImageFont.load_default()
+        font_regular = ImageFont.load_default()
 
-    # Receipt Title
-    c.setFillColorRGB(0, 0, 0)
-    c.setFont("Helvetica-Bold", 14)
-    c.drawCentredString(width/2, height-4.5*cm, "DONATION RECEIPT")
+    # Title
+    title_text = "Doulkhand East Hilful Fuzul Foundation"
+    w = draw.textlength(title_text, font=font_title)
+    draw.text(((width-w)/2, 60), title_text, fill=(255, 255, 255), font=font_title)
+    
+    sub_text = "Charity & Community Development"
+    w = draw.textlength(sub_text, font=font_sub)
+    draw.text(((width-w)/2, 120), sub_text, fill=(255, 255, 255), font=font_sub)
+
+    # Receipt Label
+    label = "DONATION RECEIPT"
+    w = draw.textlength(label, font=font_bold)
+    draw.text(((width-w)/2, 230), label, fill=ink, font=font_bold)
 
     # Content
-    c.setFont("Helvetica", 12)
-    y = height - 6*cm
-    line_height = 0.8*cm
-
+    y = 350
+    line_height = 60
+    
     details = [
         ("Receipt No:", receipt_no),
         ("Date:", date),
@@ -44,28 +61,27 @@ def generate_receipt(receipt_no, member_name, amount, date, payment_method, rece
     ]
 
     for label, value in details:
-        c.setFont("Helvetica-Bold", 11)
-        c.drawString(2*cm, y, label)
-        c.setFont("Helvetica", 11)
-        c.drawString(6*cm, y, str(value))
-        y -= line_height
+        draw.text((100, y), label, fill=dark_green, font=font_bold)
+        draw.text((350, y), str(value), fill=ink, font=font_regular)
+        draw.line([100, y+40, width-100, y+40], fill=(220, 211, 188), width=1)
+        y += line_height
 
-    # Footer Note
-    c.setFont("Helvetica-Oblique", 9)
-    c.drawCentredString(width/2, 2*cm, "Thank you for your generous contribution!")
-    
+    # Footer
+    footer = "Thank you for your generous contribution!"
+    w = draw.textlength(footer, font=font_regular)
+    draw.text(((width-w)/2, height-150), footer, fill=ink, font=font_regular)
+
     # Signatures
-    c.setLineWidth(0.5)
-    c.line(2*cm, 3.5*cm, 6*cm, 3.5*cm)
-    c.drawCentredString(4*cm, 3*cm, "Authorized Sign")
+    draw.line([100, height-250, 300, height-250], fill=ink, width=2)
+    draw.text((120, height-240), "Authorized Sign", fill=ink, font=font_regular)
     
-    c.line(width-6*cm, 3.5*cm, width-2*cm, 3.5*cm)
-    c.drawCentredString(width-4*cm, 3*cm, "Member Sign")
+    draw.line([width-300, height-250, width-100, height-250], fill=ink, width=2)
+    draw.text((width-280, height-240), "Member Sign", fill=ink, font=font_regular)
 
-    c.save()
+    img.save(output_path, "JPEG", quality=95)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Generate Donation Receipt PDF')
+    parser = argparse.ArgumentParser(description='Generate Donation Receipt JPEG')
     parser.add_argument('--receipt', required=True)
     parser.add_argument('--name', required=True)
     parser.add_argument('--amount', required=True)
@@ -74,9 +90,9 @@ if __name__ == "__main__":
     parser.add_argument('--received', required=True)
     parser.add_argument('--output', required=True)
     
-    args = parser.parse_argument_group().parser.parse_args()
+    args = parser.parse_args()
     
-    generate_receipt(
+    generate_receipt_image(
         receipt_no=args.receipt,
         member_name=args.name,
         amount=args.amount,

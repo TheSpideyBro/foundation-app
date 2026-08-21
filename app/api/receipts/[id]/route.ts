@@ -45,7 +45,7 @@ export async function GET(
   // Prepare temporary path for PDF
   const tempDir = path.join(process.cwd(), 'tmp');
   if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-  const pdfPath = path.join(tempDir, `receipt_${params.id}.pdf`);
+  const jpgPath = path.join(tempDir, `receipt_${params.id}.jpg`);
 
   // Call Python script to generate PDF
   // Note: We'll pass arguments to the script
@@ -59,18 +59,18 @@ export async function GET(
   // (In a real app, this would be part of the codebase)
 
   try {
-    const cmd = `python3 ${scriptPath} --receipt "${donation.receipt_no || 'N/A'}" --name "${donation.members?.name || 'Guest'}" --amount "${donation.amount}" --date "${donation.date}" --method "${donation.method}" --received "${donation.received_by || 'Foundation'}" --output "${pdfPath}"`;
+    const cmd = `python3 ${scriptPath} --receipt "${donation.receipt_no || 'N/A'}" --name "${donation.members?.name || 'Guest'}" --amount "${donation.amount}" --date "${donation.date}" --method "${donation.method}" --received "${donation.received_by || 'Foundation'}" --output "${jpgPath}"`;
     await execPromise(cmd);
 
-    const pdfBuffer = fs.readFileSync(pdfPath);
+    const jpgBuffer = fs.readFileSync(jpgPath);
     
     // Cleanup
-    fs.unlinkSync(pdfPath);
+    fs.unlinkSync(jpgPath);
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(jpgBuffer, {
       headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="receipt_${donation.receipt_no || params.id}.pdf"`,
+        'Content-Type': 'image/jpeg',
+        'Content-Disposition': `inline; filename="receipt_${donation.receipt_no || params.id}.jpg"`,
       },
     });
   } catch (err) {

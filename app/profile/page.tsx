@@ -132,7 +132,7 @@ export default function ProfilePage() {
                         target="_blank"
                         className="inline-flex items-center gap-1 text-[10px] bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded mt-1 transition-colors"
                       >
-                        <Download size={10} /> রসিদ
+                        <Download size={10} /> ছবি (JPG)
                       </a>
                     </div>
                   </div>
