@@ -33,16 +33,24 @@ def generate_receipt_image(receipt_no, member_name, amount, date, payment_method
         font_bold = ImageFont.load_default()
         font_regular = ImageFont.load_default()
 
-    # Logo
+    # Logo Integration
     logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'public', 'assets', 'logo.jpg')
     if os.path.exists(logo_path):
         logo = Image.open(logo_path)
-        logo = logo.resize((100, 100))
-        img.paste(logo, (50, 40))
+        # Create a circular mask for the logo
+        logo = logo.resize((110, 110), Image.Resampling.LANCZOS)
+        mask = Image.new('L', (110, 110), 0)
+        mask_draw = ImageDraw.Draw(mask)
+        mask_draw.ellipse((0, 0, 110, 110), fill=255)
+        
+        # Apply mask and paste
+        output = Image.new('RGB', (110, 110), dark_green)
+        output.paste(logo, (0, 0), mask)
+        img.paste(output, (40, 35))
 
-    # Title
+    # Title & Branding
     title_text = "Doulkhand East Hilful Fuzul Foundation"
-    draw.text((170, 60), title_text, fill=(255, 255, 255), font=font_title)
+    draw.text((170, 55), title_text, fill=(255, 255, 255), font=font_title)
     
     sub_text = "Charity & Community Development"
     w = draw.textlength(sub_text, font=font_sub)

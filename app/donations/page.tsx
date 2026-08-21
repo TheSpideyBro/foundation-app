@@ -213,11 +213,20 @@ export default function DonationsPage() {
         created_by: user.id,
       };
     });
-    const { error, data } = await supabase().from("donations").insert(rows);
+    const { error, data } = await supabase().from("donations").insert(rows).select();
     if (error) {
       alert("দান এন্ট্রি যোগ করা যায়নি: " + error.message);
       return;
     }
+    
+    // Send WhatsApp notification if it's a single entry or first of multi
+    if (data && data.length > 0) {
+      fetch("/api/notify/whatsapp", {
+        method: "POST",
+        body: JSON.stringify({ donationId: data[0].id }),
+      });
+    }
+
     logAudit("donation.insert", "donations", (data as unknown as any[] | null)?.[0]?.id, { amount, months: formMonths, method: formMethod, donor_id: formMemberId });
     triggerSheetsSync();
     setShowForm(false);

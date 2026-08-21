@@ -46,8 +46,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-56 shrink-0 fixed top-0 left-0 bottom-0 z-10" style={{ background: C.ink }}>
         <div className="flex items-center gap-3 px-5 py-6">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: C.gold }}>
-            <Stamp size={16} style={{ color: C.ink }} strokeWidth={2} />
+          <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden border-2 border-[#C9972D33]">
+            <img src="/assets/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <p className="text-[15px] font-semibold text-[#F3EFE2]" style={{ fontFamily: "'Tiro Bangla', serif" }}>দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</p>

@@ -66,9 +66,8 @@ export default function ProfilePage() {
         {/* Header Section */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 flex flex-col md:flex-row items-center gap-6 border border-gray-100">
           <div className="relative">
-            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center overflow-hidden border-2 border-green-600">
-              <img src="/assets/logo.jpg" alt="Logo" className="w-full h-full object-cover opacity-20 absolute" />
-              <User className="w-12 h-12 text-green-700 relative z-10" />
+            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center overflow-hidden border-2 border-green-600 shadow-inner">
+              <img src="/assets/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <div className="absolute -bottom-1 -right-1 bg-green-600 text-white p-1 rounded-full border-2 border-white">
               <ShieldCheck size={14} />
