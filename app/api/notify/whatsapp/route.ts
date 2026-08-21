@@ -22,10 +22,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Member has no phone number' }, { status: 400 });
     }
 
+    // Construct the public URL for the receipt image
+    // Note: The receipt must be publicly accessible for WhatsApp to download it.
+    // We'll use the existing receipt API route.
+    const protocol = req.headers.get('x-forwarded-proto') || 'http';
+    const host = req.headers.get('host');
+    const receiptUrl = `${protocol}://${host}/api/receipts/${donation.id}`;
+
     const result = await sendDonationAlert(
       donation.members,
       donation.amount,
-      donation.date
+      donation.date,
+      receiptUrl
     );
 
     return NextResponse.json({ success: true, result });
