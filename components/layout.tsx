@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, HandCoins, ReceiptText, FileBarChart,
-  Stamp, X, LogOut, Menu, ShieldCheck,
+  Stamp, X, LogOut, Menu, ShieldCheck, User
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
 
@@ -20,6 +20,7 @@ const NAV = [
   { key: "/donations", label: "দান", icon: HandCoins },
   { key: "/expenses", label: "খরচ", icon: ReceiptText },
   { key: "/reports", label: "রিপোর্ট", icon: FileBarChart },
+  { key: "/profile", label: "প্রোফাইল", icon: User },
 ];
 
 export const ADMIN_NAV = {
