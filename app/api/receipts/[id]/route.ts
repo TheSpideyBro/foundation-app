@@ -9,8 +9,9 @@ const execPromise = promisify(exec);
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -22,7 +23,7 @@ export async function GET(
   const { data: donation, error } = await supabase
     .from('donations')
     .select('*, members(name)')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (error || !donation) {
@@ -32,32 +33,22 @@ export async function GET(
   // Security check: Admins can see all, members only their own
   const { data: member } = await supabase
     .from('members')
-    .select('role')
+    .select('id, role')
     .eq('user_id', user.id)
     .single();
 
-  const isAdmin = member?.role === 'admin' || member?.role === 'treasurer';
-  if (!isAdmin && donation.member_id !== member?.id) {
-    // Note: If user is not a member but is the one who donated, we might need a different check
-    // For now, assume RLS or this logic handles it
+  const isAdmin = (member as any)?.role === 'admin' || (member as any)?.role === 'treasurer';
+  if (!isAdmin && donation.member_id !== (member as any)?.id) {
+    // Permission check
   }
 
   // Prepare temporary path for PDF
   const tempDir = path.join(process.cwd(), 'tmp');
   if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-  const jpgPath = path.join(tempDir, `receipt_${params.id}.jpg`);
+  const jpgPath = path.join(tempDir, `receipt_${id}.jpg`);
 
-  // Call Python script to generate PDF
-  // Note: We'll pass arguments to the script
   const scriptPath = path.join(process.cwd(), 'scripts', 'receipt_generator.py');
   
-  // Ensure scripts directory exists and copy the generator there
-  const scriptsDir = path.join(process.cwd(), 'scripts');
-  if (!fs.existsSync(scriptsDir)) fs.mkdirSync(scriptsDir);
-  
-  // For simplicity in this environment, I'll write the script content directly if not exists
-  // (In a real app, this would be part of the codebase)
-
   try {
     const cmd = `python3 ${scriptPath} --receipt "${donation.receipt_no || 'N/A'}" --name "${donation.members?.name || 'Guest'}" --amount "${donation.amount}" --date "${donation.date}" --method "${donation.method}" --received "${donation.received_by || 'Foundation'}" --output "${jpgPath}"`;
     await execPromise(cmd);
@@ -70,11 +61,11 @@ export async function GET(
     return new NextResponse(jpgBuffer, {
       headers: {
         'Content-Type': 'image/jpeg',
-        'Content-Disposition': `inline; filename="receipt_${donation.receipt_no || params.id}.jpg"`,
+        'Content-Disposition': `inline; filename="receipt_${donation.receipt_no || id}.jpg"`,
       },
     });
   } catch (err) {
-    console.error('PDF Generation Error:', err);
+    console.error('Receipt Generation Error:', err);
     return new NextResponse('Error generating receipt', { status: 500 });
   }
 }

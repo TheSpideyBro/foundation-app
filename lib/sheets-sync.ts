@@ -411,7 +411,7 @@ async function writeDashboardExtensions(cfg: SheetsConfig, token: string, dash: 
   ];
   const w = await fetch(`${BASE}/${cfg.spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...headers(token) },
+    headers: { ...headers(token) },
     body: JSON.stringify({ range, majorDimension: "ROWS", values: rows }),
   });
   console.error(`[formatSheets] সারসংক্ষেপ extensions PUT: status ${w.status}`);
@@ -680,7 +680,7 @@ async function styleSummaryTab(cfg: SheetsConfig, token: string, sheetId: number
   let batch = styleSummaryRequestBatch(sheetId);
   let br = await fetch(`${BASE}/${cfg.spreadsheetId}:batchUpdate`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...headers(token) },
+    headers: { ...headers(token) },
     body: JSON.stringify({ requests: batch }),
   });
   console.error(`[formatSheets] সারসংক্ষেপ: batchUpdate status ${br.ok ? 200 : br.status}`);
@@ -689,7 +689,7 @@ async function styleSummaryTab(cfg: SheetsConfig, token: string, sheetId: number
   batch = summaryExtensionStyleBatch(sheetId, Math.min(dash.overdue.length, 10));
   br = await fetch(`${BASE}/${cfg.spreadsheetId}:batchUpdate`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...headers(token) },
+    headers: { ...headers(token) },
     body: JSON.stringify({ requests: batch }),
   });
   console.error(`[formatSheets] সারসংক্ষেপ extensions: batchUpdate status ${br.ok ? 200 : br.status}`);
@@ -759,7 +759,7 @@ export async function formatSheets(cfg: SheetsConfig, token: string, dash?: Dash
     writePromises.push(
       fetch(`${BASE}/${cfg.spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", ...headers(token) },
+        headers: { ...headers(token) },
         body: JSON.stringify({ range, majorDimension: "ROWS", values: [cols] }),
       }).then(async (r) => {
         console.error(`[formatSheets] Bengali header PUT ${t.title}: status ${r.status}`);
@@ -858,7 +858,7 @@ export async function formatSheets(cfg: SheetsConfig, token: string, dash?: Dash
     );
     const br = await fetch(`${BASE}/${cfg.spreadsheetId}:batchUpdate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...headers(token) },
+      headers: { ...headers(token) },
       body: JSON.stringify({ requests: batch }),
     });
     console.error(`[formatSheets] ${t.title}: batchUpdate status ${br.ok ? 200 : br.status}`);
