@@ -1,5 +1,6 @@
 import os
 import argparse
+import sys
 from PIL import Image, ImageDraw, ImageFont
 
 def generate_receipt_image(receipt_no, member_name, amount, date, payment_method, received_by, output_path):
@@ -21,45 +22,69 @@ def generate_receipt_image(receipt_no, member_name, amount, date, payment_method
     draw.rectangle([20, 20, width-20, 180], fill=dark_green)
     
     # Try to load fonts, fallback to default
-    try:
-        # Note: In a real environment, provide path to specific .ttf files
-        font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 36)
-        font_sub = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
-        font_bold = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
-        font_regular = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
-    except:
+    font_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"
+    ]
+    
+    font_title = None
+    for path in font_paths:
+        if os.path.exists(path):
+            try:
+                font_title = ImageFont.truetype(path, 36)
+                font_bold = ImageFont.truetype(path, 24)
+                regular_path = path.replace("Bold", "")
+                if os.path.exists(regular_path):
+                    font_regular = ImageFont.truetype(regular_path, 22)
+                    font_sub = ImageFont.truetype(regular_path, 20)
+                else:
+                    font_regular = ImageFont.truetype(path, 22)
+                    font_sub = ImageFont.truetype(path, 20)
+                break
+            except:
+                continue
+    
+    if not font_title:
         font_title = ImageFont.load_default()
         font_sub = ImageFont.load_default()
         font_bold = ImageFont.load_default()
         font_regular = ImageFont.load_default()
 
     # Logo Integration
-    logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'public', 'assets', 'logo.jpg')
-    if os.path.exists(logo_path):
-        logo = Image.open(logo_path)
-        # Create a circular mask for the logo
-        logo = logo.resize((110, 110), Image.Resampling.LANCZOS)
-        mask = Image.new('L', (110, 110), 0)
-        mask_draw = ImageDraw.Draw(mask)
-        mask_draw.ellipse((0, 0, 110, 110), fill=255)
-        
-        # Apply mask and paste
-        output = Image.new('RGB', (110, 110), dark_green)
-        output.paste(logo, (0, 0), mask)
-        img.paste(output, (40, 35))
+    try:
+        logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'public', 'assets', 'logo.jpg')
+        if os.path.exists(logo_path):
+            logo = Image.open(logo_path)
+            logo = logo.resize((110, 110), Image.Resampling.LANCZOS)
+            mask = Image.new('L', (110, 110), 0)
+            mask_draw = ImageDraw.Draw(mask)
+            mask_draw.ellipse((0, 0, 110, 110), fill=255)
+            
+            output = Image.new('RGB', (110, 110), dark_green)
+            output.paste(logo, (0, 0), mask)
+            img.paste(output, (40, 35))
+    except Exception as e:
+        print(f"Logo error: {e}", file=sys.stderr)
 
     # Title & Branding
     title_text = "Doulkhand East Hilful Fuzul Foundation"
     draw.text((170, 55), title_text, fill=(255, 255, 255), font=font_title)
     
     sub_text = "Charity & Community Development"
-    w = draw.textlength(sub_text, font=font_sub)
-    draw.text(((width-w)/2, 120), sub_text, fill=(255, 255, 255), font=font_sub)
+    try:
+        w = draw.textlength(sub_text, font=font_sub)
+        draw.text(((width-w)/2, 120), sub_text, fill=(255, 255, 255), font=font_sub)
+    except:
+        draw.text((170, 120), sub_text, fill=(255, 255, 255), font=font_sub)
 
     # Receipt Label
     label = "DONATION RECEIPT"
-    w = draw.textlength(label, font=font_bold)
-    draw.text(((width-w)/2, 230), label, fill=ink, font=font_bold)
+    try:
+        w = draw.textlength(label, font=font_bold)
+        draw.text(((width-w)/2, 230), label, fill=ink, font=font_bold)
+    except:
+        draw.text((300, 230), label, fill=ink, font=font_bold)
 
     # Content
     y = 350
@@ -82,8 +107,11 @@ def generate_receipt_image(receipt_no, member_name, amount, date, payment_method
 
     # Footer
     footer = "Thank you for your generous contribution!"
-    w = draw.textlength(footer, font=font_regular)
-    draw.text(((width-w)/2, height-150), footer, fill=ink, font=font_regular)
+    try:
+        w = draw.textlength(footer, font=font_regular)
+        draw.text(((width-w)/2, height-150), footer, fill=ink, font=font_regular)
+    except:
+        draw.text((200, height-150), footer, fill=ink, font=font_regular)
 
     # Signatures
     draw.line([100, height-250, 300, height-250], fill=ink, width=2)

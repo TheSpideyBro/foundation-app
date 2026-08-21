@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { User, CreditCard, History, Settings, LogOut, Download, Calendar, TrendingUp, Phone, MapPin } from 'lucide-react';
+import { User, CreditCard, History, Settings, LogOut, Download, Calendar, TrendingUp, Phone, MapPin, ShieldCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { formatMoney, formatDateBengali, monthLabelBengali } from '@/lib/utils';
@@ -16,29 +16,41 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/login');
-        return;
-      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
 
-      const { data: memberData } = await supabase
-        .from('members')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (memberData) {
-        setMember(memberData);
-        const { data: donationData } = await supabase
-          .from('donations')
+        const { data: memberData, error: memberError } = await supabase
+          .from('members')
           .select('*')
-          .eq('member_id', memberData.id)
-          .order('date', { ascending: false });
-        
-        setDonations(donationData || []);
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        if (memberError) {
+          console.error('Error fetching member:', memberError);
+        }
+
+        if (memberData) {
+          setMember(memberData);
+          const { data: donationData, error: donationError } = await supabase
+            .from('donations')
+            .select('*')
+            .eq('member_id', memberData.id)
+            .order('date', { ascending: false });
+          
+          if (donationError) {
+            console.error('Error fetching donations:', donationError);
+          }
+          setDonations(donationData || []);
+        }
+      } catch (err) {
+        console.error('Fetch error:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchData();
@@ -49,15 +61,35 @@ export default function ProfilePage() {
     router.push('/login');
   };
 
-  if (loading) return <div className="p-8 text-center">লোড হচ্ছে...</div>;
-  if (!member) return <div className="p-8 text-center">সদস্য তথ্য পাওয়া যায়নি।</div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto mb-4"></div>
+        <p className="text-gray-600 font-medium">লোড হচ্ছে...</p>
+      </div>
+    </div>
+  );
 
-  const filteredDonations = donations.filter(d => d.date.startsWith(filterYear));
-  const totalDonated = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
-  const yearlyDonated = filteredDonations.reduce((sum, d) => sum + (d.amount || 0), 0);
+  if (!member) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-md w-full text-center">
+        <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <User size={40} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">সদস্য তথ্য পাওয়া যায়নি</h2>
+        <p className="text-gray-500 mb-8">আপনার প্রোফাইল তথ্য খুঁজে পাওয়া যায়নি। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।</p>
+        <button onClick={handleLogout} className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors">
+          লগআউট করুন
+        </button>
+      </div>
+    </div>
+  );
+
+  const filteredDonations = donations.filter(d => d.date && d.date.startsWith(filterYear));
+  const totalDonated = donations.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+  const yearlyDonated = filteredDonations.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
   
-  // Progress towards yearly pledge (if monthly_pledge * 12)
-  const yearlyGoal = (member.monthly_pledge || 0) * 12;
+  const yearlyGoal = (Number(member.monthly_pledge) || 0) * 12;
   const progressPercent = yearlyGoal > 0 ? Math.min(Math.round((yearlyDonated / yearlyGoal) * 100), 100) : 0;
 
   return (
@@ -197,14 +229,5 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
-  );
-}
-
-function ShieldCheck({ size }: { size: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-      <path d="m9 12 2 2 4-4"></path>
-    </svg>
   );
 }
