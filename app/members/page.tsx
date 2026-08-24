@@ -29,6 +29,7 @@ export default function MembersPage() {
   const [formAddress, setFormAddress] = useState("");
   const [formStatus, setFormStatus] = useState<"active" | "inactive">("active");
   const [formPledge, setFormPledge] = useState("0");
+  const [formUserId, setFormUserId] = useState("");
   const [loading, setLoading] = useState(true);
   const [histMember, setHistMember] = useState<any | null>(null);
   const [histDonations, setHistDonations] = useState<any[]>([]);
@@ -71,7 +72,7 @@ export default function MembersPage() {
   useEffect(() => { fetchMembers(); }, [user, role]);
 
   const resetForm = () => {
-    setFormName(""); setFormPhone(""); setFormAddress(""); setFormStatus("active"); setFormPledge("0");
+    setFormName(""); setFormPhone(""); setFormAddress(""); setFormStatus("active"); setFormPledge("0"); setFormUserId("");
     setEditingId(null); setShowForm(false);
   };
 
@@ -83,13 +84,13 @@ export default function MembersPage() {
     
     if (editingId) {
       const { error } = await supabase().from("members").update({ 
-        name: formName, phone: formPhone, address: formAddress, status: formStatus, monthly_pledge: pledgeNum 
+        name: formName, phone: formPhone, address: formAddress, status: formStatus, monthly_pledge: pledgeNum, user_id: formUserId || null
       }).eq("id", editingId);
       if (error) { alert(error.message); setLoading(false); return; }
       logAudit("member.update", "members", editingId, { name: formName });
     } else {
       const { error, data } = await supabase().from("members").insert([{ 
-        name: formName, phone: formPhone, address: formAddress, status: formStatus, monthly_pledge: pledgeNum 
+        name: formName, phone: formPhone, address: formAddress, status: formStatus, monthly_pledge: pledgeNum, user_id: formUserId || null
       }]).select();
       if (error) { alert(error.message); setLoading(false); return; }
       logAudit("member.insert", "members", data?.[0]?.id, { name: formName });
@@ -172,7 +173,7 @@ export default function MembersPage() {
                     <LinkIcon size={14} />
                   </button>
                 )}
-                <button onClick={() => { setEditingId(m.id); setFormName(m.name); setFormPhone(m.phone || ""); setFormAddress(m.address || ""); setFormStatus(m.status); setFormPledge(String(m.monthly_pledge || 0)); setShowForm(true); }} className="p-2 text-gray-500 hover:bg-gray-50 rounded-sm"><Edit2 size={14} /></button>
+                <button onClick={() => { setEditingId(m.id); setFormName(m.name); setFormPhone(m.phone || ""); setFormAddress(m.address || ""); setFormStatus(m.status); setFormPledge(String(m.monthly_pledge || 0)); setFormUserId(m.user_id || ""); setShowForm(true); }} className="p-2 text-gray-500 hover:bg-gray-50 rounded-sm"><Edit2 size={14} /></button>
               </div>
             </div>
           </div>
@@ -208,24 +209,58 @@ export default function MembersPage() {
         </div>
       )}
 
-      {/* Form Modal (Simplified for brevity) */}
+      {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 z-30 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }} onClick={resetForm}>
           <div className="w-full max-w-md rounded-sm border overflow-hidden" style={{ background: C.paper, borderColor: C.border }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: C.border }}>
-              <h2 className="text-[15px] font-semibold">{editingId ? "সদস্য সম্পাদনা" : "নতুন সদস্য"}</h2>
-              <button onClick={resetForm}><X size={18} /></button>
+              <h2 className="text-[15px] font-semibold" style={{ fontFamily: "'Tiro Bangla', serif" }}>{editingId ? "সদস্য সম্পাদনা" : "নতুন সদস্য যোগ করুন"}</h2>
+              <button onClick={resetForm}><X size={18} style={{ color: C.sub }} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <input placeholder="নাম" value={formName} onChange={e => setFormName(e.target.value)} required className="w-full border p-2 text-[13px]" />
-              <input placeholder="ফোন" value={formPhone} onChange={e => setFormPhone(e.target.value)} className="w-full border p-2 text-[13px]" />
-              <input placeholder="ঠিকানা" value={formAddress} onChange={e => setFormAddress(e.target.value)} className="w-full border p-2 text-[13px]" />
-              <input placeholder="মাসিক প্রতিশ্রুতি" type="number" value={formPledge} onChange={e => setFormPledge(e.target.value)} className="w-full border p-2 text-[13px]" />
-              <select value={formStatus} onChange={e => setFormStatus(e.target.value as any)} className="w-full border p-2 text-[13px]">
-                <option value="active">সক্রিয়</option>
-                <option value="inactive">নিষ্ক্রিয়</option>
-              </select>
-              <button className="w-full py-2.5 font-bold text-white" style={{ background: C.gold }}>{editingId ? "আপডেট" : "যোগ করুন"}</button>
+            <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
+              <div>
+                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>নাম *</label>
+                <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} required className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border focus:ring-1" style={{ background: "#fff", borderColor: C.border }} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>ফোন</label>
+                  <input type="text" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border" style={{ background: "#fff", borderColor: C.border }} />
+                </div>
+                <div>
+                  <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>মাসিক প্রতিশ্রুতি</label>
+                  <input type="number" value={formPledge} onChange={(e) => setFormPledge(e.target.value)} className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border" style={{ background: "#fff", borderColor: C.border }} />
+                </div>
+              </div>
+              <div>
+                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>ঠিকানা</label>
+                <input type="text" value={formAddress} onChange={(e) => setFormAddress(e.target.value)} className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border" style={{ background: "#fff", borderColor: C.border }} />
+              </div>
+              <div>
+                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>ইউজার অ্যাকাউন্ট লিঙ্ক করুন (ঐচ্ছিক)</label>
+                <select 
+                  value={formUserId} 
+                  onChange={(e) => setFormUserId(e.target.value)}
+                  className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border"
+                  style={{ background: "#fff", borderColor: C.border }}
+                >
+                  <option value="">লিঙ্ক করবেন না</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.email} ({u.role})</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-gray-500 mt-1">সদস্যের ইমেইল অ্যাকাউন্টের সাথে লিঙ্ক করলে তিনি প্রোফাইল দেখতে পাবেন।</p>
+              </div>
+              <div>
+                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>স্ট্যাটাস</label>
+                <select value={formStatus} onChange={(e) => setFormStatus(e.target.value as any)} className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border" style={{ background: "#fff", borderColor: C.border }}>
+                  <option value="active">সক্রিয়</option>
+                  <option value="inactive">নিষ্ক্রিয়</option>
+                </select>
+              </div>
+              <button type="submit" className="w-full py-2.5 rounded-sm text-[13.5px] font-bold transition hover:brightness-105" style={{ background: C.gold, color: C.ink }}>
+                {editingId ? "আপডেট করুন" : "যোগ করুন"}
+              </button>
             </form>
           </div>
         </div>
