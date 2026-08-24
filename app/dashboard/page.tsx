@@ -5,7 +5,7 @@ import {
   Users, CreditCard, Wallet, TrendingUp, 
   ArrowUpRight, ArrowDownRight, Calendar,
   ChevronRight, RefreshCw, Activity, Heart,
-  Leaf
+  Plus
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { 
@@ -56,7 +56,6 @@ export default function Dashboard() {
         netBalance: totalDonations - totalExpenses,
       });
 
-      // Recent donations
       const { data: recent } = await supabase()
         .from("donations")
         .select("*, members(name)")
@@ -64,7 +63,6 @@ export default function Dashboard() {
         .limit(5);
       setRecentDonations(recent || []);
 
-      // Mock chart data for premium look
       setChartData([
         { name: "জানু", donation: 4000, expense: 2400 },
         { name: "ফেব্রু", donation: 3000, expense: 1398 },
@@ -74,7 +72,6 @@ export default function Dashboard() {
         { name: "জুন", donation: 2390, expense: 3800 },
       ]);
 
-      // Expense breakdown for Pie chart
       const categories = expenses?.reduce((acc: any, curr) => {
         const cat = curr.category || 'অন্যান্য';
         acc[cat] = (acc[cat] || 0) + (Number(curr.amount) || 0);
@@ -114,68 +111,63 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="space-y-10 animate-slide-up">
+    <div className="space-y-6 sm:space-y-10 animate-slide-up">
       {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 font-tiro">আসসালামু আলাইকুম!</h1>
-          <p className="text-gray-500 font-medium">আজকের ফাউন্ডেশন কার্যক্রমের একটি সংক্ষিপ্ত চিত্র।</p>
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 font-tiro">আসসালামু আলাইকুম!</h1>
+          <p className="text-xs sm:text-sm text-gray-500 font-medium">আজকের ফাউন্ডেশন কার্যক্রমের চিত্র।</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button 
             onClick={handleSync}
             disabled={syncing}
-            className="btn-outline px-6 py-3"
+            className="flex-1 sm:flex-none btn-outline px-4 py-2.5 text-xs sm:text-sm"
           >
-            <RefreshCw size={18} className={syncing ? "animate-spin" : ""} />
-            {syncing ? "সিঙ্ক হচ্ছে..." : "গুগল শিট সিঙ্ক"}
+            <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+            {syncing ? "সিঙ্ক..." : "শিট সিঙ্ক"}
           </button>
-          <Link href="/donations" className="btn-emerald px-6 py-3">
-            <Heart size={18} />
-            নতুন ডোনেশন
+          <Link href="/donations" className="flex-1 sm:flex-none btn-emerald px-4 py-2.5 text-xs sm:text-sm">
+            <Plus size={16} /> নতুন ডোনেশন
           </Link>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {[
           { label: "মোট সদস্য", value: stats.totalMembers, icon: Users, color: "bg-blue-600", trend: "+12%" },
           { label: "মোট সংগ্রহ", value: `৳${stats.totalDonations.toLocaleString()}`, icon: CreditCard, color: "bg-emerald-600", trend: "+8%" },
           { label: "মোট ব্যয়", value: `৳${stats.totalExpenses.toLocaleString()}`, icon: Wallet, color: "bg-rose-600", trend: "-5%" },
-          { label: "বর্তমান তহবিল", value: `৳${stats.netBalance.toLocaleString()}`, icon: TrendingUp, color: "bg-amber-600", trend: "+15%" },
+          { label: "তহবিল", value: `৳${stats.netBalance.toLocaleString()}`, icon: TrendingUp, color: "bg-amber-600", trend: "+15%" },
         ].map((stat, i) => (
-          <div key={i} className="card-premium p-8 group">
-            <div className="flex items-center justify-between mb-6">
-              <div className={`w-14 h-14 ${stat.color} rounded-2xl flex items-center justify-center text-white shadow-lg shadow-current/20 group-hover:scale-110 transition-transform`}>
-                <stat.icon size={28} />
+          <div key={i} className="card-premium p-4 sm:p-8 group">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <div className={`w-10 h-10 sm:w-14 sm:h-14 ${stat.color} rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-current/20 group-hover:scale-110 transition-transform`}>
+                <stat.icon size={20} className="sm:hidden" />
+                <stat.icon size={28} className="hidden sm:block" />
               </div>
-              <div className={`flex items-center gap-1 text-[12px] font-bold ${stat.trend.startsWith('+') ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {stat.trend.startsWith('+') ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+              <div className={`flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-[12px] font-bold ${stat.trend.startsWith('+') ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {stat.trend.startsWith('+') ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
                 {stat.trend}
               </div>
             </div>
-            <h3 className="text-gray-400 text-[11px] font-bold uppercase tracking-[0.2em] mb-1">{stat.label}</h3>
-            <p className="text-3xl font-bold text-gray-900 font-tiro">{stat.value}</p>
+            <h3 className="text-gray-400 text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.1em] sm:tracking-[0.2em] mb-0.5 sm:mb-1">{stat.label}</h3>
+            <p className="text-lg sm:text-3xl font-bold text-gray-900 font-tiro truncate">{stat.value}</p>
           </div>
         ))}
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Area Chart */}
-        <div className="lg:col-span-2 card-premium p-8">
-          <div className="flex items-center justify-between mb-10">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+        <div className="lg:col-span-2 card-premium p-4 sm:p-8">
+          <div className="flex items-center justify-between mb-6 sm:mb-10">
             <div>
-              <h3 className="text-xl font-bold text-gray-900 font-tiro">আর্থিক প্রবৃদ্ধি</h3>
-              <p className="text-sm text-gray-400 font-medium">বিগত ৬ মাসের দান ও ব্যয়ের তুলনা</p>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro">আর্থিক প্রবৃদ্ধি</h3>
+              <p className="text-[10px] sm:text-sm text-gray-400 font-medium">বিগত ৬ মাসের দান ও ব্যয়</p>
             </div>
-            <select className="bg-gray-50 border-none rounded-xl px-4 py-2 text-xs font-bold text-gray-600 outline-none">
-              <option>শেষ ৬ মাস</option>
-              <option>শেষ ১ বছর</option>
-            </select>
           </div>
-          <div className="h-[350px] w-full">
+          <div className="h-[250px] sm:h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
@@ -189,22 +181,22 @@ export default function Dashboard() {
                   dataKey="name" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{fill: '#9CA3AF', fontSize: 12, fontWeight: 600}}
+                  tick={{fill: '#9CA3AF', fontSize: 10, fontWeight: 600}}
                   dy={10}
                 />
                 <YAxis 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{fill: '#9CA3AF', fontSize: 12, fontWeight: 600}}
+                  tick={{fill: '#9CA3AF', fontSize: 10, fontWeight: 600}}
                 />
                 <Tooltip 
-                  contentStyle={{borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '16px'}}
+                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', padding: '12px'}}
                 />
                 <Area 
                   type="monotone" 
                   dataKey="donation" 
                   stroke="#059669" 
-                  strokeWidth={4}
+                  strokeWidth={3}
                   fillOpacity={1} 
                   fill="url(#colorDonation)" 
                 />
@@ -213,18 +205,17 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Expense Pie Chart */}
-        <div className="card-premium p-8">
-          <h3 className="text-xl font-bold text-gray-900 font-tiro mb-2">ব্যয়ের খাতসমূহ</h3>
-          <p className="text-sm text-gray-400 font-medium mb-8">মোট ব্যয়ের বিভাজন</p>
-          <div className="h-[250px] w-full relative">
+        <div className="card-premium p-4 sm:p-8">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro mb-1 sm:mb-2">ব্যয়ের খাত</h3>
+          <p className="text-[10px] sm:text-sm text-gray-400 font-medium mb-6 sm:mb-8">মোট ব্যয়ের বিভাজন</p>
+          <div className="h-[200px] sm:h-[250px] w-full relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={expenseData}
-                  innerRadius={70}
-                  outerRadius={90}
-                  paddingAngle={8}
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
                   dataKey="value"
                 >
                   {expenseData.map((entry, index) => (
@@ -235,18 +226,18 @@ export default function Dashboard() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-2xl font-bold text-gray-900 font-tiro">৳{stats.totalExpenses}</span>
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">মোট ব্যয়</span>
+              <span className="text-lg sm:text-2xl font-bold text-gray-900 font-tiro">৳{stats.totalExpenses}</span>
+              <span className="text-[8px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-widest">ব্যয়</span>
             </div>
           </div>
-          <div className="mt-8 space-y-3">
+          <div className="mt-6 sm:mt-8 space-y-2 sm:space-y-3">
             {expenseData.slice(0, 4).map((item, i) => (
               <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${['bg-emerald-600', 'bg-emerald-500', 'bg-emerald-400', 'bg-emerald-300'][i % 4]}`}></div>
-                  <span className="text-sm font-bold text-gray-600">{item.name}</span>
+                  <span className="text-[10px] sm:text-sm font-bold text-gray-600 truncate max-w-[100px]">{item.name}</span>
                 </div>
-                <span className="text-sm font-bold text-gray-900">৳{item.value}</span>
+                <span className="text-[10px] sm:text-sm font-bold text-gray-900">৳{item.value}</span>
               </div>
             ))}
           </div>
@@ -254,74 +245,72 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Activity */}
-        <div className="lg:col-span-2 card-premium p-8">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-bold text-gray-900 font-tiro">সাম্প্রতিক দান</h3>
-            <Link href="/donations" className="text-emerald-600 text-sm font-bold flex items-center gap-1 hover:underline">
-              সব দেখুন <ChevronRight size={16} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+        <div className="lg:col-span-2 card-premium p-4 sm:p-8">
+          <div className="flex items-center justify-between mb-6 sm:mb-8">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro">সাম্প্রতিক দান</h3>
+            <Link href="/donations" className="text-emerald-600 text-[10px] sm:text-sm font-bold flex items-center gap-1 hover:underline">
+              সব দেখুন <ChevronRight size={14} />
             </Link>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {recentDonations.map((donation, i) => (
-              <div key={i} className="flex items-center justify-between p-5 rounded-[1.5rem] hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 group">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+              <div key={i} className="flex items-center justify-between p-3 sm:p-5 rounded-xl sm:rounded-[1.5rem] hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 group">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-md sm:text-lg group-hover:scale-110 transition-transform">
                     {donation.members?.name?.[0] || "স"}
                   </div>
                   <div>
-                    <p className="font-bold text-gray-900">{donation.members?.name || "অজ্ঞাত সদস্য"}</p>
-                    <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
-                      <Calendar size={12} />
+                    <p className="text-sm sm:text-base font-bold text-gray-900 truncate max-w-[120px] sm:max-w-none">{donation.members?.name || "অজ্ঞাত সদস্য"}</p>
+                    <div className="flex items-center gap-1.5 text-[9px] sm:text-xs text-gray-400 font-medium">
+                      <Calendar size={10} />
                       {donation.date ? new Date(donation.date).toLocaleDateString('bn-BD') : 'তারিখ নেই'}
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-emerald-600 text-lg">৳{donation.amount}</p>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{donation.method || "ক্যাশ"}</p>
+                  <p className="text-md sm:text-lg font-bold text-emerald-600">৳{donation.amount}</p>
+                  <p className="text-[8px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-widest">{donation.method || "ক্যাশ"}</p>
                 </div>
               </div>
             ))}
             {recentDonations.length === 0 && (
-              <div className="text-center py-12 text-gray-400 font-medium italic">
+              <div className="text-center py-10 text-gray-400 font-medium italic text-xs">
                 কোনো তথ্য পাওয়া যায়নি
               </div>
             )}
           </div>
         </div>
 
-        {/* Foundation Info / Quick Stats */}
-        <div className="card-premium p-8 bg-[#064E3B] text-white border-none overflow-hidden relative">
+        <div className="card-premium p-6 sm:p-8 bg-[#064E3B] text-white border-none overflow-hidden relative">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
           <div className="relative z-10">
-            <h3 className="text-xl font-bold font-tiro mb-8">ফাউন্ডেশন স্ট্যাটাস</h3>
-            <div className="space-y-8">
-              <div className="flex items-center gap-5">
-                <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300 border border-white/10 shadow-inner">
-                  <Activity size={28} />
+            <h3 className="text-lg sm:text-xl font-bold font-tiro mb-6 sm:mb-8">ফাউন্ডেশন স্ট্যাটাস</h3>
+            <div className="space-y-6 sm:space-y-8">
+              <div className="flex items-center gap-4 sm:gap-5">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300 border border-white/10 shadow-inner">
+                  <Activity size={24} />
                 </div>
                 <div>
-                  <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">অ্যাক্টিভিটি স্কোর</p>
-                  <p className="text-3xl font-bold font-tiro">৯৪%</p>
+                  <p className="text-white/50 text-[8px] sm:text-[10px] font-bold uppercase tracking-widest mb-0.5 sm:mb-1">অ্যাক্টিভিটি স্কোর</p>
+                  <p className="text-2xl sm:text-3xl font-bold font-tiro">৯৪%</p>
                 </div>
               </div>
-              <div className="flex items-center gap-5">
-                <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300 border border-white/10 shadow-inner">
-                  <Users size={28} />
+              <div className="flex items-center gap-4 sm:gap-5">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300 border border-white/10 shadow-inner">
+                  <Users size={24} />
                 </div>
                 <div>
-                  <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">সক্রিয় সদস্য</p>
-                  <p className="text-3xl font-bold font-tiro">{stats.totalMembers}</p>
+                  <p className="text-white/50 text-[8px] sm:text-[10px] font-bold uppercase tracking-widest mb-0.5 sm:mb-1">সক্রিয় সদস্য</p>
+                  <p className="text-2xl sm:text-3xl font-bold font-tiro">{stats.totalMembers}</p>
                 </div>
               </div>
-              <div className="pt-8 border-t border-white/10 mt-4">
-                <div className="bg-emerald-900/50 rounded-3xl p-6 border border-white/5 backdrop-blur-sm">
-                  <p className="text-emerald-300 text-[12px] font-bold mb-3 uppercase tracking-wider">গুগল শিট স্ট্যাটাস</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
-                    <span className="text-white text-[15px] font-bold">অনলাইন ও সিঙ্কড</span>
+              <div className="pt-6 sm:pt-8 border-t border-white/10 mt-2 sm:mt-4">
+                <div className="bg-emerald-900/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-white/5 backdrop-blur-sm">
+                  <p className="text-emerald-300 text-[10px] sm:text-[12px] font-bold mb-2 sm:mb-3 uppercase tracking-wider">গুগল শিট স্ট্যাটাস</p>
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
+                    <span className="text-white text-xs sm:text-[15px] font-bold">অনলাইন ও সিঙ্কড</span>
                   </div>
                 </div>
               </div>
