@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, CreditCard, Wallet, 
   BarChart3, UserCircle, LogOut, Menu, X,
   ShieldCheck, Settings, Bell, Search,
-  Heart, Leaf, Home
+  Heart, Leaf, Home, MoreHorizontal
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
 
@@ -38,13 +38,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isActive = (path: string) => pathname === path;
 
+  // Filter items based on current user role
   const visibleMenuItems = menuItems.filter(item => item.roles.includes(role || ""));
   const visibleAdminItems = adminItems.filter(item => item.roles.includes(role || ""));
 
   if (loading && !user) return null;
 
   return (
-    <div className="min-h-screen bg-[#FDFCF9] flex flex-col lg:flex-row font-hind">
+    <div className="min-h-screen bg-[#FDFCF9] flex flex-col lg:flex-row font-hind overflow-x-hidden">
       {/* Mobile Top Header */}
       <header className="lg:hidden sticky top-0 left-0 right-0 h-16 bg-white/90 backdrop-blur-xl border-b border-emerald-100/50 z-[40] px-5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-2">
@@ -54,10 +55,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="text-md font-bold text-gray-900 font-tiro tracking-tight">দৌলখার ফাউন্ডেশন</span>
         </div>
         <div className="flex items-center gap-2">
-          <button className="p-2 text-gray-500"><Bell size={20} /></button>
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"
+            className="p-2 bg-emerald-50 text-emerald-600 rounded-lg active:scale-90 transition-transform"
           >
             {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -78,7 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto pt-4">
+        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto pt-4 pb-10">
           <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">মেনু</p>
           {visibleMenuItems.map((item) => (
             <Link
@@ -95,9 +95,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
 
-          {role === "admin" && (
+          {/* Admin Section in Sidebar */}
+          {(role === "admin" || visibleAdminItems.length > 0) && (
             <>
-              <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-10 mb-4">অ্যাডমিন</p>
+              <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-10 mb-4">অ্যাডমিন কন্ট্রোল</p>
               {visibleAdminItems.map((item) => (
                 <Link
                   key={item.path}
@@ -146,7 +147,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className={`lg:hidden fixed top-0 bottom-0 left-0 w-72 bg-white z-[60] transition-transform duration-300 ease-in-out shadow-2xl ${
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       }`}>
-        <div className="h-full flex flex-col p-6">
+        <div className="h-full flex flex-col p-6 overflow-y-auto">
           <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -154,10 +155,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
               <span className="text-lg font-bold text-gray-900 font-tiro">দৌলখার</span>
             </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-gray-400 hover:text-gray-900"><X size={24} /></button>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-gray-400 hover:text-gray-900 active:rotate-90 transition-transform"><X size={24} /></button>
           </div>
           
-          <nav className="flex-1 space-y-1.5 overflow-y-auto">
+          <nav className="flex-1 space-y-1.5">
             <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">মেনু</p>
             {visibleMenuItems.map((item) => (
               <Link
@@ -175,9 +176,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
 
-            {role === "admin" && (
+            {/* Admin Section in Mobile Drawer */}
+            {(role === "admin" || visibleAdminItems.length > 0) && (
               <>
-                <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-8 mb-4">অ্যাডমিন</p>
+                <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-8 mb-4">অ্যাডমিন কন্ট্রোল</p>
                 {visibleAdminItems.map((item) => (
                   <Link
                     key={item.path}
@@ -197,13 +199,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </nav>
 
-          <div className="pt-6 border-t border-gray-100 mt-6">
+          <div className="pt-6 border-t border-gray-100 mt-6 pb-6">
             <div className="flex items-center gap-4 mb-6 px-2">
               <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold">
                 {user?.email?.[0].toUpperCase() || "U"}
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-900">{user?.email?.split('@')[0]}</p>
+                <p className="text-sm font-bold text-gray-900 truncate max-w-[150px]">{user?.email?.split('@')[0]}</p>
                 <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{role === 'admin' ? 'অ্যাডমিন' : 'সদস্য'}</p>
               </div>
             </div>
@@ -218,25 +220,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation Bar */}
+      {/* Mobile Bottom Navigation Bar - Enhanced for Admin Visibility */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-xl border-t border-emerald-100/50 z-[40] flex items-center justify-around px-2 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
-        <Link href="/dashboard" className={`flex flex-col items-center gap-1 p-2 ${isActive('/dashboard') ? 'text-emerald-600' : 'text-gray-400'}`}>
+        <Link href="/dashboard" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/dashboard') ? 'text-emerald-600' : 'text-gray-400'}`}>
           <Home size={22} />
           <span className="text-[10px] font-bold">হোম</span>
         </Link>
-        <Link href="/donations" className={`flex flex-col items-center gap-1 p-2 ${isActive('/donations') ? 'text-emerald-600' : 'text-gray-400'}`}>
+        <Link href="/donations" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/donations') ? 'text-emerald-600' : 'text-gray-400'}`}>
           <CreditCard size={22} />
           <span className="text-[10px] font-bold">দান</span>
         </Link>
-        <Link href="/members" className={`flex flex-col items-center gap-1 p-2 ${isActive('/members') ? 'text-emerald-600' : 'text-gray-400'}`}>
+        <Link href="/members" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/members') ? 'text-emerald-600' : 'text-gray-400'}`}>
           <Users size={22} />
           <span className="text-[10px] font-bold">সদস্য</span>
         </Link>
-        <Link href="/profile" className={`flex flex-col items-center gap-1 p-2 ${isActive('/profile') ? 'text-emerald-600' : 'text-gray-400'}`}>
-          <UserCircle size={22} />
-          <span className="text-[10px] font-bold">প্রোফাইল</span>
-        </Link>
-        <button onClick={() => setIsSidebarOpen(true)} className="flex flex-col items-center gap-1 p-2 text-gray-400">
+        {/* If admin, show admin link directly or keep More for others */}
+        {role === "admin" ? (
+          <Link href="/admin/users" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/admin/users') ? 'text-emerald-600' : 'text-gray-400'}`}>
+            <ShieldCheck size={22} />
+            <span className="text-[10px] font-bold">অ্যাডমিন</span>
+          </Link>
+        ) : (
+          <Link href="/profile" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/profile') ? 'text-emerald-600' : 'text-gray-400'}`}>
+            <UserCircle size={22} />
+            <span className="text-[10px] font-bold">প্রোফাইল</span>
+          </Link>
+        )}
+        <button onClick={() => setIsSidebarOpen(true)} className="flex flex-col items-center gap-1 p-2 text-gray-400 active:scale-90 transition-transform">
           <Menu size={22} />
           <span className="text-[10px] font-bold">আরও</span>
         </button>
@@ -267,7 +277,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="h-8 w-[1px] bg-emerald-100/50 mx-2"></div>
             <div className="flex items-center gap-3 pl-2">
               <div className="text-right">
-                <p className="text-sm font-bold text-gray-900 leading-tight">{user?.email?.split('@')[0]}</p>
+                <p className="text-sm font-bold text-gray-900 leading-tight truncate max-w-[120px]">{user?.email?.split('@')[0]}</p>
                 <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{role === 'admin' ? 'অ্যাডমিন' : 'সদস্য'}</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold shadow-md shadow-emerald-200">
