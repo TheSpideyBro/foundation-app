@@ -101,6 +101,23 @@ export default function MembersPage() {
     fetchMembers();
   };
 
+  const handleLinkUser = async () => {
+    if (!linkingMember) return;
+    setLoading(true);
+    const { error } = await supabase()
+      .from("members")
+      .update({ user_id: selectedUserId || null })
+      .eq("id", linkingMember.id);
+    
+    if (error) alert(error.message);
+    else {
+      logAudit("member.link_user", "members", linkingMember.id, { user_id: selectedUserId });
+      setShowLinkModal(false);
+      fetchMembers();
+    }
+    setLoading(false);
+  };
+
   const handleBulkStatusChange = async (newStatus: "active" | "inactive") => {
     if (selectedIds.length === 0) return;
     setLoading(true);
@@ -118,6 +135,14 @@ export default function MembersPage() {
 
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const getDisplayName = (u: any) => {
+    if (u.phone) return u.phone;
+    if (u.email && u.email.endsWith("@foundation.app")) {
+      return u.email.split("@")[0];
+    }
+    return u.email;
   };
 
   const filtered = members.filter(m =>
@@ -213,7 +238,6 @@ export default function MembersPage() {
         ))}
       </div>
 
-      {/* Modals remain the same as before but with the updated Form including User Linking */}
       {showLinkModal && (
         <div className="fixed inset-0 z-30 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }} onClick={() => setShowLinkModal(false)}>
           <div className="w-full max-w-md rounded-sm border overflow-hidden" style={{ background: C.paper, borderColor: C.border }} onClick={(e) => e.stopPropagation()}>
@@ -230,7 +254,7 @@ export default function MembersPage() {
               >
                 <option value="">সিলেক্ট করুন...</option>
                 {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.email} ({u.role})</option>
+                  <option key={u.id} value={u.id}>{getDisplayName(u)} ({u.role})</option>
                 ))}
               </select>
               <div className="flex gap-2 pt-2">
@@ -268,30 +292,26 @@ export default function MembersPage() {
                 <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>ঠিকানা</label>
                 <input type="text" value={formAddress} onChange={(e) => setFormAddress(e.target.value)} className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border" style={{ background: "#fff", borderColor: C.border }} />
               </div>
-              <div>
-                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>ইউজার অ্যাকাউন্ট লিঙ্ক করুন (ঐচ্ছিক)</label>
-                <select 
-                  value={formUserId} 
-                  onChange={(e) => setFormUserId(e.target.value)}
-                  className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border"
-                  style={{ background: "#fff", borderColor: C.border }}
-                >
-                  <option value="">লিঙ্ক করবেন না</option>
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.email} ({u.role})</option>
-                  ))}
-                </select>
+              {role === 'admin' && (
+                <div>
+                  <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>ইউজার অ্যাকাউন্ট লিঙ্ক করুন (ঐচ্ছিক)</label>
+                  <select 
+                    value={formUserId} 
+                    onChange={(e) => setFormUserId(e.target.value)}
+                    className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border"
+                    style={{ background: "#fff", borderColor: C.border }}
+                  >
+                    <option value="">সিলেক্ট করুন...</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{getDisplayName(u)}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={resetForm} className="flex-1 py-2 text-[13px] border rounded-sm" style={{ borderColor: C.border }}>বাতিল</button>
+                <button type="submit" className="flex-1 py-2 text-[13px] font-bold rounded-sm text-white" style={{ background: C.ink }}>{editingId ? "আপডেট করুন" : "সদস্য যোগ করুন"}</button>
               </div>
-              <div>
-                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>স্ট্যাটাস</label>
-                <select value={formStatus} onChange={(e) => setFormStatus(e.target.value as any)} className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border" style={{ background: "#fff", borderColor: C.border }}>
-                  <option value="active">সক্রিয়</option>
-                  <option value="inactive">নিষ্ক্রিয়</option>
-                </select>
-              </div>
-              <button type="submit" className="w-full py-2.5 rounded-sm text-[13.5px] font-bold transition hover:brightness-105" style={{ background: C.gold, color: C.ink }}>
-                {editingId ? "আপডেট করুন" : "যোগ করুন"}
-              </button>
             </form>
           </div>
         </div>
