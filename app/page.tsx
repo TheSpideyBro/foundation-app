@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers";
@@ -18,8 +17,11 @@ export default function Home() {
   }, [user, loading, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: "#EDEAE0" }}>
-      <p className="text-[14px]" style={{ color: "#8A8371" }}>লোড হচ্ছে...</p>
+    <div className="min-h-screen flex items-center justify-center bg-[#F8F9F8]">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+        <p className="text-[14px] font-bold text-emerald-900/40 tracking-widest uppercase">দাউলখার ফাউন্ডেশন</p>
+      </div>
     </div>
   );
 }
