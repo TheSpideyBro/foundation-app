@@ -7,8 +7,8 @@ import AppLayout from "@/components/layout";
 import { useAuth } from "@/components/providers";
 import { 
   Plus, Search, Filter, UserPlus, Link as LinkIcon, Unlink, 
-  MoreVertical, CheckCircle, XCircle, Trash2, Edit2, 
-  Download, RefreshCw, Info, ArrowUpDown, ChevronRight
+  CheckCircle, XCircle, Edit2, 
+  RefreshCw, Info, ChevronRight, Phone, CheckSquare, Square
 } from "lucide-react";
 import Link from "next/link";
 
@@ -18,13 +18,14 @@ const C = {
 };
 
 export default function MembersPage() {
-  const { user, role } = useAuth();
+  const { role } = useAuth();
   const [members, setMembers] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [autoLinking, setAutoLinking] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Modal States
   const [showAddModal, setShowAddModal] = useState(false);
@@ -34,11 +35,9 @@ export default function MembersPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    // Fetch members with donation totals
     const { data: memberData } = await supabase().from("members").select("*, donations(amount)");
     const { data: userData } = await supabase().from("users").select("id, phone, email");
     
-    // Process members to add total_donated
     const processedMembers = memberData?.map(m => ({
       ...m,
       total_donated: m.donations?.reduce((sum: number, d: any) => sum + d.amount, 0) || 0
@@ -64,6 +63,17 @@ export default function MembersPage() {
       alert("অটো-লিঙ্ক ব্যর্থ হয়েছে");
     } finally {
       setAutoLinking(false);
+    }
+  };
+
+  const handleBulkStatus = async (newStatus: string) => {
+    if (selectedIds.length === 0) return;
+    const { error } = await supabase().from("members").update({ status: newStatus }).in("id", selectedIds);
+    if (error) alert(error.message);
+    else {
+      logAudit("member.bulk_update", "members", "bulk", { ids: selectedIds, status: newStatus });
+      setSelectedIds([]);
+      fetchData();
     }
   };
 
@@ -96,6 +106,15 @@ export default function MembersPage() {
       return matchesSearch && matchesStatus;
     });
   }, [members, searchTerm, statusFilter]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredMembers.length) setSelectedIds([]);
+    else setSelectedIds(filteredMembers.map(m => m.id));
+  };
 
   const canManage = role === 'admin' || role === 'treasurer';
 
@@ -130,6 +149,18 @@ export default function MembersPage() {
         </div>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-ink text-white p-3 rounded-sm mb-4 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <span className="text-[13px] font-bold">{selectedIds.length} জন সদস্য সিলেক্ট করা হয়েছে</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => handleBulkStatus('active')} className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded-sm text-[12px] font-medium">Active করুন</button>
+            <button onClick={() => handleBulkStatus('inactive')} className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded-sm text-[12px] font-medium">Inactive করুন</button>
+            <button onClick={() => setSelectedIds([])} className="px-3 py-1 text-[12px] opacity-70 hover:opacity-100">বাতিল</button>
+          </div>
+        </div>
+      )}
+
       {/* Filters & Search */}
       <div className="bg-white p-4 rounded-sm border mb-6 flex flex-col md:flex-row gap-4" style={{ borderColor: C.border }}>
         <div className="flex-1 relative">
@@ -157,30 +188,40 @@ export default function MembersPage() {
       </div>
 
       {/* Members Grid/Table */}
-      <div className="bg-white rounded-sm border overflow-hidden" style={{ borderColor: C.border }}>
-        <table className="w-full text-left">
+      <div className="bg-white rounded-sm border overflow-x-auto" style={{ borderColor: C.border }}>
+        <table className="w-full text-left min-w-[800px]">
           <thead className="bg-gray-50 text-[11px] uppercase text-gray-500 font-bold border-b">
             <tr>
+              <th className="px-6 py-3 w-10">
+                <button onClick={toggleSelectAll} className="text-gray-400 hover:text-ink">
+                  {selectedIds.length === filteredMembers.length && filteredMembers.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}
+                </button>
+              </th>
               <th className="px-6 py-3">সদস্যের তথ্য</th>
-              <th className="px-6 py-3">মাসিক চাঁদা</th>
-              <th className="px-6 py-3">মোট দান</th>
-              <th className="px-6 py-3">স্ট্যাটাস</th>
+              <th className="px-6 py-3 text-center">মাসিক চাঁদা</th>
+              <th className="px-6 py-3 text-center">মোট দান</th>
+              <th className="px-6 py-3 text-center">স্ট্যাটাস</th>
               <th className="px-6 py-3">ইউজার অ্যাকাউন্ট</th>
               <th className="px-6 py-3 text-right">অ্যাকশন</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {filteredMembers.map((m) => (
-              <tr key={m.id} className="text-[13px] hover:bg-gray-50 transition-colors group">
+              <tr key={m.id} className={`text-[13px] hover:bg-gray-50 transition-colors group ${selectedIds.includes(m.id) ? 'bg-ink/5' : ''}`}>
+                <td className="px-6 py-4">
+                  <button onClick={() => toggleSelect(m.id)} className={`transition-colors ${selectedIds.includes(m.id) ? 'text-ink' : 'text-gray-300'}`}>
+                    {selectedIds.includes(m.id) ? <CheckSquare size={16} /> : <Square size={16} />}
+                  </button>
+                </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-col">
                     <span className="font-bold text-[14px]" style={{ color: C.text }}>{m.name}</span>
                     <span className="text-[11px] text-gray-500 flex items-center gap-1"><Phone size={10} /> {m.phone}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 font-medium">৳{m.pledge_amount}</td>
-                <td className="px-6 py-4 font-bold" style={{ color: C.ink }}>৳{m.total_donated}</td>
-                <td className="px-6 py-4">
+                <td className="px-6 py-4 text-center font-medium">৳{m.pledge_amount}</td>
+                <td className="px-6 py-4 text-center font-bold" style={{ color: C.ink }}>৳{m.total_donated}</td>
+                <td className="px-6 py-4 text-center">
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${m.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                     {m.status}
                   </span>
@@ -190,7 +231,7 @@ export default function MembersPage() {
                     <div className="flex items-center gap-2 text-green-600 font-medium text-[11px]">
                       <CheckCircle size={12} /> লিঙ্কড
                       {canManage && (
-                        <button onClick={() => handleLinkUser(m.id, "")} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleLinkUser(m.id, "")} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
                           <Unlink size={12} />
                         </button>
                       )}
