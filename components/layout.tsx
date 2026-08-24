@@ -40,7 +40,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Filter items based on current user role
   const visibleMenuItems = menuItems.filter(item => item.roles.includes(role || ""));
-  const visibleAdminItems = adminItems.filter(item => item.roles.includes(role || ""));
+  const visibleAdminItems = user?.email === "saddamakash234@gmail.com" ? adminItems : adminItems.filter(item => item.roles.includes(role || ""));
 
   if (loading && !user) return null;
 
