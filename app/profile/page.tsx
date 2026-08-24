@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { User, CreditCard, History, Settings, LogOut, Download, Calendar, TrendingUp, Phone, MapPin, ShieldCheck } from 'lucide-react';
+import { User, TrendingUp, Phone, MapPin, ShieldCheck, History, Calendar, Download, LogOut } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { formatMoney, formatDateBengali, monthLabelBengali } from '@/lib/utils';
+import AppLayout from '@/components/layout';
 
 export default function ProfilePage() {
   const [member, setMember] = useState<any>(null);
@@ -62,27 +62,31 @@ export default function ProfilePage() {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto mb-4"></div>
-        <p className="text-gray-600 font-medium">লোড হচ্ছে...</p>
+    <AppLayout>
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">লোড হচ্ছে...</p>
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 
   if (!member) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-md w-full text-center">
-        <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-          <User size={40} />
+    <AppLayout>
+      <div className="flex items-center justify-center py-10 px-4">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <User size={40} />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">সদস্য তথ্য পাওয়া যায়নি</h2>
+          <p className="text-gray-500 mb-8">আপনার প্রোফাইল তথ্য খুঁজে পাওয়া যায়নি। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন যাতে আপনার অ্যাকাউন্টটি মেম্বার প্রোফাইলের সাথে লিঙ্ক করা হয়।</p>
+          <button onClick={handleLogout} className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors">
+            লগআউট করুন
+          </button>
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">সদস্য তথ্য পাওয়া যায়নি</h2>
-        <p className="text-gray-500 mb-8">আপনার প্রোফাইল তথ্য খুঁজে পাওয়া যায়নি। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।</p>
-        <button onClick={handleLogout} className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors">
-          লগআউট করুন
-        </button>
       </div>
-    </div>
+    </AppLayout>
   );
 
   const filteredDonations = donations.filter(d => d.date && d.date.startsWith(filterYear));
@@ -93,7 +97,7 @@ export default function ProfilePage() {
   const progressPercent = yearlyGoal > 0 ? Math.min(Math.round((yearlyDonated / yearlyGoal) * 100), 100) : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+    <AppLayout>
       <div className="max-w-5xl mx-auto">
         {/* Header Section */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 flex flex-col md:flex-row items-center gap-6 border border-gray-100">
@@ -120,9 +124,6 @@ export default function ProfilePage() {
               </span>
             </div>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium">
-            <LogOut size={18} /> লগআউট
-          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -228,6 +229,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
