@@ -10,11 +10,12 @@ import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
 
 export default function DonationsPage() {
-  const { role } = useAuth();
-  const isAdmin = role === 'admin';
+  const { user, role } = useAuth();
+  // Special bypass for admin email
+  const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
+  
   const [donations, setDonations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     const fetchDonations = async () => {
@@ -109,7 +110,7 @@ export default function DonationsPage() {
                     </button>
                     
                     {isAdmin && (
-                      <>
+                      <div className="flex items-center gap-2">
                         <button 
                           className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:text-blue-600 hover:bg-blue-50 transition-all"
                           title="এডিট"
@@ -123,7 +124,7 @@ export default function DonationsPage() {
                         >
                           <Trash2 size={18} />
                         </button>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>

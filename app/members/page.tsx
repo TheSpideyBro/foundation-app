@@ -11,8 +11,10 @@ import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
 
 export default function MembersPage() {
-  const { role } = useAuth();
-  const isAdmin = role === 'admin';
+  const { user, role } = useAuth();
+  // Special bypass for admin email
+  const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
+  
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -85,7 +87,7 @@ export default function MembersPage() {
                     {member.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                   </div>
                   {isAdmin && (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1">
                       <button className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors">
                         <Edit2 size={14} />
                       </button>
