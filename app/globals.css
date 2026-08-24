@@ -1,33 +1,89 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Tiro+Bangla:ital@0;1&display=swap');
 
-@custom-variant dark (&:is(.dark *));
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Design system colors — ledger/khata identity */
-@theme inline {
-  --color-paper: #FBF8F1;
-  --color-border: #E4DCC8;
-  --color-gold: #C9972D;
-  --color-ink: #1B4332;
-  --color-red: #A63D40;
-  --color-subtext: #8A8371;
-  --color-label: #7A7364;
-  --font-sans: "Hind Siliguri", sans-serif;
-  --font-heading: "Tiro Bangla", serif;
-  --font-mono: "JetBrains Mono", monospace;
+:root {
+  --ink: #0F2922;
+  --emerald: #1B4332;
+  --emerald-light: #2D6A4F;
+  --paper: #F8F9FA;
+  --stone: #E9ECEF;
+  --gold: #D4AF37;
+  --accent: #C9972D;
+  --text-main: #212529;
+  --text-sub: #495057;
+  --border: #DEE2E6;
+  --white: #FFFFFF;
 }
 
-@layer base {
-  * {
-    @apply border-[var(--border)];
-  }
-  body {
-    @apply bg-[#EDEAE0] text-[#2B2B26] font-sans m-0 p-0;
-  }
-}
-
-/* Receipt card styles for export */
-#receipt-card {
+body {
+  background-color: var(--paper);
+  color: var(--text-main);
   font-family: 'Hind Siliguri', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Tiro Bangla', serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--paper);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-sub);
+}
+
+/* Modern Card Style */
+.card-premium {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-premium:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+}
+
+/* Premium Button */
+.btn-premium {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.btn-premium:active {
+  transform: scale(0.96);
+}
+
+/* Typography Helpers */
+.font-tiro {
+  font-family: 'Tiro Bangla', serif;
+}
+
+.font-hind {
+  font-family: 'Hind Siliguri', sans-serif;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
 }

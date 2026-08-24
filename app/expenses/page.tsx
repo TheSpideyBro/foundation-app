@@ -3,242 +3,197 @@
 import { useState, useEffect } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { logAudit } from "@/lib/audit";
-import { triggerSheetsSync } from "@/lib/sheets-auto";
 import AppLayout from "@/components/layout";
 import { useAuth } from "@/components/providers";
-import { ReceiptText, Plus, X, Trash2, Upload, Tag } from "lucide-react";
-import { formatMoney, formatDateBengali } from "@/lib/utils";
-
-const C = {
-  ink: "#1B4332", paper: "#FBF8F1", page: "#EDEAE0", border: "#E4DCC8",
-  gold: "#C9972D", red: "#A63D40", text: "#2B2B26", sub: "#8A8371", label: "#7A7364",
-};
-
-// Fallback categories used until the DB-backed category table is set up
-const FALLBACK_CATEGORIES = ["চিকিৎসা", "খাদ্য", "শিক্ষা", "জরুরি সহায়তা", "পরিবহন", "অন্যান্য"];
-const catColor: Record<string, string> = {
-  "চিকিৎসা": C.red, "খাদ্য": C.gold, "শিক্ষা": C.ink,
-  "জরুরি সহায়তা": C.ink, "পরিবহন": C.sub, "অন্যান্য": C.sub,
-};
-
-const CUSTOM_OPTION = "__custom__";
+import { 
+  Plus, Search, Filter, Download, 
+  XCircle, Calendar, CreditCard, 
+  Tag, ShoppingBag, TrendingDown
+} from "lucide-react";
 
 export default function ExpensesPage() {
-  const { user, role } = useAuth();
+  const { role } = useAuth();
   const [expenses, setExpenses] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [category, setCategory] = useState<string>("");
-  const [useCustom, setUseCustom] = useState(false);
-  const [customCategory, setCustomCategory] = useState("");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [description, setDescription] = useState("");
-  const [proofFile, setProofFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
-  const [catsLoading, setCatsLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formData, setFormData] = useState({ 
+    category_id: "", 
+    amount: 0, 
+    date: new Date().toISOString().split('T')[0], 
+    description: "",
+    payment_method: "Cash"
+  });
 
-  const fetchExpenses = async () => {
-    if (user === undefined) return;
-    if (!user) { setLoading(false); return; }
+  const fetchData = async () => {
     setLoading(true);
-    try {
-      const { data } = await supabase()
-        .from("expenses")
-        .select("*")
-        .order("created_at", { ascending: false });
-      setExpenses(data || []);
-    } finally {
-      setLoading(false);
-    }
+    const { data: expenseData } = await supabase()
+      .from("expenses")
+      .select("*, category:expense_categories(name)")
+      .order("date", { ascending: false });
+    const { data: catData } = await supabase().from("expense_categories").select("*");
+    
+    setExpenses(expenseData || []);
+    setCategories(catData || []);
+    setLoading(false);
   };
 
-  useEffect(() => { fetchExpenses(); }, [user]);
-  useEffect(() => {
-    if (user === undefined) return;
-    if (!user) setLoading(false);
-  }, [user]);
+  useEffect(() => { fetchData(); }, []);
 
-  // Load categories from DB (migration-phase1.sql); fall back to hardcoded list.
-  useEffect(() => {
-    if (user === undefined) return;
-    (async () => {
-      setCatsLoading(true);
-      try {
-        const { data, error } = await supabase().from("expense_categories").select("*").order("is_default", { ascending: false }).order("name");
-        if (!error && data && data.length > 0) {
-          setCategories(data);
-          setCategory(data.find((c: any) => c.is_default)?.name || data[0].name);
-        } else {
-          setCategory(FALLBACK_CATEGORIES[0]);
-        }
-      } catch {
-        setCategory(FALLBACK_CATEGORIES[0]);
-      } finally {
-        setCatsLoading(false);
-      }
-    })();
-  }, [user]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !amount) return;
-    const finalCat = useCustom ? customCategory.trim() : category;
-    if (!finalCat) {
-      alert("ক্যাটেগরি দিন।");
-      return;
+    const { data, error } = await supabase().from("expenses").insert([formData]).select();
+    if (error) alert(error.message);
+    else {
+      logAudit("expense.create", "expenses", data[0].id, formData);
+      setShowAddModal(false);
+      fetchData();
     }
-
-    let proofUrl: string | undefined;
-    if (proofFile) {
-      const fileName = `${Date.now()}_${proofFile.name}`;
-      const { error: uploadError } = await supabase().storage.from("expense-proofs").upload(fileName, proofFile);
-      if (uploadError) {
-        alert("প্রুফ ছবি আপলোড হয়নি: " + uploadError.message);
-        return;
-      }
-      const { data: urlData } = supabase().storage.from("expense-proofs").getPublicUrl(fileName);
-      proofUrl = urlData?.publicUrl;
-    }
-
-    const { error, data } = await supabase().from("expenses").insert({
-      category: finalCat, amount: parseFloat(amount), date, description, proof_url: proofUrl, created_by: user.id
-    });
-    if (error) {
-      alert("খরচ যোগ করা যায়নি: " + error.message);
-      return;
-    }
-    logAudit("expense.insert", "expenses", (data as any)?.id, { category: finalCat, amount: parseFloat(amount) });
-    triggerSheetsSync();
-    setShowForm(false); setAmount(""); setDescription(""); setProofFile(null);
-    setUseCustom(false); setCustomCategory("");
-    fetchExpenses();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("এই খরচ মুছতে চান?")) return;
-    const { data: rows, error } = await supabase().from("expenses").select("category, amount, description").eq("id", id);
-    if (error) {
-      alert("খরচ মুছা যায়নি: " + error.message);
-      return;
-    }
-    logAudit("expense.delete", "expenses", id, { category: rows?.[0]?.category, amount: rows?.[0]?.amount });
-    triggerSheetsSync();
-    fetchExpenses();
-  };
-
-  const catList = useCustom ? [...categories.map((c: any) => c.name), customCategory].filter(Boolean) : [];
-  const activeCategories = useCustom ? catList : (categories.length > 0 ? categories : FALLBACK_CATEGORIES.map((n) => ({ name: n })));
-  const colorFor = (name: string) => catColor[name] || C.sub;
+  const canManage = role === 'admin' || role === 'treasurer';
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-[19px] font-semibold" style={{ fontFamily: "'Tiro Bangla', serif", color: C.text }}>খরচের হিসাব</h1>
-        <div className="flex items-center gap-2">
-          <a href="/admin" className="flex items-center gap-1.5 text-[12.5px] font-medium px-3 py-2 rounded-sm border transition hover:brightness-105" style={{ borderColor: C.border, color: C.ink, background: C.paper }}>
-            <Tag size={14} /> ক্যাটেগরি ব্যবস্থাপনা
-          </a>
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 text-[13px] font-semibold px-4 py-2 rounded-sm hover:brightness-105 transition" style={{ background: C.gold, color: C.ink }}>
-            <Plus size={15} strokeWidth={2.5} /> নতুন খরচ যোগ করুন
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-[28px] font-bold font-tiro text-gray-900">ব্যয় ও খরচ</h1>
+          <p className="text-gray-500 text-[14px]">ফাউন্ডেশনের সকল খরচের হিসাব</p>
+        </div>
+        {canManage && (
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-2xl text-[14px] font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-900/20"
+          >
+            <Plus size={20} /> নতুন খরচ
           </button>
+        )}
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+        <div className="card-premium p-6 bg-red-50/50 border-red-100">
+          <p className="text-[12px] font-bold text-red-700 uppercase tracking-wider mb-1">মোট ব্যয়</p>
+          <p className="text-[24px] font-bold text-red-900">৳{expenses.reduce((sum, e) => sum + e.amount, 0)}</p>
+        </div>
+        <div className="card-premium p-6">
+          <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">চলতি মাসে</p>
+          <p className="text-[24px] font-bold text-gray-800">৳{expenses.filter(e => new Date(e.date).getMonth() === new Date().getMonth()).reduce((sum, e) => sum + e.amount, 0)}</p>
+        </div>
+        <div className="card-premium p-6">
+          <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">খরচের খাত</p>
+          <p className="text-[24px] font-bold text-gray-800">{categories.length} টি</p>
         </div>
       </div>
 
-      {/* Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }} onClick={() => setShowForm(false)}>
-          <div className="w-full max-w-md rounded-sm border overflow-hidden" style={{ background: C.paper, borderColor: C.border }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 pt-4 pb-2">
-              <h2 className="text-[15px] font-semibold" style={{ fontFamily: "'Tiro Bangla', serif", color: C.text }}>নতুন খরচ</h2>
-              <button onClick={() => setShowForm(false)}><X size={18} style={{ color: C.sub }} /></button>
-            </div>
-            <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
-              <div>
-                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>বিভাগ</label>
-                {catsLoading ? (
-                  <div className="rounded-sm px-3 py-2.5 text-[12px]" style={{ background: C.page, color: C.sub }}>লোড হচ্ছে...</div>
-                ) : (
-                  <>
-                    <select
-                      value={useCustom ? CUSTOM_OPTION : category}
-                      onChange={(e) => {
-                        if (e.target.value === CUSTOM_OPTION) { setUseCustom(true); setCustomCategory(""); }
-                        else { setUseCustom(false); setCategory(e.target.value); }
-                      }}
-                      className="w-full rounded-sm px-3 py-2.5 text-[13px] outline-none focus:ring-2"
-                      style={{ background: "#fff", borderColor: C.border }}
-                    >
-                      {activeCategories.map((c: any) => (
-                        <option key={c.name} value={c.name}>{c.name}</option>
-                      ))}
-                      <option value={CUSTOM_OPTION}>নিজস্ব (নিজে লিখুন)...</option>
-                    </select>
-                    {useCustom && (
-                      <input
-                        value={customCategory}
-                        onChange={(e) => setCustomCategory(e.target.value)}
-                        placeholder="নতুন বিভাগের নাম লিখুন..."
-                        className="mt-2 w-full rounded-sm px-3 py-2.5 text-[13px] outline-none focus:ring-2"
-                        style={{ background: "#fff", border: `1px solid ${C.gold}` }}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-              <div>
-                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>পরিমাণ (৳)</label>
-                <input type="number" min="1" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full rounded-sm px-3 py-2.5 text-[13px] outline-none focus:ring-2" style={{ background: "#fff", borderColor: C.border }} />
-              </div>
-              <div>
-                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>তারিখ</label>
-                <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-sm px-3 py-2.5 text-[13px] outline-none focus:ring-2" style={{ background: "#fff", borderColor: C.border }} />
-              </div>
-              <div>
-                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>বিবরণ</label>
-                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full rounded-sm px-3 py-2.5 text-[13px] outline-none resize-none" style={{ background: "#fff", borderColor: C.border }} />
-              </div>
-              <div>
-                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>প্রমাণ পত্র (ছবি)</label>
-                <label className="flex items-center gap-2 rounded-sm border px-3 py-2.5 cursor-pointer transition hover:brightness-95" style={{ borderColor: C.border, background: "#fff" }}>
-                  <Upload size={16} style={{ color: C.sub }} />
-                  <span className="text-[13px]" style={{ color: C.sub }}>{proofFile ? proofFile.name : "ছবি বাছাই করুন"}</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => setProofFile(e.target.files?.[0] || null)} />
-                </label>
-              </div>
-              <button type="submit" className="w-full py-2.5 rounded-sm text-[13.5px] font-semibold transition hover:brightness-105" style={{ background: C.gold, color: C.ink }}>খরচ যোগ করুন</button>
-            </form>
+      {/* Expenses Table */}
+      <div className="card-premium overflow-hidden">
+        <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input type="text" placeholder="বিবরণ দিয়ে খুঁজুন..." className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border-none rounded-xl text-[14px] outline-none focus:bg-white transition-all" />
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 text-gray-600 rounded-xl text-[13px] font-bold hover:bg-gray-100 transition-all">
+              <Filter size={16} /> ফিল্টার
+            </button>
           </div>
         </div>
-      )}
 
-      {/* Expense List */}
-      {loading ? (
-        <div className="text-center py-12" style={{ color: C.sub }}>লোড হচ্ছে...</div>
-      ) : expenses.length === 0 ? (
-        <div className="text-center py-12 rounded-sm border" style={{ background: C.paper, borderColor: C.border, color: C.sub }}>কোনো খরচ নেই</div>
-      ) : (
-        <div className="grid grid-cols-1 gap-3">
-          {expenses.map((exp) => (
-            <div key={exp.id} className="rounded-sm border p-5 flex items-center justify-between group" style={{ background: C.paper, borderColor: C.border }}>
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: colorFor(exp.category) + "1A" }}>
-                  <ReceiptText size={16} style={{ color: colorFor(exp.category) }} />
-                </div>
-                <div>
-                  <p className="text-[14px] font-medium" style={{ color: C.text }}>{exp.description || exp.category}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10.5px] px-2 py-0.5 rounded-full font-medium" style={{ background: colorFor(exp.category) + "1A", color: colorFor(exp.category) }}>{exp.category}</span>
-                    <span className="text-[11.5px]" style={{ color: C.sub }}>{formatDateBengali(exp.date)}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[15px] font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace", color: C.red }}>−{formatMoney(exp.amount)}</span>
-                {role === "admin" && <button onClick={() => handleDelete(exp.id)} className="p-1.5 rounded-sm opacity-0 group-hover:opacity-100 hover:brightness-95 transition" style={{ background: C.red + "14" }}><Trash2 size={13} style={{ color: C.red }} /></button>}
-              </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[800px]">
+            <thead>
+              <tr className="bg-gray-50/50 text-[12px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                <th className="px-6 py-5">বিবরণ ও খাত</th>
+                <th className="px-6 py-5 text-center">তারিখ</th>
+                <th className="px-6 py-5 text-center">পদ্ধতি</th>
+                <th className="px-6 py-5 text-center">পরিমাণ</th>
+                <th className="px-6 py-5 text-right">স্ট্যাটাস</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {expenses.map((e) => (
+                <tr key={e.id} className="group hover:bg-gray-50/50 transition-all">
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-red-50 text-red-500 flex items-center justify-center">
+                        <ShoppingBag size={18} />
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-bold text-gray-800">{e.description}</p>
+                        <p className="text-[11px] text-gray-400 flex items-center gap-1"><Tag size={10} /> {e.category?.name}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5 text-center">
+                    <span className="text-[13px] font-medium text-gray-600 flex items-center justify-center gap-1">
+                      <Calendar size={12} /> {new Date(e.date).toLocaleDateString('bn-BD')}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5 text-center">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-[11px] font-bold uppercase tracking-tighter">
+                      <CreditCard size={12} className="mr-1.5" /> {e.payment_method}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5 text-center">
+                    <span className="text-[16px] font-bold text-red-600">৳{e.amount}</span>
+                  </td>
+                  <td className="px-6 py-5 text-right">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase">Paid</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {expenses.length === 0 && (
+          <div className="p-20 text-center text-gray-400">কোনো খরচের তথ্য পাওয়া যায়নি</div>
+        )}
+      </div>
+
+      {/* Add Expense Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-emerald-950/40 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-8 bg-red-900 text-white flex items-center justify-between">
+              <h2 className="text-[22px] font-bold font-tiro">নতুন খরচ এন্ট্রি</h2>
+              <button onClick={() => setShowAddModal(false)} className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all"><XCircle size={24} /></button>
             </div>
-          ))}
+            <form onSubmit={handleAddExpense} className="p-8 space-y-5">
+              <div className="space-y-2">
+                <label className="text-[12px] font-bold text-gray-400 uppercase tracking-wider ml-1">খরচের খাত</label>
+                <select required value={formData.category_id} onChange={e => setFormData({...formData, category_id: e.target.value})} className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none text-[15px] focus:bg-white focus:border-red-500/30 transition-all appearance-none">
+                  <option value="">খাত নির্বাচন করুন</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[12px] font-bold text-gray-400 uppercase tracking-wider ml-1">খরচের বিবরণ</label>
+                <input type="text" required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none text-[15px] focus:bg-white focus:border-red-500/30 transition-all" placeholder="যেমন: অফিস ভাড়া বা যাতায়াত খরচ" />
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[12px] font-bold text-gray-400 uppercase tracking-wider ml-1">পরিমাণ (৳)</label>
+                  <input type="number" required value={formData.amount} onChange={e => setFormData({...formData, amount: Number(e.target.value)})} className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none text-[15px] focus:bg-white focus:border-red-500/30 transition-all" placeholder="৫০০" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[12px] font-bold text-gray-400 uppercase tracking-wider ml-1">তারিখ</label>
+                  <input type="date" required value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none text-[15px] focus:bg-white focus:border-red-500/30 transition-all" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[12px] font-bold text-gray-400 uppercase tracking-wider ml-1">পেমেন্ট পদ্ধতি</label>
+                <select value={formData.payment_method} onChange={e => setFormData({...formData, payment_method: e.target.value})} className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none text-[15px] focus:bg-white focus:border-red-500/30 transition-all appearance-none">
+                  <option value="Cash">Cash</option>
+                  <option value="Bkash">Bkash</option>
+                  <option value="Bank">Bank</option>
+                </select>
+              </div>
+              <button type="submit" className="w-full py-4 bg-red-700 text-white rounded-2xl text-[16px] font-bold hover:bg-red-800 transition-all shadow-xl shadow-red-900/20 mt-4">খরচ নিশ্চিত করুন</button>
+            </form>
+          </div>
         </div>
       )}
     </AppLayout>

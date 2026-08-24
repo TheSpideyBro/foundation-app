@@ -1,241 +1,210 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { User, TrendingUp, Phone, MapPin, ShieldCheck, History, Calendar, Download, LogOut, Lock, Key, AlertCircle, CheckCircle } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
-import AppLayout from '@/components/layout';
+import { useState, useEffect } from "react";
+import { getSupabase as supabase } from "@/lib/supabase-client";
+import AppLayout from "@/components/layout";
+import { useAuth } from "@/components/providers";
+import { 
+  User, Phone, MapPin, Award, 
+  Calendar, Download, ShieldCheck, 
+  Key, Save, X, ChevronRight, Heart
+} from "lucide-react";
 
 export default function ProfilePage() {
+  const { user, memberId, role, phone } = useAuth();
   const [member, setMember] = useState<any>(null);
   const [donations, setDonations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
-  
-  // Password Change State
-  const [showPassModal, setShowPassModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passLoading, setPassLoading] = useState(false);
-  const [passMessage, setPassMessage] = useState({ text: "", type: "" });
-
-  const supabase = createClient();
-  const router = useRouter();
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          router.push('/login');
-          return;
-        }
-
-        const { data: memberData, error: memberError } = await supabase
-          .from('members')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-
-        if (memberData) {
-          setMember(memberData);
-          const { data: donationData } = await supabase
-            .from('donations')
-            .select('*')
-            .eq('member_id', memberData.id)
-            .order('date', { ascending: false });
-          setDonations(donationData || []);
-        }
-      } catch (err) {
-        console.error('Fetch error:', err);
-      } finally {
+    const fetchProfile = async () => {
+      if (!memberId) {
         setLoading(false);
+        return;
       }
+      const { data: m } = await supabase().from("members").select("*").eq("id", memberId).single();
+      const { data: d } = await supabase().from("donations").select("*").eq("member_id", memberId).order("date", { ascending: false });
+      setMember(m);
+      setDonations(d || []);
+      setLoading(false);
     };
-    fetchData();
-  }, []);
+    fetchProfile();
+  }, [memberId]);
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPassMessage({ text: "", type: "" });
-
-    if (newPassword.length < 6) {
-      setPassMessage({ text: "পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে", type: "error" });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPassMessage({ text: "পাসওয়ার্ড দুটি মিলছে না", type: "error" });
-      return;
-    }
-
-    setPassLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    
-    if (error) {
-      setPassMessage({ text: "ত্রুটি: " + error.message, type: "error" });
-    } else {
-      setPassMessage({ text: "পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!", type: "success" });
+    const { error } = await supabase().auth.updateUser({ password: newPassword });
+    if (error) alert(error.message);
+    else {
+      alert("পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!");
+      setShowPasswordModal(false);
       setNewPassword("");
-      setConfirmPassword("");
-      setTimeout(() => setShowPassModal(false), 2000);
     }
-    setPassLoading(false);
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
-  };
-
-  if (loading) return (
-    <AppLayout>
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">লোড হচ্ছে...</p>
-        </div>
-      </div>
-    </AppLayout>
-  );
+  if (loading) return <AppLayout><div className="flex items-center justify-center min-h-[400px] text-gray-400">লোড হচ্ছে...</div></AppLayout>;
 
   if (!member) return (
     <AppLayout>
-      <div className="flex items-center justify-center py-10 px-4">
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-md w-full text-center">
-          <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <User size={40} />
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">সদস্য তথ্য পাওয়া যায়নি</h2>
-          <p className="text-gray-500 mb-8">আপনার প্রোফাইল তথ্য খুঁজে পাওয়া যায়নি। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।</p>
-          <button onClick={handleLogout} className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors">
-            লগআউট করুন
-          </button>
+      <div className="card-premium p-12 text-center flex flex-col items-center gap-4">
+        <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-200">
+          <User size={40} />
+        </div>
+        <div>
+          <h2 className="text-[22px] font-bold font-tiro text-gray-800">সদস্য তথ্য পাওয়া যায়নি</h2>
+          <p className="text-gray-400 text-[14px] max-w-xs mx-auto">আপনার একাউন্টের সাথে কোনো মেম্বার প্রোফাইল লিঙ্ক করা নেই। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।</p>
         </div>
       </div>
     </AppLayout>
   );
 
-  const filteredDonations = donations.filter(d => d.date && d.date.startsWith(filterYear));
-  const totalDonated = donations.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
-  const yearlyDonated = filteredDonations.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
-  const yearlyGoal = (Number(member.monthly_pledge) || 0) * 12;
-  const progressPercent = yearlyGoal > 0 ? Math.min(Math.round((yearlyDonated / yearlyGoal) * 100), 100) : 0;
+  const totalDonated = donations.reduce((sum, d) => sum + d.amount, 0);
+  const progress = Math.min((totalDonated / (member.pledge_amount * 12)) * 100, 100);
 
   return (
     <AppLayout>
       <div className="max-w-5xl mx-auto">
-        {/* Header Section */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 flex flex-col md:flex-row items-center gap-6 border border-gray-100">
-          <div className="relative">
-            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center overflow-hidden border-2 border-green-600 shadow-inner">
-              <img src="/assets/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+        {/* Profile Header */}
+        <div className="relative mb-20">
+          <div className="h-48 bg-[#0F2922] rounded-[2.5rem] shadow-2xl overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl"></div>
+          </div>
+          <div className="absolute -bottom-16 left-8 flex flex-col md:flex-row md:items-end gap-6 px-4">
+            <div className="w-32 h-32 rounded-[2rem] bg-white p-2 shadow-2xl">
+              <div className="w-full h-full rounded-[1.5rem] bg-emerald-600 flex items-center justify-center text-white text-[40px] font-bold shadow-inner">
+                {member.name[0]}
+              </div>
             </div>
-            <div className="absolute -bottom-1 -right-1 bg-green-600 text-white p-1 rounded-full border-2 border-white">
-              <ShieldCheck size={14} />
+            <div className="mb-2">
+              <h1 className="text-[32px] font-bold font-tiro text-gray-900 leading-tight">{member.name}</h1>
+              <div className="flex flex-wrap items-center gap-4 mt-2">
+                <span className="flex items-center gap-1.5 text-[13px] font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                  <Phone size={14} /> {member.phone}
+                </span>
+                <span className="flex items-center gap-1.5 text-[13px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                  <Award size={14} /> {role?.toUpperCase()}
+                </span>
+                {member.status === 'active' && (
+                  <span className="flex items-center gap-1.5 text-[13px] font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                    <ShieldCheck size={14} /> সক্রিয় সদস্য
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-          <div className="flex-1 text-center md:text-left">
-            <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'Tiro Bangla', serif" }}>{member.name}</h1>
-            <div className="mt-2 flex flex-wrap justify-center md:justify-start gap-4 text-sm text-gray-500">
-              <span className="flex items-center gap-1"><Phone size={14} /> {member.phone}</span>
-              <span className="flex items-center gap-1"><MapPin size={14} /> {member.address || 'ঠিকানা নেই'}</span>
-            </div>
-            <div className="mt-3 flex flex-wrap justify-center md:justify-start gap-2">
-              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${member.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                {member.status === 'active' ? 'Active Member' : 'Inactive'}
-              </span>
-              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold uppercase tracking-wider">
-                Pledge: ৳{member.monthly_pledge}/mo
-              </span>
-            </div>
-          </div>
-          <div className="flex flex-col gap-2 w-full md:w-auto">
+          <div className="absolute -bottom-12 right-8 hidden md:block">
             <button 
-              onClick={() => setShowPassModal(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-200 transition-colors"
+              onClick={() => setShowPasswordModal(true)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
             >
-              <Key size={16} /> পাসওয়ার্ড পরিবর্তন
-            </button>
-            <button onClick={handleLogout} className="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-sm font-bold hover:bg-red-100 transition-colors">
-              <LogOut size={16} /> লগআউট
+              <Key size={16} /> পাসওয়ার্ড পরিবর্তন
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="text-sm font-bold text-gray-400 uppercase mb-4 flex items-center gap-2">
-                <TrendingUp size={16} /> বার্ষিক অগ্রগতি ({filterYear})
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-24">
+          {/* Left Column: Stats & Info */}
+          <div className="lg:col-span-1 space-y-8">
+            <div className="card-premium p-8">
+              <h3 className="text-[18px] font-bold font-tiro mb-6 flex items-center gap-2">
+                <Activity size={18} className="text-emerald-600" /> অবদান অগ্রগতি
               </h3>
-              <div className="relative pt-1">
-                <div className="flex mb-2 items-center justify-between">
-                  <div>
-                    <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-green-600 bg-green-200">
-                      {progressPercent}%
-                    </span>
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between text-[13px] font-bold mb-2">
+                    <span className="text-gray-500 uppercase tracking-wider">বার্ষিক লক্ষ্যমাত্রা</span>
+                    <span className="text-gray-900">৳{member.pledge_amount * 12}</span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs font-semibold inline-block text-green-600">
-                      ৳{yearlyDonated} / ৳{yearlyGoal}
-                    </span>
+                  <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-1000"
+                      style={{ width: `${progress}%` }}
+                    ></div>
                   </div>
+                  <p className="text-[11px] text-gray-400 mt-2 font-medium uppercase tracking-widest text-right">{progress.toFixed(0)}% সম্পন্ন</p>
                 </div>
-                <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-green-100">
-                  <div style={{ width: `${progressPercent}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-600 transition-all duration-500"></div>
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-50">
+                  <div>
+                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-1">মোট দান</p>
+                    <p className="text-[20px] font-bold text-emerald-600">৳{totalDonated}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-1">বাকি</p>
+                    <p className="text-[20px] font-bold text-gray-400">৳{Math.max(0, (member.pledge_amount * 12) - totalDonated)}</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-green-700 p-6 rounded-2xl shadow-lg text-white">
-              <p className="text-green-200 text-xs uppercase font-bold mb-1">সর্বমোট অবদান</p>
-              <h2 className="text-3xl font-bold">৳{totalDonated}</h2>
-              <div className="mt-4 pt-4 border-t border-green-600/50">
-                <p className="text-green-200 text-[11px]">ফাউন্ডেশনের সেবামূলক কাজে আপনার অবদান অপরিসীম। ধন্যবাদ!</p>
+            <div className="card-premium p-8">
+              <h3 className="text-[18px] font-bold font-tiro mb-6">যোগাযোগের তথ্য</h3>
+              <div className="space-y-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 shrink-0">
+                    <MapPin size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">ঠিকানা</p>
+                    <p className="text-[14px] text-gray-700 font-medium leading-relaxed">{member.address || 'তথ্য নেই'}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 shrink-0">
+                    <Calendar size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">সদস্যপদ শুরু</p>
+                    <p className="text-[14px] text-gray-700 font-medium">{new Date(member.created_at).toLocaleDateString('bn-BD')}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="lg:col-span-3 space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                  <History size={18} className="text-green-700" /> দানের ইতিহাস
+          {/* Right Column: Donation History */}
+          <div className="lg:col-span-2">
+            <div className="card-premium overflow-hidden">
+              <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/30">
+                <h3 className="text-[20px] font-bold font-tiro flex items-center gap-2">
+                  <Heart size={20} className="text-red-500" /> আমার দানের ইতিহাস
                 </h3>
-                <div className="flex items-center gap-2">
-                  <Calendar size={16} className="text-gray-400" />
-                  <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="text-sm border-none bg-gray-50 rounded-lg px-3 py-1.5 focus:ring-0 cursor-pointer">
-                    {Array.from({length: 5}, (_, i) => new Date().getFullYear() - i).map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
+                <span className="px-3 py-1 bg-white border border-gray-200 rounded-full text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  মোট {donations.length} টি
+                </span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-gray-50 text-[11px] uppercase text-gray-500 font-bold">
-                    <tr>
-                      <th className="px-6 py-3">তারিখ</th>
-                      <th className="px-6 py-3 text-right">পরিমাণ</th>
-                      <th className="px-6 py-3 text-center">রসিদ</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {filteredDonations.length > 0 ? filteredDonations.map((d, i) => (
-                      <tr key={i} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 text-sm text-gray-900">{d.date}</td>
-                        <td className="px-6 py-4 text-sm font-bold text-gray-900 text-right">৳{d.amount}</td>
-                        <td className="px-6 py-4 text-center">
-                          <a href={`/api/receipts/${d.id}`} target="_blank" className="inline-flex items-center gap-1 text-[10px] text-green-700 font-bold bg-green-50 px-3 py-1 rounded-full">
-                            <Download size={12} /> JPG
-                          </a>
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={3} className="px-6 py-12 text-center text-gray-400 text-sm">কোনো দানের ইতিহাস পাওয়া যায়নি।</td></tr>
-                    )}
-                  </tbody>
-                </table>
+              <div className="divide-y divide-gray-50">
+                {donations.map((d, i) => (
+                  <div key={i} className="p-6 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                        <Calendar size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[15px] font-bold text-gray-800">{new Date(d.date).toLocaleDateString('bn-BD', { month: 'long', year: 'numeric' })}</p>
+                        <p className="text-[12px] text-gray-400">{d.method} • {d.notes || 'সাধারণ চাঁদা'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <p className="text-[18px] font-bold text-emerald-600">৳{d.amount}</p>
+                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">সফল</p>
+                      </div>
+                      <a 
+                        href={`/api/receipts/${d.id}`} 
+                        target="_blank"
+                        className="p-3 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-2xl transition-all"
+                      >
+                        <Download size={20} />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+                {donations.length === 0 && (
+                  <div className="p-20 text-center text-gray-400 text-[14px]">এখনো কোনো দান করা হয়নি।</div>
+                )}
               </div>
             </div>
           </div>
@@ -243,64 +212,31 @@ export default function ProfilePage() {
       </div>
 
       {/* Password Modal */}
-      {showPassModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => !passLoading && setShowPassModal(false)}>
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-gray-50 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Lock size={20} className="text-green-700" /> পাসওয়ার্ড পরিবর্তন
-              </h2>
-              <button onClick={() => setShowPassModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                <X size={20} />
-              </button>
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-emerald-950/40 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-8 bg-[#0F2922] text-white flex items-center justify-between">
+              <h2 className="text-[20px] font-bold font-tiro">পাসওয়ার্ড পরিবর্তন</h2>
+              <button onClick={() => setShowPasswordModal(false)} className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all"><X size={24} /></button>
             </div>
-            <form onSubmit={handlePasswordChange} className="p-6 space-y-4">
-              {passMessage.text && (
-                <div className={`p-3 rounded-xl flex items-center gap-2 text-sm ${passMessage.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                  {passMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-                  {passMessage.text}
-                </div>
-              )}
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5 ml-1">নতুন পাসওয়ার্ড</label>
+            <form onSubmit={handleChangePassword} className="p-8 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[12px] font-bold text-gray-400 uppercase tracking-wider ml-1">নতুন পাসওয়ার্ড</label>
                 <input 
                   type="password" 
+                  required 
+                  minLength={6}
                   value={newPassword} 
-                  onChange={e => setNewPassword(e.target.value)}
-                  required 
-                  placeholder="অন্তত ৬ অক্ষরের পাসওয়ার্ড"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-green-600 transition-all text-sm"
+                  onChange={e => setNewPassword(e.target.value)} 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none text-[15px] focus:bg-white focus:border-emerald-500/30 transition-all" 
+                  placeholder="কমপক্ষে ৬ অক্ষর"
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5 ml-1">পাসওয়ার্ড নিশ্চিত করুন</label>
-                <input 
-                  type="password" 
-                  value={confirmPassword} 
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  required 
-                  placeholder="আবার টাইপ করুন"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-green-600 transition-all text-sm"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowPassModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors">বাতিল</button>
-                <button type="submit" disabled={passLoading} className="flex-1 py-3 bg-green-700 text-white rounded-xl font-bold text-sm hover:bg-green-800 transition-colors disabled:opacity-50">
-                  {passLoading ? "প্রক্রিয়া চলছে..." : "আপডেট করুন"}
-                </button>
-              </div>
+              <button type="submit" className="w-full py-4 bg-[#1B4332] text-white rounded-2xl text-[16px] font-bold hover:bg-[#2D6A4F] transition-all shadow-xl shadow-emerald-900/20 mt-4">পরিবর্তন নিশ্চিত করুন</button>
             </form>
           </div>
         </div>
       )}
     </AppLayout>
-  );
-}
-
-function X({ size, className }: { size: number, className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-    </svg>
   );
 }
