@@ -34,15 +34,21 @@
 |---|--------|----------|
 | 8 | **Dashboard Charts** | ড্যাশবোর্ডে দুটি চার্ট: (ক) Pie chart — ক্যাটেগরিভিত্তিক খরচের ভাগ, (খ) Line chart — গত ৫ বছরের বছরভিত্তিক দানের trend। |
 | 9 | **Audit Log** | Admin প্যানেলের "অডিট লগ" ট্যাব — কে কোন সময় কী কাজ (add/edit/delete) করেছে তার record, CSV ডাউনলোড অপশন সহ। প্রতিটি গুরুত্বপূর্ণ কাজ অটো record হয়। |
-| 10 | **PWA (মোবাইলে Install)** | মোবাইলে Chrome → মেনু → "Add to Home Screen"; iPhone-এ Safari → Share → "Add to Home Screen"। App icon সহ home screen-এ install হবে এব
-ং offline-এও static pages খুলবে। |
+| 10 | **Premium রসিদ (Receipt Redesign)** | দান এন্ট্রি পেজে রসিদ আইকন → নতুন premium রসিদ modal: serif Bengali ফন্ট, foundation seal, প্রতিষ্ঠিত/যোগাযোগ strip, রসিদ নং বাংলায়, টাকার পরিমাণ কথায় (auto-convert), teal amount box, method pill, signature block। PNG ডাউনলোড ও শেয়ার বাটন সহ। |
+| 11 | **PWA (মোবাইলে Install)** | মোবাইলে Chrome → মেনু → "Add to Home Screen"; iPhone-এ Safari → Share → "Add to Home Screen"। App icon সহ home screen-এ install হবে এবং offline-এও static pages খুলবে। |
+| 12 | **Google Sheets অটো-ব্যাকআপ** | Member/Donation/Expense add/edit/delete করলে কয়েক সেকেন্ডের মধ্যে Google Spreadsheet-এর Members/Donations/Expenses ট্যাবে অটো sync হয়। Admin প্যানেলের "Google Sheets" ট্যাব থেকে "এখনই Sync" ও "Sheets থেকে Restore" করা যায় — ডেটাবেস হারালে Sheets থেকেই সব ফেরত আনা যায়। সেটআপ: `docs/google-sheets-setup.md` দেখুন। |
 
 ## Setup (Windows PowerShell)
 
 1. Extract করে project ফোল্ডারে যান
 2. `npm install`
 3. `.env.local` আপনার Supabase credentials সম্বলিত থাকবে (rotate করুন — নিচে দেখুন)
-4. `npm run dev` → http://localhost:3000
+3b. (ঐচ্ছিক) Google Sheets অটো-ব্যাকআপ চালু করতে চাইলে `.env.local`-এ `GOOGLE_SERVICE_ACCOUNT_JSON` ও `GOOGLE_SHEET_ID` যোগ করুন — পুরো স্টেপ-বাই-স্টেপ গাইড: `docs/google-sheets-setup.md`। সেটআপ ছাড়া app পুরোপুরি কাজ করবে, শুধু অটো-ব্যাকআপ বন্ধ থাকবে।
+4. `npm run dev` → http://localhost:3000 (Production: `npm run build` → `npm start`)
+
+> **⚠ গুরুত্বপূৰ্ণ (Google Sheets env):** `.env.local`-এ `GOOGLE_SERVICE_ACCOUNT_JSON`-এর মান হলো সরাসরি কি JSON-এর কনটেন্ট — পুরো মানকে `"` দিয়ে wrap করবেন না। JSON-এর ভেতরে `\n` escape যথাবতে থাকবে। Vercel/যেকোনো dashboard-এ env variable হিসেবে বসালে `"` দিয়ে wrap করতে হবে (dashboard নিজেই outer quotes হ্যান্ডল করে)। ভুল ফরম্যাট হলে sync route 500 দেবে। সঠিক আছে কিনা চেক: Admin → Google Sheets ট্যাব → "সেটআপ সম্পূর্ণ ✓" এবং **Sync Now** চাপলে `ok: true` আসবে। অগোছালো .env.local ঠিক করতে: `node scripts\fix-env-google.js` (Windows PowerShell-এ) অথবা নতুন ডাউনলোড করা কি ফাইল দিয়ে `node scripts\fix-env-google.js path\to\service-account.json`।
+
+> **নোট:** `npm start` (production) এবার ঠিকভাবে কাজ করে — `output: standalone`-এর সাথে মানানসই করে `prepare:standalone` script ও PWA asset exclusion middleware fix করা হয়েছে।
 5. Login: saddamakash234@gmail.com / 123456
 
 ## Rotate your Supabase keys

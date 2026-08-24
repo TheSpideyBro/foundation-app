@@ -4,14 +4,15 @@ import { useState, useEffect } from "react";
 import { 
   Users, CreditCard, Wallet, TrendingUp, 
   ArrowUpRight, ArrowDownRight, Calendar,
-  ChevronRight, RefreshCw, Activity, Heart
+  ChevronRight, RefreshCw, Activity, Heart,
+  Leaf
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, BarChart, Bar,
-  Cell, PieChart, Pie
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from "recharts";
+import Link from "next/link";
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -45,8 +46,8 @@ export default function Dashboard() {
         .from("expenses")
         .select("amount, category");
 
-      const totalDonations = donations?.reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
-      const totalExpenses = expenses?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+      const totalDonations = donations?.reduce((sum, d) => sum + (Number(d.amount) || 0), 0) || 0;
+      const totalExpenses = expenses?.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 0;
 
       setStats({
         totalMembers: membersCount || 0,
@@ -65,17 +66,18 @@ export default function Dashboard() {
 
       // Mock chart data for premium look
       setChartData([
-        { name: "Jan", donation: 4000, expense: 2400 },
-        { name: "Feb", donation: 3000, expense: 1398 },
-        { name: "Mar", donation: 2000, expense: 9800 },
-        { name: "Apr", donation: 2780, expense: 3908 },
-        { name: "May", donation: 1890, expense: 4800 },
-        { name: "Jun", donation: 2390, expense: 3800 },
+        { name: "জানু", donation: 4000, expense: 2400 },
+        { name: "ফেব্রু", donation: 3000, expense: 1398 },
+        { name: "মার্চ", donation: 2000, expense: 9800 },
+        { name: "এপ্রিল", donation: 2780, expense: 3908 },
+        { name: "মে", donation: 1890, expense: 4800 },
+        { name: "জুন", donation: 2390, expense: 3800 },
       ]);
 
       // Expense breakdown for Pie chart
       const categories = expenses?.reduce((acc: any, curr) => {
-        acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
+        const cat = curr.category || 'অন্যান্য';
+        acc[cat] = (acc[cat] || 0) + (Number(curr.amount) || 0);
         return acc;
       }, {});
       
@@ -83,7 +85,7 @@ export default function Dashboard() {
         name: cat,
         value: categories[cat]
       }));
-      setExpenseData(formattedExpenseData.length > 0 ? formattedExpenseData : [{name: 'অন্যান্য', value: 1}]);
+      setExpenseData(formattedExpenseData.length > 0 ? formattedExpenseData : [{name: 'তথ্য নেই', value: 1}]);
 
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -97,6 +99,7 @@ export default function Dashboard() {
     try {
       const res = await fetch("/api/sheets/sync", { method: "POST" });
       if (res.ok) alert("গুগল শিট সফলভাবে আপডেট হয়েছে!");
+      else alert("সিঙ্ক ব্যর্থ হয়েছে!");
     } catch (error) {
       alert("সিঙ্ক ব্যর্থ হয়েছে!");
     } finally {
@@ -111,36 +114,36 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 animate-slide-up">
       {/* Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">আসসালামু আলাইকুম!</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 font-tiro">আসসালামু আলাইকুম!</h1>
           <p className="text-gray-500 font-medium">আজকের ফাউন্ডেশন কার্যক্রমের একটি সংক্ষিপ্ত চিত্র।</p>
         </div>
         <div className="flex items-center gap-3">
           <button 
             onClick={handleSync}
             disabled={syncing}
-            className="btn-outline"
+            className="btn-outline px-6 py-3"
           >
             <RefreshCw size={18} className={syncing ? "animate-spin" : ""} />
             {syncing ? "সিঙ্ক হচ্ছে..." : "গুগল শিট সিঙ্ক"}
           </button>
-          <button className="btn-emerald">
+          <Link href="/donations" className="btn-emerald px-6 py-3">
             <Heart size={18} />
             নতুন ডোনেশন
-          </button>
+          </Link>
         </div>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: "মোট সদস্য", value: stats.totalMembers, icon: Users, color: "bg-blue-500", trend: "+12%" },
-          { label: "মোট সংগ্রহ", value: `৳${stats.totalDonations.toLocaleString()}`, icon: CreditCard, color: "bg-emerald-500", trend: "+8%" },
-          { label: "মোট ব্যয়", value: `৳${stats.totalExpenses.toLocaleString()}`, icon: Wallet, color: "bg-rose-500", trend: "-5%" },
-          { label: "বর্তমান তহবিল", value: `৳${stats.netBalance.toLocaleString()}`, icon: TrendingUp, color: "bg-amber-500", trend: "+15%" },
+          { label: "মোট সদস্য", value: stats.totalMembers, icon: Users, color: "bg-blue-600", trend: "+12%" },
+          { label: "মোট সংগ্রহ", value: `৳${stats.totalDonations.toLocaleString()}`, icon: CreditCard, color: "bg-emerald-600", trend: "+8%" },
+          { label: "মোট ব্যয়", value: `৳${stats.totalExpenses.toLocaleString()}`, icon: Wallet, color: "bg-rose-600", trend: "-5%" },
+          { label: "বর্তমান তহবিল", value: `৳${stats.netBalance.toLocaleString()}`, icon: TrendingUp, color: "bg-amber-600", trend: "+15%" },
         ].map((stat, i) => (
           <div key={i} className="card-premium p-8 group">
             <div className="flex items-center justify-between mb-6">
@@ -152,8 +155,8 @@ export default function Dashboard() {
                 {stat.trend}
               </div>
             </div>
-            <h3 className="text-gray-400 text-sm font-bold uppercase tracking-widest mb-1">{stat.label}</h3>
-            <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+            <h3 className="text-gray-400 text-[11px] font-bold uppercase tracking-[0.2em] mb-1">{stat.label}</h3>
+            <p className="text-3xl font-bold text-gray-900 font-tiro">{stat.value}</p>
           </div>
         ))}
       </div>
@@ -167,7 +170,7 @@ export default function Dashboard() {
               <h3 className="text-xl font-bold text-gray-900 font-tiro">আর্থিক প্রবৃদ্ধি</h3>
               <p className="text-sm text-gray-400 font-medium">বিগত ৬ মাসের দান ও ব্যয়ের তুলনা</p>
             </div>
-            <select className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-sm font-bold text-gray-600 outline-none focus:border-emerald-500/30">
+            <select className="bg-gray-50 border-none rounded-xl px-4 py-2 text-xs font-bold text-gray-600 outline-none">
               <option>শেষ ৬ মাস</option>
               <option>শেষ ১ বছর</option>
             </select>
@@ -195,7 +198,7 @@ export default function Dashboard() {
                   tick={{fill: '#9CA3AF', fontSize: 12, fontWeight: 600}}
                 />
                 <Tooltip 
-                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
+                  contentStyle={{borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '16px'}}
                 />
                 <Area 
                   type="monotone" 
@@ -219,8 +222,8 @@ export default function Dashboard() {
               <PieChart>
                 <Pie
                   data={expenseData}
-                  innerRadius={60}
-                  outerRadius={80}
+                  innerRadius={70}
+                  outerRadius={90}
                   paddingAngle={8}
                   dataKey="value"
                 >
@@ -232,12 +235,12 @@ export default function Dashboard() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-2xl font-bold text-gray-900">৳{stats.totalExpenses}</span>
+              <span className="text-2xl font-bold text-gray-900 font-tiro">৳{stats.totalExpenses}</span>
               <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">মোট ব্যয়</span>
             </div>
           </div>
           <div className="mt-8 space-y-3">
-            {expenseData.map((item, i) => (
+            {expenseData.slice(0, 4).map((item, i) => (
               <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${['bg-emerald-600', 'bg-emerald-500', 'bg-emerald-400', 'bg-emerald-300'][i % 4]}`}></div>
@@ -262,7 +265,7 @@ export default function Dashboard() {
           </div>
           <div className="space-y-4">
             {recentDonations.map((donation, i) => (
-              <div key={i} className="flex items-center justify-between p-5 rounded-2xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 group">
+              <div key={i} className="flex items-center justify-between p-5 rounded-[1.5rem] hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 group">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
                     {donation.members?.name?.[0] || "স"}
@@ -271,7 +274,7 @@ export default function Dashboard() {
                     <p className="font-bold text-gray-900">{donation.members?.name || "অজ্ঞাত সদস্য"}</p>
                     <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
                       <Calendar size={12} />
-                      {new Date(donation.date).toLocaleDateString('bn-BD')}
+                      {donation.date ? new Date(donation.date).toLocaleDateString('bn-BD') : 'তারিখ নেই'}
                     </div>
                   </div>
                 </div>
@@ -293,32 +296,32 @@ export default function Dashboard() {
         <div className="card-premium p-8 bg-[#064E3B] text-white border-none overflow-hidden relative">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
           <div className="relative z-10">
-            <h3 className="text-xl font-bold font-tiro mb-6">ফাউন্ডেশন স্ট্যাটাস</h3>
+            <h3 className="text-xl font-bold font-tiro mb-8">ফাউন্ডেশন স্ট্যাটাস</h3>
             <div className="space-y-8">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
-                  <Activity size={24} />
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300 border border-white/10 shadow-inner">
+                  <Activity size={28} />
                 </div>
                 <div>
-                  <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">অ্যাক্টিভিটি স্কোর</p>
-                  <p className="text-2xl font-bold">৯৪%</p>
+                  <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">অ্যাক্টিভিটি স্কোর</p>
+                  <p className="text-3xl font-bold font-tiro">৯৪%</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
-                  <Users size={24} />
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300 border border-white/10 shadow-inner">
+                  <Users size={28} />
                 </div>
                 <div>
-                  <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">সক্রিয় সদস্য</p>
-                  <p className="text-2xl font-bold">{stats.totalMembers}</p>
+                  <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">সক্রিয় সদস্য</p>
+                  <p className="text-3xl font-bold font-tiro">{stats.totalMembers}</p>
                 </div>
               </div>
-              <div className="pt-6 border-t border-white/10">
-                <div className="bg-emerald-500/20 rounded-2xl p-6 border border-emerald-400/20">
-                  <p className="text-emerald-300 text-[13px] font-bold mb-2">গুগল শিট স্ট্যাটাস</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                    <span className="text-white text-sm font-bold">অনলাইন ও সিঙ্কড</span>
+              <div className="pt-8 border-t border-white/10 mt-4">
+                <div className="bg-emerald-900/50 rounded-3xl p-6 border border-white/5 backdrop-blur-sm">
+                  <p className="text-emerald-300 text-[12px] font-bold mb-3 uppercase tracking-wider">গুগল শিট স্ট্যাটাস</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
+                    <span className="text-white text-[15px] font-bold">অনলাইন ও সিঙ্কড</span>
                   </div>
                 </div>
               </div>
