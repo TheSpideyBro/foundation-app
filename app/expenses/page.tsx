@@ -1,16 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSupabase as supabase } from "@/lib/supabase-client";
-import { useAuth } from "@/components/providers";
 import { 
   Plus, Search, Filter, Download, 
   Trash2, Edit2, Wallet, Calendar,
   TrendingDown, ArrowUpRight
 } from "lucide-react";
+import { getSupabase as supabase } from "@/lib/supabase-client";
+import { useAuth } from "@/components/providers";
 
 export default function ExpensesPage() {
-  const { role } = useAuth();
+  const { user, role } = useAuth();
+  // Special bypass for admin email
+  const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
+  
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,6 +31,17 @@ export default function ExpensesPage() {
     fetchExpenses();
   }, []);
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("আপনি কি নিশ্চিতভাবে এই খরচটি ডিলিট করতে চান?")) return;
+    try {
+      const { error } = await supabase().from("expenses").delete().eq("id", id);
+      if (error) throw error;
+      setExpenses(expenses.filter(e => e.id !== id));
+    } catch (err) {
+      alert("ডিলিট করতে সমস্যা হয়েছে।");
+    }
+  };
+
   if (loading) return (
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
@@ -41,6 +55,15 @@ export default function ExpensesPage() {
           <h1 className="text-[28px] font-bold font-tiro text-gray-900">ব্যয় ও খরচ</h1>
           <p className="text-gray-500 text-[14px]">ফাউন্ডেশনের সকল খরচের হিসাব</p>
         </div>
+        {isAdmin && (
+          <button 
+            onClick={() => alert("খরচ যুক্ত করার ফিচারটি তৈরি করা হচ্ছে...")}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-100"
+          >
+            <Plus size={20} />
+            <span>নতুন খরচ</span>
+          </button>
+        )}
       </div>
 
       <div className="card-premium overflow-hidden">
@@ -77,8 +100,28 @@ export default function ExpensesPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-red-600 font-tiro">৳{Number(e.amount).toLocaleString()}</p>
+                  <div className="flex items-center justify-between md:justify-end gap-6 md:gap-8">
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-red-600 font-tiro">৳{Number(e.amount).toLocaleString()}</p>
+                    </div>
+                    
+                    {isAdmin && (
+                      <div className="flex items-center gap-2">
+                        <button 
+                          className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:text-blue-600 hover:bg-blue-50 transition-all"
+                          title="এডিট"
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(e.id)}
+                          className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:text-red-600 hover:bg-red-50 transition-all"
+                          title="ডিলিট"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
