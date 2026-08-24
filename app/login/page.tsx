@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Stamp, Eye, EyeOff, Phone } from "lucide-react";
+import { Stamp, Eye, EyeOff, Phone, Mail } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 
 const C = {
@@ -13,16 +13,16 @@ const C = {
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [phone, setPhone] = useState("");
+  const [identifier, setIdentifier] = useState(""); // Can be phone or email
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const formatVirtualEmail = (p: string) => {
-    // Remove non-digits
-    const cleanPhone = p.replace(/\D/g, "");
+  const getLoginEmail = (input: string) => {
+    if (input.includes("@")) return input; // Already an email
+    const cleanPhone = input.replace(/\D/g, "");
     return `${cleanPhone}@foundation.app`;
   };
 
@@ -31,23 +31,24 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    if (phone.length < 10) {
-      setError("সঠিক ফোন নম্বর লিখুন (কমপক্ষে ১০ সংখ্যা)");
+    if (identifier.length < 5) {
+      setError("সঠিক ফোন নম্বর বা ইমেইল লিখুন");
       setLoading(false);
       return;
     }
 
-    const virtualEmail = formatVirtualEmail(phone);
+    const loginEmail = getLoginEmail(identifier);
+    const isPhone = !identifier.includes("@");
 
     try {
       if (mode === "login") {
         const { error } = await supabase().auth.signInWithPassword({ 
-          email: virtualEmail, 
+          email: loginEmail, 
           password 
         });
         if (error) {
           const errMsg = error.message.includes("Invalid login credentials")
-            ? "ফোন নম্বর অথবা পাসওয়ার্ড ভুল আছে"
+            ? "তথ্য ভুল আছে — আবার চেষ্টা করুন"
             : "লগইন হয়নি: " + error.message;
           setError(errMsg);
           setLoading(false);
@@ -55,14 +56,14 @@ export default function LoginPage() {
         }
       } else {
         const { data: { user: authUser }, error: authError } = await supabase().auth.signUp({
-          email: virtualEmail, 
+          email: loginEmail, 
           password, 
-          options: { data: { name, phone } }
+          options: { data: { name, phone: isPhone ? identifier : null } }
         });
         
         if (authError) {
           const sigupMsg = authError.message.includes("already registered")
-            ? "এই নম্বর দিয়ে ইতিমধ্যে একাউন্ট আছে — লগইন করুন"
+            ? "এই তথ্য দিয়ে ইতিমধ্যে একাউন্ট আছে — লগইন করুন"
             : "নতুন একাউন্ট খোলা যাচ্ছে না: " + authError.message;
           setError(sigupMsg);
           setLoading(false);
@@ -70,27 +71,32 @@ export default function LoginPage() {
         }
 
         if (authUser) {
-          // Attempt to link member automatically
-          const { data: memberData } = await supabase()
-            .from("members")
-            .select("id")
-            .eq("phone", phone)
-            .single();
+          // Attempt to link member automatically if it's a phone
+          let memberId = null;
+          if (isPhone) {
+            const { data: memberData } = await supabase()
+              .from("members")
+              .select("id")
+              .eq("phone", identifier)
+              .maybeSingle();
+            if (memberData) memberId = memberData.id;
+          }
 
           const { error: profileError } = await supabase()
             .from("users")
             .insert({ 
               id: authUser.id, 
-              email: virtualEmail, 
+              email: loginEmail, 
+              phone: isPhone ? identifier : null,
               role: "member",
-              is_approved: false // Require admin approval for new signups
+              is_approved: false
             });
 
-          if (memberData) {
+          if (memberId) {
             await supabase()
               .from("members")
               .update({ user_id: authUser.id })
-              .eq("id", memberData.id);
+              .eq("id", memberId);
           }
         }
       }
@@ -108,8 +114,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-sm shadow-lg overflow-hidden" style={{ background: C.paper, borderColor: C.border }}>
         <div className="px-8 pt-8 pb-6 text-center" style={{ background: C.ink }}>
           <div className="flex items-center justify-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: C.gold }}>
-              <Stamp size={18} style={{ color: C.ink }} strokeWidth={2} />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden border-2 border-[#C9972D33]">
+              <img src="/assets/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
           </div>
           <h1 className="text-[20px] font-semibold" style={{ fontFamily: "'Tiro Bangla', serif", color: "#F3EFE2" }}>দৌলখাঁড় ফাউন্ডেশন</h1>
@@ -136,10 +142,14 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label htmlFor="phone" className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>ফোন নম্বর</label>
+            <label htmlFor="identifier" className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>ফোন নম্বর বা ইমেইল</label>
             <div className="relative">
-              <input id="phone" type="tel" placeholder="017XXXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} required className="w-full rounded-sm px-3 py-2.5 pl-10 text-[13px] outline-none border focus:ring-1 transition" style={{ background: "#fff", borderColor: C.border }} />
-              <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input id="identifier" type="text" placeholder="017XXXXXXXX বা email@example.com" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required className="w-full rounded-sm px-3 py-2.5 pl-10 text-[13px] outline-none border focus:ring-1 transition" style={{ background: "#fff", borderColor: C.border }} />
+              {identifier.includes("@") ? (
+                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              ) : (
+                <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              )}
             </div>
           </div>
 
