@@ -1,254 +1,229 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSupabase as supabase } from "@/lib/supabase-client";
-import { logAudit } from "@/lib/audit";
-import AppLayout from "@/components/layout";
-import { useAuth } from "@/components/providers";
 import { 
-  Plus, Search, Filter, Download, 
-  MessageCircle, Info, XCircle, 
+  Search, Plus, Filter, Download, 
   Calendar, CreditCard, User, 
-  ChevronRight, ArrowUpRight
+  ChevronRight, ArrowRight, FileText, 
+  MessageSquare, Trash2, Edit2, MoreVertical,
+  CheckCircle2, Clock, AlertCircle, TrendingUp
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 
 export default function DonationsPage() {
-  const { role, memberId } = useAuth();
   const [donations, setDonations] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [formData, setFormData] = useState({ 
-    member_id: "", 
-    amount: 0, 
-    date: new Date().toISOString().split('T')[0], 
-    method: "Cash", 
-    month_count: 1 
-  });
 
-  const fetchData = async () => {
+  const supabase = createClient();
+
+  useEffect(() => {
+    fetchDonations();
+  }, []);
+
+  async function fetchDonations() {
     setLoading(true);
-    let query = supabase().from("donations").select("*, member:members(name, phone)");
-    if (role === 'member' && memberId) {
-      query = query.eq("member_id", memberId);
+    const { data, error } = await supabase
+      .from("donations")
+      .select("*, members(name, phone)")
+      .order("date", { ascending: false });
+
+    if (!error && data) {
+      setDonations(data);
     }
-    const { data: donationData } = await query.order("date", { ascending: false });
-    const { data: memberData } = await supabase().from("members").select("id, name, phone").eq("status", "active");
-    
-    setDonations(donationData || []);
-    setMembers(memberData || []);
     setLoading(false);
-  };
+  }
 
-  useEffect(() => { fetchData(); }, [role, memberId]);
+  const filteredDonations = donations.filter(d => 
+    (d.members?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+     d.purpose?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    (filterType === "all" || d.method?.toLowerCase() === filterType.toLowerCase())
+  );
 
-  const handleAddDonation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const rows = [];
-    const startDate = new Date(formData.date);
-    
-    for (let i = 0; i < formData.month_count; i++) {
-      const currentDate = new Date(startDate);
-      currentDate.setMonth(startDate.getMonth() + i);
-      rows.push({
-        member_id: formData.member_id,
-        amount: formData.amount / formData.month_count,
-        date: currentDate.toISOString().split('T')[0],
-        method: formData.method,
-        notes: formData.month_count > 1 ? `মাসিক কিস্তি ${i + 1}/${formData.month_count}` : ""
-      });
-    }
-
-    const { data, error } = await supabase().from("donations").insert(rows).select();
-    if (error) alert(error.message);
-    else {
-      logAudit("donation.create", "donations", data[0].id, formData);
-      setShowAddModal(false);
-      fetchData();
-    }
-  };
-
-  const handleWhatsAppNotify = async (donation: any) => {
-    try {
-      const res = await fetch('/api/notify/whatsapp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ donationId: donation.id })
-      });
-      const data = await res.json();
-      if (data.success) alert("WhatsApp নোটিফিকেশন পাঠানো হয়েছে!");
-      else alert("নোটিফিকেশন পাঠানো ব্যর্থ হয়েছে: " + data.error);
-    } catch (err) {
-      alert("সার্ভার এরর");
-    }
-  };
+  const totalAmount = donations.reduce((sum, d) => sum + d.amount, 0);
+  const thisMonthAmount = donations
+    .filter(d => new Date(d.date).getMonth() === new Date().getMonth())
+    .reduce((sum, d) => sum + d.amount, 0);
 
   return (
-    <AppLayout>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div className="space-y-10 pb-20">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-[28px] font-bold font-tiro text-gray-900">দান ও চাঁদা</h1>
-          <p className="text-gray-500 text-[14px]">ফাউন্ডেশনের সকল জমার হিসাব</p>
+          <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs uppercase tracking-[0.2em] mb-3">
+            <CreditCard size={14} /> অর্থ ব্যবস্থাপনা
+          </div>
+          <h1 className="text-4xl font-bold text-gray-900 font-tiro leading-tight">অনুদান ও চাঁদা তালিকা</h1>
+          <p className="text-gray-500 font-medium mt-2">ফাউন্ডেশনের সকল জমার হিসাব এখানে সংরক্ষিত আছে।</p>
         </div>
-        {(role === 'admin' || role === 'treasurer') && (
+        <div className="flex items-center gap-3">
+          <button className="btn-outline px-6 py-3.5 text-sm">
+            <Download size={18} /> রিপোর্ট ডাউনলোড
+          </button>
           <button 
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-[#1B4332] text-white rounded-2xl text-[14px] font-bold hover:bg-[#2D6A4F] transition-all shadow-lg shadow-emerald-900/20"
+            className="btn-emerald px-8 py-3.5 text-sm shadow-xl shadow-emerald-600/20"
           >
-            <Plus size={20} /> নতুন জমা
+            <Plus size={18} /> নতুন এন্ট্রি
           </button>
-        )}
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-        <div className="card-premium p-6 bg-emerald-50/50 border-emerald-100">
-          <p className="text-[12px] font-bold text-emerald-700 uppercase tracking-wider mb-1">মোট সংগ্রহ</p>
-          <p className="text-[24px] font-bold text-emerald-900">৳{donations.reduce((sum, d) => sum + d.amount, 0)}</p>
-        </div>
-        <div className="card-premium p-6">
-          <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">চলতি মাসে</p>
-          <p className="text-[24px] font-bold text-gray-800">৳{donations.filter(d => new Date(d.date).getMonth() === new Date().getMonth()).reduce((sum, d) => sum + d.amount, 0)}</p>
-        </div>
-        <div className="card-premium p-6">
-          <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">মোট লেনদেন</p>
-          <p className="text-[24px] font-bold text-gray-800">{donations.length} টি</p>
         </div>
       </div>
 
-      {/* Donations Table */}
-      <div className="card-premium overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input type="text" placeholder="সদস্যের নাম দিয়ে খুঁজুন..." className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border-none rounded-xl text-[14px] outline-none focus:bg-white transition-all" />
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="card-premium p-8 border-l-4 border-l-emerald-600">
+          <div className="flex items-center justify-between mb-6">
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+              <TrendingUp size={24} />
+            </div>
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full uppercase tracking-wider">সর্বমোট</span>
+          </div>
+          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">মোট সংগৃহীত</h3>
+          <p className="text-3xl font-bold text-gray-900 font-tiro">৳ {totalAmount.toLocaleString()}</p>
+        </div>
+
+        <div className="card-premium p-8 border-l-4 border-l-blue-600">
+          <div className="flex items-center justify-between mb-6">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+              <Calendar size={24} />
+            </div>
+            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-wider">এই মাস</span>
+          </div>
+          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">চলতি মাসের জমা</h3>
+          <p className="text-3xl font-bold text-gray-900 font-tiro">৳ {thisMonthAmount.toLocaleString()}</p>
+        </div>
+
+        <div className="card-premium p-8 border-l-4 border-l-amber-600">
+          <div className="flex items-center justify-between mb-6">
+            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center">
+              <User size={24} />
+            </div>
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full uppercase tracking-wider">সদস্য</span>
+          </div>
+          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">মোট দাতা</h3>
+          <p className="text-3xl font-bold text-gray-900 font-tiro">{new Set(donations.map(d => d.member_id)).size} জন</p>
+        </div>
+      </div>
+
+      {/* Filters & Search */}
+      <div className="card-premium p-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={20} />
+            <input 
+              type="text" 
+              placeholder="সদস্যের নাম বা উদ্দেশ্য দিয়ে খুঁজুন..." 
+              className="w-full pl-12 pr-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500/20 font-medium text-gray-900 placeholder:text-gray-400 transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 text-gray-600 rounded-xl text-[13px] font-bold hover:bg-gray-100 transition-all">
-              <Filter size={16} /> ফিল্টার
+            <select 
+              className="px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500/20 font-bold text-sm text-gray-700 cursor-pointer"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              <option value="all">সব মাধ্যম</option>
+              <option value="cash">নগদ (Cash)</option>
+              <option value="bkash">বিকাশ (bKash)</option>
+              <option value="bank">ব্যাংক (Bank)</option>
+            </select>
+            <button className="p-4 bg-gray-50 text-gray-500 hover:bg-gray-100 rounded-2xl transition-colors">
+              <Filter size={20} />
             </button>
           </div>
         </div>
+      </div>
 
+      {/* Table Section */}
+      <div className="card-premium overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[800px]">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50/50 text-[12px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
-                <th className="px-6 py-5">সদস্য</th>
-                <th className="px-6 py-5 text-center">তারিখ</th>
-                <th className="px-6 py-5 text-center">পদ্ধতি</th>
-                <th className="px-6 py-5 text-center">পরিমাণ</th>
-                <th className="px-6 py-5 text-right">অ্যাকশন</th>
+              <tr className="border-b border-gray-100 bg-gray-50/50">
+                <th className="px-8 py-5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">সদস্যের তথ্য</th>
+                <th className="px-6 py-5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">তারিখ</th>
+                <th className="px-6 py-5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">উদ্দেশ্য</th>
+                <th className="px-6 py-5 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-right">পরিমাণ</th>
+                <th className="px-6 py-5 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center">অ্যাকশন</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {donations.map((d) => (
-                <tr key={d.id} className="group hover:bg-gray-50/50 transition-all">
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400">
-                        <User size={18} />
+              {loading ? (
+                [1, 2, 3, 4, 5].map(i => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="px-8 py-6"><div className="h-4 bg-gray-100 rounded w-32"></div></td>
+                    <td className="px-6 py-6"><div className="h-4 bg-gray-100 rounded w-24"></div></td>
+                    <td className="px-6 py-6"><div className="h-4 bg-gray-100 rounded w-40"></div></td>
+                    <td className="px-6 py-6 text-right"><div className="h-4 bg-gray-100 rounded w-16 ml-auto"></div></td>
+                    <td className="px-6 py-6 text-center"><div className="h-8 bg-gray-100 rounded-lg w-20 mx-auto"></div></td>
+                  </tr>
+                ))
+              ) : filteredDonations.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-8 py-20 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300">
+                        <Search size={40} />
                       </div>
-                      <div>
-                        <p className="text-[14px] font-bold text-gray-800">{d.member?.name}</p>
-                        <p className="text-[11px] text-gray-400">{d.notes || 'সাধারণ চাঁদা'}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <span className="text-[13px] font-medium text-gray-600 flex items-center justify-center gap-1">
-                      <Calendar size={12} /> {new Date(d.date).toLocaleDateString('bn-BD')}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-[11px] font-bold uppercase tracking-tighter">
-                      <CreditCard size={12} className="mr-1.5" /> {d.method}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <span className="text-[16px] font-bold text-emerald-600">৳{d.amount}</span>
-                  </td>
-                  <td className="px-6 py-5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <a 
-                        href={`/api/receipts/${d.id}`} 
-                        target="_blank"
-                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
-                        title="Download Receipt"
-                      >
-                        <Download size={18} />
-                      </a>
-                      {(role === 'admin' || role === 'treasurer') && (
-                        <button 
-                          onClick={() => handleWhatsAppNotify(d)}
-                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                          title="Send WhatsApp"
-                        >
-                          <MessageCircle size={18} />
-                        </button>
-                      )}
+                      <p className="text-gray-500 font-medium">কোনো অনুদান পাওয়া যায়নি।</p>
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredDonations.map((donation) => (
+                  <tr key={donation.id} className="group hover:bg-emerald-50/30 transition-colors">
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center font-bold shadow-sm group-hover:scale-110 transition-transform">
+                          {donation.members?.name?.[0] || "U"}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{donation.members?.name || "অজানা সদস্য"}</p>
+                          <p className="text-[10px] text-gray-400 font-medium tracking-wide">{donation.members?.phone || "N/A"}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-6">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Calendar size={14} className="text-gray-400" />
+                        <span className="text-xs font-medium">{new Date(donation.date).toLocaleDateString("bn-BD")}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-6">
+                      <span className="text-xs font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                        {donation.purpose || "মাসিক চাঁদা"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-6 text-right">
+                      <p className="text-sm font-bold text-gray-900">৳ {donation.amount.toLocaleString()}</p>
+                      <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">{donation.method || "Cash"}</p>
+                    </td>
+                    <td className="px-6 py-6 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button 
+                          onClick={() => window.open(`/api/receipts/${donation.id}`, "_blank")}
+                          className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-colors"
+                          title="রসিদ দেখুন"
+                        >
+                          <FileText size={18} />
+                        </button>
+                        <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-xl transition-colors" title="শেয়ার করুন">
+                          <MessageSquare size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-        {donations.length === 0 && (
-          <div className="p-20 text-center text-gray-400">কোনো তথ্য পাওয়া যায়নি</div>
-        )}
       </div>
-
-      {/* Add Donation Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-emerald-950/40 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-8 bg-[#0F2922] text-white flex items-center justify-between">
-              <h2 className="text-[22px] font-bold font-tiro">নতুন জমা এন্ট্রি</h2>
-              <button onClick={() => setShowAddModal(false)} className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all"><XCircle size={24} /></button>
-            </div>
-            <form onSubmit={handleAddDonation} className="p-8 space-y-5">
-              <div className="space-y-2">
-                <label className="text-[12px] font-bold text-gray-400 uppercase tracking-wider ml-1">সদস্য সিলেক্ট করুন</label>
-                <select required value={formData.member_id} onChange={e => setFormData({...formData, member_id: e.target.value})} className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none text-[15px] focus:bg-white focus:border-emerald-500/30 transition-all appearance-none">
-                  <option value="">সদস্য নির্বাচন করুন</option>
-                  {members.map(m => (
-                    <option key={m.id} value={m.id}>{m.name} ({m.phone})</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[12px] font-bold text-gray-400 uppercase tracking-wider ml-1">মোট পরিমাণ (৳)</label>
-                  <input type="number" required value={formData.amount} onChange={e => setFormData({...formData, amount: Number(e.target.value)})} className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none text-[15px] focus:bg-white focus:border-emerald-500/30 transition-all" placeholder="৫০০" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[12px] font-bold text-gray-400 uppercase tracking-wider ml-1">কত মাসের জন্য?</label>
-                  <select value={formData.month_count} onChange={e => setFormData({...formData, month_count: Number(e.target.value)})} className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none text-[15px] focus:bg-white focus:border-emerald-500/30 transition-all appearance-none">
-                    {[1,2,3,4,5,6,12].map(n => <option key={n} value={n}>{n} মাস</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[12px] font-bold text-gray-400 uppercase tracking-wider ml-1">তারিখ</label>
-                  <input type="date" required value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none text-[15px] focus:bg-white focus:border-emerald-500/30 transition-all" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[12px] font-bold text-gray-400 uppercase tracking-wider ml-1">পদ্ধতি</label>
-                  <select value={formData.method} onChange={e => setFormData({...formData, method: e.target.value})} className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none text-[15px] focus:bg-white focus:border-emerald-500/30 transition-all appearance-none">
-                    <option value="Cash">Cash</option>
-                    <option value="Bkash">Bkash</option>
-                    <option value="Nagad">Nagad</option>
-                    <option value="Bank">Bank</option>
-                  </select>
-                </div>
-              </div>
-              <button type="submit" className="w-full py-4 bg-[#1B4332] text-white rounded-2xl text-[16px] font-bold hover:bg-[#2D6A4F] transition-all shadow-xl shadow-emerald-900/20 mt-4">জমা নিশ্চিত করুন</button>
-            </form>
-          </div>
-        </div>
-      )}
-    </AppLayout>
+    </div>
   );
 }
