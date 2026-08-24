@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { logAudit } from "@/lib/audit";
-import AppLayout from "@/components/layout";
+omponents/layout";/d
 import { useAuth } from "@/components/providers";
 import { 
   Plus, Search, Filter, Download, 
@@ -54,7 +54,7 @@ export default function ExpensesPage() {
   const canManage = role === 'admin' || role === 'treasurer';
 
   return (
-    <AppLayout>
+    
       <div className="touch-spacing pb-20 animate-slide-up">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -244,6 +244,6 @@ export default function ExpensesPage() {
           </div>
         </div>
       )}
-    </AppLayout>
+    
   );
 }

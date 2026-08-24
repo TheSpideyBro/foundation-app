@@ -9,7 +9,7 @@ import {
   ShieldCheck, Activity, Award
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-import AppLayout from "@/components/layout";
+omponents/layout";/d
 
 export default function MembersPage() {
   const [members, setMembers] = useState<any[]>([]);
@@ -45,7 +45,7 @@ export default function MembersPage() {
   });
 
   return (
-    <AppLayout>
+    
       <div className="touch-spacing pb-20 animate-slide-up">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
@@ -277,6 +277,6 @@ export default function MembersPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
+    
   );
 }

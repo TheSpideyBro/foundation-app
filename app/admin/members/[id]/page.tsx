@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-import AppLayout from "@/components/layout";
+omponents/layout";/d
 import { 
   User, Phone, MapPin, Shield, 
   ArrowLeft, Download, Calendar, 
@@ -30,20 +30,20 @@ export default function MemberDetail() {
   }, [params.id]);
 
   if (loading) return (
-    <AppLayout>
+    
       <div className="min-h-[400px] flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
       </div>
-    </AppLayout>
+    
   );
 
-  if (!member) return <AppLayout>সদস্য পাওয়া যায়নি</AppLayout>;
+  if (!member) return সদস্য পাওয়া যায়নি;
 
   const totalDonated = donations.reduce((sum, d) => sum + d.amount, 0);
   const monthsPaid = donations.length;
 
   return (
-    <AppLayout>
+    
       <button 
         onClick={() => router.back()}
         className="flex items-center gap-2 text-gray-500 hover:text-emerald-700 font-bold text-[14px] mb-8 group transition-all"
@@ -176,6 +176,6 @@ export default function MemberDetail() {
           </div>
         </div>
       </div>
-    </AppLayout>
+    
   );
 }

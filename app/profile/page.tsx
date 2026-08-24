@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-import AppLayout from "@/components/layout";
+omponents/layout";/d
 import { useAuth } from "@/components/providers";
 import { 
   User, Phone, MapPin, Award, 
@@ -51,15 +51,15 @@ export default function ProfilePage() {
   };
 
   if (loading) return (
-    <AppLayout>
+    
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
-    </AppLayout>
+    
   );
 
   if (!member) return (
-    <AppLayout>
+    
       <div className="max-w-md mx-auto mt-10 sm:mt-20 text-center px-4 animate-slide-up">
         <div className="card-premium p-8 sm:p-12">
           <div className="w-20 h-20 bg-gray-50 rounded-[1.5rem] flex items-center justify-center text-gray-200 mx-auto mb-6">
@@ -73,7 +73,7 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </AppLayout>
+    
   );
 
   const totalDonated = donations.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
@@ -82,7 +82,7 @@ export default function ProfilePage() {
   const progress = yearlyTarget > 0 ? Math.min((totalDonated / yearlyTarget) * 100, 100) : 0;
 
   return (
-    <AppLayout>
+    
       <div className="touch-spacing pb-20 animate-slide-up">
         {/* Hero Section - Mobile Responsive */}
         <div className="relative mb-24 sm:mb-32">
@@ -278,6 +278,6 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
-    </AppLayout>
+    
   );
 }

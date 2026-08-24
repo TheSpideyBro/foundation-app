@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-import AppLayout from "@/components/layout";
+omponents/layout";/d
 import { 
   History, User, Activity, Calendar, 
   Search, Filter, Clock, ArrowRight
@@ -33,7 +33,7 @@ export default function AuditLogs() {
   };
 
   return (
-    <AppLayout>
+    
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-[28px] font-bold font-tiro text-gray-900">অডিট লগ</h1>
@@ -99,6 +99,6 @@ export default function AuditLogs() {
           <div className="p-20 text-center text-gray-400">কোনো লগ পাওয়া যায়নি</div>
         )}
       </div>
-    </AppLayout>
+    
   );
 }

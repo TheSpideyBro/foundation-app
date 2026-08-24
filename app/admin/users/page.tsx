@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-import AppLayout from "@/components/layout";
+omponents/layout";/d
 import { 
   Users, Shield, CheckCircle, XCircle, 
   Trash2, Key, Search, Filter, 
@@ -85,7 +85,7 @@ export default function UserManagement() {
   );
 
   return (
-    <AppLayout>
+    
       <div className="touch-spacing pb-20 animate-slide-up">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -287,6 +287,6 @@ export default function UserManagement() {
           </div>
         </div>
       )}
-    </AppLayout>
+    
   );
 }

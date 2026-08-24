@@ -9,7 +9,7 @@ import {
   TrendingUp, Heart, Wallet
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-import AppLayout from "@/components/layout";
+omponents/layout";/d
 import Link from "next/link";
 
 export default function DonationsPage() {
@@ -48,7 +48,7 @@ export default function DonationsPage() {
     .reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
 
   return (
-    <AppLayout>
+    
       <div className="touch-spacing pb-20 animate-slide-up">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
@@ -276,6 +276,6 @@ export default function DonationsPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
+    
   );
 }
