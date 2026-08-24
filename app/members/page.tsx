@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { logAudit } from "@/lib/audit";
-import { triggerSheetsSync } from "@/lib/sheets-auto";
 import AppLayout from "@/components/layout";
 import { useAuth } from "@/components/providers";
-import { Phone, MapPin, Calendar, Plus, Search, Filter, X, Trash2, Edit2, History, HandCoins, Link as LinkIcon, User, CheckSquare, Square } from "lucide-react";
+import { 
+  Plus, Search, Filter, UserPlus, Link as LinkIcon, Unlink, 
+  MoreVertical, CheckCircle, XCircle, Trash2, Edit2, 
+  Download, RefreshCw, Info, ArrowUpDown, ChevronRight
+} from "lucide-react";
+import Link from "next/link";
 
 const C = {
   ink: "#1B4332", paper: "#FBF8F1", page: "#EDEAE0", border: "#E4DCC8",
@@ -17,302 +21,269 @@ export default function MembersPage() {
   const { user, role } = useAuth();
   const [members, setMembers] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [showLinkModal, setShowLinkModal] = useState(false);
-  const [linkingMember, setLinkingMember] = useState<any>(null);
-  const [selectedUserId, setSelectedUserId] = useState("");
-  
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formName, setFormName] = useState("");
-  const [formPhone, setFormPhone] = useState("");
-  const [formAddress, setFormAddress] = useState("");
-  const [formStatus, setFormStatus] = useState<"active" | "inactive">("active");
-  const [formPledge, setFormPledge] = useState("0");
-  const [formUserId, setFormUserId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [autoLinking, setAutoLinking] = useState(false);
 
-  // Bulk Action State
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  // Modal States
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [formData, setFormData] = useState({ name: "", phone: "", address: "", pledge_amount: 0, status: "active", user_id: "" });
 
-  const fetchMembers = async () => {
-    if (user === undefined) return;
+  const fetchData = async () => {
     setLoading(true);
+    // Fetch members with donation totals
+    const { data: memberData } = await supabase().from("members").select("*, donations(amount)");
+    const { data: userData } = await supabase().from("users").select("id, phone, email");
+    
+    // Process members to add total_donated
+    const processedMembers = memberData?.map(m => ({
+      ...m,
+      total_donated: m.donations?.reduce((sum: number, d: any) => sum + d.amount, 0) || 0
+    })) || [];
+
+    setMembers(processedMembers);
+    setUsers(userData || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const handleAutoLink = async () => {
+    setAutoLinking(true);
     try {
-      const { data } = await supabase()
-        .from("members")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      const { data: donations } = await supabase()
-        .from("donations")
-        .select("member_id, amount");
-
-      const totals: Record<string, number> = {};
-      (donations || []).forEach((d: any) => {
-        totals[d.member_id] = (totals[d.member_id] || 0) + (d.amount || 0);
-      });
-
-      const withTotals = (data || []).map((m: any) => ({
-        ...m,
-        total_donation: totals[m.id] || 0,
-      }));
-
-      setMembers(withTotals);
-
-      if (role === 'admin') {
-        const { data: userData } = await supabase().from("users").select("*");
-        setUsers(userData || []);
+      const res = await fetch('/api/admin/auto-link', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(`সফলভাবে ${data.linkedCount} জন সদস্যকে লিঙ্ক করা হয়েছে!`);
+        fetchData();
       }
+    } catch (err) {
+      alert("অটো-লিঙ্ক ব্যর্থ হয়েছে");
     } finally {
-      setLoading(false);
+      setAutoLinking(false);
     }
   };
 
-  useEffect(() => { fetchMembers(); }, [user, role]);
-
-  const resetForm = () => {
-    setFormName(""); setFormPhone(""); setFormAddress(""); setFormStatus("active"); setFormPledge("0"); setFormUserId("");
-    setEditingId(null); setShowForm(false);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
-    setLoading(true);
-    const pledgeNum = parseFloat(formPledge) || 0;
-    
-    if (editingId) {
-      const { error } = await supabase().from("members").update({ 
-        name: formName, phone: formPhone, address: formAddress, status: formStatus, monthly_pledge: pledgeNum, user_id: formUserId || null
-      }).eq("id", editingId);
-      if (error) { alert(error.message); setLoading(false); return; }
-      logAudit("member.update", "members", editingId, { name: formName });
-    } else {
-      const { error, data } = await supabase().from("members").insert([{ 
-        name: formName, phone: formPhone, address: formAddress, status: formStatus, monthly_pledge: pledgeNum, user_id: formUserId || null
-      }]).select();
-      if (error) { alert(error.message); setLoading(false); return; }
-      logAudit("member.insert", "members", data?.[0]?.id, { name: formName });
-    }
-    triggerSheetsSync();
-    resetForm();
-    fetchMembers();
-  };
-
-  const handleLinkUser = async () => {
-    if (!linkingMember) return;
-    setLoading(true);
-    const { error } = await supabase()
-      .from("members")
-      .update({ user_id: selectedUserId || null })
-      .eq("id", linkingMember.id);
-    
+    const { data, error } = await supabase().from("members").insert([formData]).select();
     if (error) alert(error.message);
     else {
-      logAudit("member.link_user", "members", linkingMember.id, { user_id: selectedUserId });
+      logAudit("member.create", "members", data[0].id, formData);
+      setShowAddModal(false);
+      fetchData();
+    }
+  };
+
+  const handleLinkUser = async (memberId: string, userId: string) => {
+    const { error } = await supabase().from("members").update({ user_id: userId || null }).eq("id", memberId);
+    if (error) alert(error.message);
+    else {
+      logAudit(userId ? "member.link" : "member.unlink", "members", memberId, { user_id: userId });
       setShowLinkModal(false);
-      fetchMembers();
+      fetchData();
     }
-    setLoading(false);
   };
 
-  const handleBulkStatusChange = async (newStatus: "active" | "inactive") => {
-    if (selectedIds.length === 0) return;
-    setLoading(true);
-    const { error } = await supabase().from("members").update({ status: newStatus }).in("id", selectedIds);
-    if (error) alert(error.message);
-    else {
-      logAudit("member.bulk_status_update", "members", null, { ids: selectedIds, status: newStatus });
-      setSelectedIds([]);
-      setIsSelectionMode(false);
-      fetchMembers();
-      triggerSheetsSync();
-    }
-    setLoading(false);
-  };
+  const filteredMembers = useMemo(() => {
+    return members.filter(m => {
+      const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            m.phone.includes(searchTerm);
+      const matchesStatus = statusFilter === "all" || m.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [members, searchTerm, statusFilter]);
 
-  const toggleSelection = (id: string) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  };
-
-  const getDisplayName = (u: any) => {
-    if (u.phone) return u.phone;
-    if (u.email && u.email.endsWith("@foundation.app")) {
-      return u.email.split("@")[0];
-    }
-    return u.email;
-  };
-
-  const filtered = members.filter(m =>
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    (m.phone || "").includes(search)
-  );
+  const canManage = role === 'admin' || role === 'treasurer';
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-[19px] font-semibold" style={{ fontFamily: "'Tiro Bangla', serif", color: C.text }}>সদস্য তালিকা</h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-[22px] font-bold" style={{ fontFamily: "'Tiro Bangla', serif", color: C.text }}>সদস্য তালিকা</h1>
+          <p className="text-[12px] text-gray-500">মোট সদস্য: {members.length} জন</p>
+        </div>
         <div className="flex items-center gap-2">
-          {role === 'admin' && (
-            <button 
-              onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds([]); }} 
-              className="text-[12px] px-3 py-2 rounded-sm border"
-              style={{ borderColor: C.border, color: isSelectionMode ? C.ink : C.sub }}
-            >
-              {isSelectionMode ? "নির্বাচন বন্ধ করুন" : "মাল্টি-সিলেক্ট"}
-            </button>
-          )}
-          {(role === "admin" || role === "treasurer") && (
-            <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 text-[13px] font-semibold px-4 py-2 rounded-sm hover:brightness-105 transition" style={{ background: C.gold, color: C.ink }}>
-              <Plus size={15} strokeWidth={2.5} /> নতুন সদস্য
-            </button>
-          )}
-        </div>
-      </div>
-
-      {isSelectionMode && selectedIds.length > 0 && (
-        <div className="bg-white p-3 rounded-sm border mb-4 flex items-center justify-between animate-in slide-in-from-top-2" style={{ borderColor: C.ink }}>
-          <span className="text-[12px] font-bold" style={{ color: C.ink }}>{selectedIds.length} জন সদস্য নির্বাচিত</span>
-          <div className="flex items-center gap-2">
-            <button onClick={() => handleBulkStatusChange('active')} className="text-[11px] px-3 py-1.5 bg-green-600 text-white rounded-sm font-bold">সক্রিয় করুন</button>
-            <button onClick={() => handleBulkStatusChange('inactive')} className="text-[11px] px-3 py-1.5 bg-gray-500 text-white rounded-sm font-bold">নিষ্ক্রিয় করুন</button>
-          </div>
-        </div>
-      )}
-
-      <div className="flex items-center gap-2 rounded-sm border px-3 py-2 mb-4" style={{ background: C.paper, borderColor: C.border }}>
-        <Search size={15} style={{ color: C.sub }} />
-        <input placeholder="নাম বা ফোন নম্বর দিয়ে খুঁজুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-transparent text-[13px] outline-none flex-1" />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.map((m) => (
-          <div 
-            key={m.id} 
-            onClick={() => isSelectionMode && toggleSelection(m.id)}
-            className={`bg-white p-5 rounded-sm border relative group transition-all ${isSelectionMode ? 'cursor-pointer hover:border-[#1B4332]' : ''}`} 
-            style={{ borderColor: selectedIds.includes(m.id) ? C.ink : C.border, borderWidth: selectedIds.includes(m.id) ? '2px' : '1px' }}
-          >
-            {isSelectionMode && (
-              <div className="absolute top-4 right-4">
-                {selectedIds.includes(m.id) ? <CheckSquare size={18} style={{ color: C.ink }} /> : <Square size={18} style={{ color: C.border }} />}
-              </div>
-            )}
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h3 className="text-[16px] font-bold" style={{ color: C.ink, fontFamily: "'Tiro Bangla', serif" }}>{m.name}</h3>
-                <div className="flex items-center gap-3 mt-1 text-[12px]" style={{ color: C.sub }}>
-                  <span className="flex items-center gap-1"><Phone size={12} /> {m.phone || "—"}</span>
-                  <span className="flex items-center gap-1"><MapPin size={12} /> {m.address || "—"}</span>
-                </div>
-              </div>
-              {!isSelectionMode && (
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${m.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {m.status}
-                </span>
-              )}
-            </div>
-            
-            <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: C.border + "4D" }}>
-              <div>
-                <p className="text-[10px] uppercase font-bold" style={{ color: C.label }}>মোট দান</p>
-                <p className="text-[15px] font-bold" style={{ color: C.ink }}>৳{m.total_donation.toLocaleString()}</p>
-              </div>
-              {!isSelectionMode && (
-                <div className="flex items-center gap-2">
-                  {role === 'admin' && (
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setLinkingMember(m); setSelectedUserId(m.user_id || ""); setShowLinkModal(true); }}
-                      className={`p-2 rounded-sm transition ${m.user_id ? 'text-green-600 bg-green-50' : 'text-blue-600 bg-blue-50'}`}
-                    >
-                      <LinkIcon size={14} />
-                    </button>
-                  )}
-                  <button onClick={(e) => { e.stopPropagation(); setEditingId(m.id); setFormName(m.name); setFormPhone(m.phone || ""); setFormAddress(m.address || ""); setFormStatus(m.status); setFormPledge(String(m.monthly_pledge || 0)); setFormUserId(m.user_id || ""); setShowForm(true); }} className="p-2 text-gray-500 hover:bg-gray-50 rounded-sm"><Edit2 size={14} /></button>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {showLinkModal && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }} onClick={() => setShowLinkModal(false)}>
-          <div className="w-full max-w-md rounded-sm border overflow-hidden" style={{ background: C.paper, borderColor: C.border }} onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b" style={{ borderColor: C.border }}>
-              <h2 className="text-[15px] font-semibold" style={{ fontFamily: "'Tiro Bangla', serif" }}>ইউজার অ্যাকাউন্ট লিঙ্ক করুন</h2>
-              <p className="text-[12px] text-gray-500 mt-1">{linkingMember?.name}-এর জন্য একটি ইউজার সিলেক্ট করুন</p>
-            </div>
-            <div className="p-6 space-y-4">
-              <select 
-                value={selectedUserId} 
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full rounded-sm px-3 py-2.5 text-[13px] outline-none border"
-                style={{ background: "#fff", borderColor: C.border }}
+          {canManage && (
+            <>
+              <button 
+                onClick={handleAutoLink}
+                disabled={autoLinking}
+                className="flex items-center gap-2 px-3 py-2 bg-white border rounded-sm text-[12px] font-bold hover:bg-gray-50 transition-colors"
+                style={{ borderColor: C.border, color: C.ink }}
               >
-                <option value="">সিলেক্ট করুন...</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>{getDisplayName(u)} ({u.role})</option>
-                ))}
-              </select>
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => setShowLinkModal(false)} className="flex-1 py-2 text-[13px] border rounded-sm" style={{ borderColor: C.border }}>বাতিল</button>
-                <button onClick={handleLinkUser} className="flex-1 py-2 text-[13px] font-bold rounded-sm text-white" style={{ background: C.ink }}>লিঙ্ক করুন</button>
-              </div>
-            </div>
-          </div>
+                <RefreshCw size={14} className={autoLinking ? "animate-spin" : ""} />
+                {autoLinking ? "লিঙ্ক হচ্ছে..." : "অটো-লিঙ্ক"}
+              </button>
+              <button 
+                onClick={() => { setFormData({ name: "", phone: "", address: "", pledge_amount: 0, status: "active", user_id: "" }); setShowAddModal(true); }}
+                className="flex items-center gap-2 px-4 py-2 rounded-sm text-[12px] font-bold text-white transition-transform active:scale-95"
+                style={{ background: C.ink }}
+              >
+                <Plus size={16} /> নতুন সদস্য
+              </button>
+            </>
+          )}
         </div>
-      )}
+      </div>
 
-      {showForm && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }} onClick={resetForm}>
-          <div className="w-full max-w-md rounded-sm border overflow-hidden" style={{ background: C.paper, borderColor: C.border }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: C.border }}>
-              <h2 className="text-[15px] font-semibold" style={{ fontFamily: "'Tiro Bangla', serif" }}>{editingId ? "সদস্য সম্পাদনা" : "নতুন সদস্য যোগ করুন"}</h2>
-              <button onClick={resetForm}><X size={18} style={{ color: C.sub }} /></button>
+      {/* Filters & Search */}
+      <div className="bg-white p-4 rounded-sm border mb-6 flex flex-col md:flex-row gap-4" style={{ borderColor: C.border }}>
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <input 
+            type="text" 
+            placeholder="সদস্যের নাম বা ফোন নম্বর দিয়ে খুঁজুন..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-gray-50 border-none rounded-sm text-[13px] outline-none focus:ring-1 focus:ring-ink/20"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter size={16} className="text-gray-400" />
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-gray-50 border-none px-3 py-2 rounded-sm text-[13px] outline-none"
+          >
+            <option value="all">সব স্ট্যাটাস</option>
+            <option value="active">সক্রিয় (Active)</option>
+            <option value="inactive">নিষ্ক্রিয় (Inactive)</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Members Grid/Table */}
+      <div className="bg-white rounded-sm border overflow-hidden" style={{ borderColor: C.border }}>
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 text-[11px] uppercase text-gray-500 font-bold border-b">
+            <tr>
+              <th className="px-6 py-3">সদস্যের তথ্য</th>
+              <th className="px-6 py-3">মাসিক চাঁদা</th>
+              <th className="px-6 py-3">মোট দান</th>
+              <th className="px-6 py-3">স্ট্যাটাস</th>
+              <th className="px-6 py-3">ইউজার অ্যাকাউন্ট</th>
+              <th className="px-6 py-3 text-right">অ্যাকশন</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {filteredMembers.map((m) => (
+              <tr key={m.id} className="text-[13px] hover:bg-gray-50 transition-colors group">
+                <td className="px-6 py-4">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[14px]" style={{ color: C.text }}>{m.name}</span>
+                    <span className="text-[11px] text-gray-500 flex items-center gap-1"><Phone size={10} /> {m.phone}</span>
+                  </div>
+                </td>
+                <td className="px-6 py-4 font-medium">৳{m.pledge_amount}</td>
+                <td className="px-6 py-4 font-bold" style={{ color: C.ink }}>৳{m.total_donated}</td>
+                <td className="px-6 py-4">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${m.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                    {m.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  {m.user_id ? (
+                    <div className="flex items-center gap-2 text-green-600 font-medium text-[11px]">
+                      <CheckCircle size={12} /> লিঙ্কড
+                      {canManage && (
+                        <button onClick={() => handleLinkUser(m.id, "")} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Unlink size={12} />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-[11px] flex items-center gap-1"><XCircle size={12} /> লিঙ্ক নেই</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <Link href={`/admin/members/${m.id}`} className="p-2 text-gray-400 hover:text-ink hover:bg-gray-100 rounded-sm transition-colors" title="View Profile">
+                      <ChevronRight size={16} />
+                    </Link>
+                    {canManage && (
+                      <button 
+                        onClick={() => { setSelectedMember(m); setShowLinkModal(true); }}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-sm transition-colors"
+                        title="Link User"
+                      >
+                        <LinkIcon size={14} />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {filteredMembers.length === 0 && (
+          <div className="p-10 text-center text-gray-500 flex flex-col items-center gap-2">
+            <Info size={32} className="text-gray-200" />
+            <p>কোনো সদস্য পাওয়া যায়নি</p>
+          </div>
+        )}
+      </div>
+
+      {/* Add Member Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-sm border shadow-2xl" style={{ background: C.paper, borderColor: C.border }}>
+            <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: C.border }}>
+              <h2 className="text-[16px] font-bold" style={{ fontFamily: "'Tiro Bangla', serif" }}>নতুন সদস্য যোগ করুন</h2>
+              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600"><XCircle size={20} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
+            <form onSubmit={handleAddMember} className="p-6 space-y-4">
               <div>
-                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>নাম *</label>
-                <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} required className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border focus:ring-1" style={{ background: "#fff", borderColor: C.border }} />
+                <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">সদস্যের নাম</label>
+                <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2 bg-white border rounded-sm outline-none text-[13px]" style={{ borderColor: C.border }} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>ফোন</label>
-                  <input type="text" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border" style={{ background: "#fff", borderColor: C.border }} />
+                  <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">ফোন নম্বর</label>
+                  <input type="text" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full px-3 py-2 bg-white border rounded-sm outline-none text-[13px]" style={{ borderColor: C.border }} />
                 </div>
                 <div>
-                  <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>মাসিক প্রতিশ্রুতি</label>
-                  <input type="number" value={formPledge} onChange={(e) => setFormPledge(e.target.value)} className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border" style={{ background: "#fff", borderColor: C.border }} />
+                  <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">মাসিক চাঁদা (৳)</label>
+                  <input type="number" required value={formData.pledge_amount} onChange={e => setFormData({...formData, pledge_amount: Number(e.target.value)})} className="w-full px-3 py-2 bg-white border rounded-sm outline-none text-[13px]" style={{ borderColor: C.border }} />
                 </div>
               </div>
               <div>
-                <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>ঠিকানা</label>
-                <input type="text" value={formAddress} onChange={(e) => setFormAddress(e.target.value)} className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border" style={{ background: "#fff", borderColor: C.border }} />
+                <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">লিঙ্কড ইউজার (ঐচ্ছিক)</label>
+                <select value={formData.user_id} onChange={e => setFormData({...formData, user_id: e.target.value})} className="w-full px-3 py-2 bg-white border rounded-sm outline-none text-[13px]" style={{ borderColor: C.border }}>
+                  <option value="">কোনো ইউজার লিঙ্ক করবেন না</option>
+                  {users.filter(u => !members.some(m => m.user_id === u.id)).map(u => (
+                    <option key={u.id} value={u.id}>{u.phone || u.email}</option>
+                  ))}
+                </select>
               </div>
-              {role === 'admin' && (
-                <div>
-                  <label className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>ইউজার অ্যাকাউন্ট লিঙ্ক করুন (ঐচ্ছিক)</label>
-                  <select 
-                    value={formUserId} 
-                    onChange={(e) => setFormUserId(e.target.value)}
-                    className="w-full rounded-sm px-3 py-2 text-[13px] outline-none border"
-                    style={{ background: "#fff", borderColor: C.border }}
-                  >
-                    <option value="">সিলেক্ট করুন...</option>
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>{getDisplayName(u)}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={resetForm} className="flex-1 py-2 text-[13px] border rounded-sm" style={{ borderColor: C.border }}>বাতিল</button>
-                <button type="submit" className="flex-1 py-2 text-[13px] font-bold rounded-sm text-white" style={{ background: C.ink }}>{editingId ? "আপডেট করুন" : "সদস্য যোগ করুন"}</button>
-              </div>
+              <button type="submit" className="w-full py-3 mt-4 text-[14px] font-bold text-white rounded-sm" style={{ background: C.ink }}>সদস্য যোগ করুন</button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Link User Modal */}
+      {showLinkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white w-full max-w-sm rounded-sm border shadow-xl" style={{ background: C.paper, borderColor: C.border }}>
+            <div className="p-4 border-b font-bold text-[15px]">ইউজার লিঙ্ক করুন: {selectedMember?.name}</div>
+            <div className="p-6 space-y-4">
+              <select 
+                className="w-full px-3 py-2 bg-white border rounded-sm outline-none text-[13px]"
+                style={{ borderColor: C.border }}
+                onChange={(e) => handleLinkUser(selectedMember.id, e.target.value)}
+                defaultValue={selectedMember?.user_id || ""}
+              >
+                <option value="">লিঙ্ক নেই</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>{u.phone || u.email}</option>
+                ))}
+              </select>
+              <button onClick={() => setShowLinkModal(false)} className="w-full py-2 text-[13px] border rounded-sm" style={{ borderColor: C.border }}>বন্ধ করুন</button>
+            </div>
           </div>
         </div>
       )}
