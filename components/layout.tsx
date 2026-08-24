@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -8,6 +8,7 @@ import {
   Stamp, X, LogOut, Menu, ShieldCheck, User, Settings, History
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
+import { getSupabase as supabase } from "@/lib/supabase-client";
 
 const C = {
   ink: "#1B4332", paper: "#FBF8F1", page: "#EDEAE0", border: "#E4DCC8",
@@ -34,7 +35,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [displayName, setDisplayName] = useState("");
   const activeKey = pathname === "/" ? "/dashboard" : pathname;
+
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchUserPhone = async () => {
+      const { data } = await supabase().from("users").select("phone, email").eq("id", user.id).single();
+      if (data?.phone) {
+        setDisplayName(data.phone);
+      } else if (data?.email && data.email.endsWith("@foundation.app")) {
+        setDisplayName(data.email.split("@")[0]);
+      } else {
+        setDisplayName(user.email || "User");
+      }
+    };
+    fetchUserPhone();
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -97,10 +115,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="px-3 py-4 border-t" style={{ borderColor: C.gold + "33" }}>
           <div className="flex items-center gap-2 px-2 py-1.5 mb-1">
-            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: C.gold + "33", color: C.gold }}>
-              {(user?.email || "U")[0].toUpperCase()}
+            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold uppercase" style={{ background: C.gold + "33", color: C.gold }}>
+              {displayName[0] || "U"}
             </div>
-            <span className="text-[11px] truncate flex-1 text-[#B8CCC0]">{user?.email}</span>
+            <span className="text-[11px] truncate flex-1 text-[#B8CCC0]">{displayName}</span>
           </div>
           <button onClick={handleSignOut} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-[12px] transition hover:brightness-110" style={{ color: "#D8E2DC" }}>
             <LogOut size={14} /> বের হওন

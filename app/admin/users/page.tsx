@@ -52,7 +52,18 @@ export default function UserManagementPage() {
     else fetchData();
   };
 
-  const filtered = users.filter(u => u.email.toLowerCase().includes(search.toLowerCase()));
+  const getDisplayName = (u: any) => {
+    if (u.phone) return u.phone;
+    if (u.email && u.email.endsWith("@foundation.app")) {
+      return u.email.split("@")[0];
+    }
+    return u.email;
+  };
+
+  const filtered = users.filter(u => {
+    const name = getDisplayName(u).toLowerCase();
+    return name.includes(search.toLowerCase());
+  });
 
   if (role !== 'admin') return <AppLayout><div className="p-10 text-center">Unauthorized</div></AppLayout>;
 
@@ -64,14 +75,14 @@ export default function UserManagementPage() {
 
       <div className="flex items-center gap-2 rounded-sm border px-3 py-2 mb-6" style={{ background: C.paper, borderColor: C.border }}>
         <Search size={15} style={{ color: C.sub }} />
-        <input placeholder="ইমেইল দিয়ে খুঁজুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-transparent text-[13px] outline-none flex-1" />
+        <input placeholder="ফোন নম্বর দিয়ে খুঁজুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-transparent text-[13px] outline-none flex-1" />
       </div>
 
       <div className="bg-white rounded-sm border overflow-hidden" style={{ borderColor: C.border }}>
         <table className="w-full text-left">
           <thead className="bg-gray-50 text-[11px] uppercase font-bold text-gray-500">
             <tr>
-              <th className="px-6 py-3">ইউজার ইমেইল</th>
+              <th className="px-6 py-3">ইউজার (ফোন)</th>
               <th className="px-6 py-3">রোল (Role)</th>
               <th className="px-6 py-3">স্ট্যাটাস</th>
               <th className="px-6 py-3">লিঙ্কড মেম্বার</th>
@@ -83,7 +94,7 @@ export default function UserManagementPage() {
               const linkedMember = members.find(m => m.user_id === u.id);
               return (
                 <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 font-medium">{u.email}</td>
+                  <td className="px-6 py-4 font-medium">{getDisplayName(u)}</td>
                   <td className="px-6 py-4">
                     <select 
                       value={u.role} 
