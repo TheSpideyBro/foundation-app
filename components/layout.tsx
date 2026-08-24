@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, HandCoins, ReceiptText, FileBarChart,
-  Stamp, X, LogOut, Menu, ShieldCheck, User
+  Stamp, X, LogOut, Menu, ShieldCheck, User, Settings, History
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
 
@@ -23,11 +23,11 @@ const NAV = [
   { key: "/profile", label: "প্রোফাইল", icon: User },
 ];
 
-export const ADMIN_NAV = {
-  key: "/admin",
-  label: "অ্যাডমিন",
-  icon: ShieldCheck,
-};
+export const ADMIN_NAV = [
+  { key: "/admin", label: "অ্যাডমিন", icon: ShieldCheck },
+  { key: "/admin/users", label: "ইউজার কন্ট্রোল", icon: Settings },
+  { key: "/admin/audit", label: "অডিট লগ", icon: History },
+];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut } = useAuth();
@@ -50,12 +50,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <img src="/assets/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
           </div>
           <div>
-            <p className="text-[15px] font-semibold text-[#F3EFE2]" style={{ fontFamily: "'Tiro Bangla', serif" }}>দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</p>
+            <p className="text-[15px] font-semibold text-[#F3EFE2]" style={{ fontFamily: "'Tiro Bangla', serif" }}>দৌলখাঁড় ফাউন্ডেশন</p>
             <p className="text-[10.5px] text-[#B8CCC0]">হিসাব খাতা</p>
           </div>
         </div>
         <div className="h-[3px] w-full opacity-50" style={{ backgroundImage: "repeating-linear-gradient(90deg, #C9972D 0 10px, transparent 10px 20px)" }} />
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {NAV.map((n) => {
             const active = activeKey === n.key || (n.key !== "/dashboard" && pathname?.startsWith(n.key));
             return (
@@ -74,21 +74,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
-          {role === "admin" && (() => {
-            const n = ADMIN_NAV;
-            const active = pathname === n.key;
-            return (
-              <Link
-                key={n.key}
-                href={n.key}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-[13.5px] transition hover:brightness-110"
-                style={{ background: active ? C.gold : C.gold + "26", color: active ? C.ink : C.gold, fontWeight: 600 }}
-              >
-                <n.icon size={16} strokeWidth={1.9} />
-                {n.label}
-              </Link>
-            );
-          })()}
+          
+          {role === "admin" && (
+            <div className="pt-4 mt-4 border-t border-[#C9972D33]">
+              <p className="px-3 text-[10px] font-bold text-[#B8CCC0] uppercase mb-2">অ্যাডমিন কন্ট্রোল</p>
+              {ADMIN_NAV.map((n) => {
+                const active = pathname === n.key;
+                return (
+                  <Link
+                    key={n.key}
+                    href={n.key}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-[13.5px] transition hover:brightness-110"
+                    style={{ background: active ? C.gold : "transparent", color: active ? C.ink : C.gold, fontWeight: 600 }}
+                  >
+                    <n.icon size={16} strokeWidth={1.9} />
+                    {n.label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </nav>
         <div className="px-3 py-4 border-t" style={{ borderColor: C.gold + "33" }}>
           <div className="flex items-center gap-2 px-2 py-1.5 mb-1">
@@ -124,7 +129,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <p className="text-[15px] font-semibold text-[#F3EFE2]" style={{ fontFamily: "'Tiro Bangla', serif" }}>মেনু</p>
               <button onClick={() => setMobileNavOpen(false)}><X size={18} className="text-[#F3EFE2]" /></button>
             </div>
-            <div className="space-y-1 flex-1">
+            <div className="space-y-1 flex-1 overflow-y-auto">
               {NAV.map((n) => {
                 const active = activeKey === n.key || pathname?.startsWith(n.key);
                 return (
@@ -139,21 +144,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </Link>
                 );
               })}
-              {role === "admin" && (() => {
-                const n = ADMIN_NAV;
-                const active = pathname === n.key;
-                return (
-                  <Link
-                    key={n.key}
-                    href={n.key}
-                    onClick={() => setMobileNavOpen(false)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-[13.5px]"
-                    style={{ background: active ? C.gold : C.gold + "26", color: active ? C.ink : C.gold, fontWeight: 600 }}
-                  >
-                    <n.icon size={16} />{n.label}
-                  </Link>
-                );
-              })()}
+              {role === "admin" && (
+                <div className="pt-4 mt-4 border-t border-[#C9972D33]">
+                  {ADMIN_NAV.map((n) => {
+                    const active = pathname === n.key;
+                    return (
+                      <Link
+                        key={n.key}
+                        href={n.key}
+                        onClick={() => setMobileNavOpen(false)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-[13.5px]"
+                        style={{ background: active ? C.gold : "transparent", color: active ? C.ink : C.gold, fontWeight: 600 }}
+                      >
+                        <n.icon size={16} />{n.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <button onClick={() => { handleSignOut(); setMobileNavOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-sm text-[13px] mt-4 transition hover:brightness-110" style={{ color: "#D8E2DC" }}>
               <LogOut size={16} /> বের হওন
