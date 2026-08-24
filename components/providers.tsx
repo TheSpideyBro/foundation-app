@@ -8,6 +8,8 @@ type AuthContextType = {
   user: SupaUser | null | undefined;
   role: string | null;
   isApproved: boolean;
+  memberId: string | null;
+  phone: string | null;
   loading: boolean;
   signOut: () => Promise<void>;
 };
@@ -16,6 +18,8 @@ const AuthContext = createContext<AuthContextType>({
   user: undefined,
   role: null,
   isApproved: false,
+  memberId: null,
+  phone: null,
   loading: true,
   signOut: async () => {},
 });
@@ -28,6 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SupaUser | null | undefined>(undefined);
   const [role, setRole] = useState<string | null>(null);
   const [isApproved, setIsApproved] = useState(false);
+  const [memberId, setMemberId] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,11 +41,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .auth.getSession()
       .then(async ({ data: { session } }) => {
         setUser(session?.user ?? null);
-        setLoading(false);
         if (session?.user) {
-          ensureProfile(session.user);
-          resolveRole(session.user.id);
+          await ensureProfile(session.user);
+          await resolveRole(session.user.id);
         }
+        setLoading(false);
       })
       .catch((err) => {
         console.error("[AuthProvider] getSession failed:", err);
@@ -47,25 +53,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       });
 
-    const timeout = setTimeout(() => {
-      setLoading(false);
-    }, 5000);
-
-    const { data: authListener } = supabase().auth.onAuthStateChange((event, session) => {
+    const { data: authListener } = supabase().auth.onAuthStateChange(async (event, session) => {
       if (session) {
         setUser(session.user as any);
         invalidateSupabaseClient();
-        resolveRole((session.user as any).id);
+        await resolveRole((session.user as any).id);
       } else {
         setUser(null);
         setRole(null);
         setIsApproved(false);
+        setMemberId(null);
+        setPhone(null);
         invalidateSupabaseClient();
       }
     });
 
     return () => {
-      clearTimeout(timeout);
       authListener?.subscription?.unsubscribe();
     };
   }, []);
@@ -76,10 +79,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function resolveRole(uid: string) {
     try {
-      const { data } = await supabase().from("users").select("role, is_approved").eq("id", uid).single();
-      setRole((data as any)?.role ?? null);
-      setIsApproved((data as any)?.is_approved ?? false);
-    } catch {
+      const { data } = await supabase().from("users").select("role, is_approved, member_id, phone").eq("id", uid).single();
+      if (data) {
+        setRole(data.role);
+        setIsApproved(data.is_approved);
+        setMemberId(data.member_id);
+        setPhone(data.phone);
+      }
+    } catch (err) {
+      console.error("[AuthProvider] resolveRole failed:", err);
       setRole(null);
       setIsApproved(false);
     }
@@ -87,9 +95,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function ensureProfile(u: SupaUser) {
     try {
-      const { count } = await supabase().from("users").select("*", { count: "exact", head: true }).eq("id", u.id);
-      if (count === null || count === 0) {
-        await supabase().from("users").insert({ id: u.id, email: u.email });
+      const { data } = await supabase().from("users").select("id").eq("id", u.id).single();
+      if (!data) {
+        await supabase().from("users").insert({ id: u.id, email: u.email, role: 'member' });
       }
     } catch (err) {
       console.warn("[AuthProvider] profile bootstrap skipped:", err);
@@ -97,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, role, isApproved, loading, signOut }}>
+    <AuthContext.Provider value={{ user, role, isApproved, memberId, phone, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

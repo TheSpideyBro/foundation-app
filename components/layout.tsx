@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
@@ -9,35 +9,16 @@ import {
   ShieldCheck, Settings, Bell, Search,
   Heart, Leaf, Home
 } from "lucide-react";
-import { getSupabase as supabase } from "@/lib/supabase-client";
+import { useAuth } from "@/components/providers";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const { user, role, signOut, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase().auth.getSession();
-      if (session) {
-        setUser(session.user);
-        const { data: userData } = await supabase()
-          .from("users")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
-        setRole(userData?.role || "member");
-      } else {
-        router.push("/login");
-      }
-    };
-    checkUser();
-  }, [router]);
-
   const handleLogout = async () => {
-    await supabase().auth.signOut();
+    await signOut();
     router.push("/login");
   };
 
@@ -59,6 +40,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const visibleMenuItems = menuItems.filter(item => item.roles.includes(role || ""));
   const visibleAdminItems = adminItems.filter(item => item.roles.includes(role || ""));
+
+  if (loading && !user) return null;
 
   return (
     <div className="min-h-screen bg-[#FDFCF9] flex flex-col lg:flex-row font-hind">
