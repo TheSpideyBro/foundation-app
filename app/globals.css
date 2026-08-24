@@ -23,21 +23,33 @@
     font-family: var(--font-inter), var(--font-hind), sans-serif;
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.01em;
+    /* Prevent auto-zoom on iOS */
+    @apply text-base;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-tiro), serif;
     letter-spacing: 0;
   }
+
+  /* Responsive Headings */
+  h1 { @apply text-3xl md:text-4xl lg:text-5xl font-bold; }
+  h2 { @apply text-2xl md:text-3xl lg:text-4xl font-bold; }
+  h3 { @apply text-xl md:text-2xl lg:text-3xl font-bold; }
+
+  /* Mobile-friendly Inputs */
+  input, select, textarea {
+    @apply text-[16px] w-full; /* Force 16px to prevent iOS zoom */
+  }
 }
 
 /* Premium Card Design */
 .card-premium {
-  @apply bg-white border border-gray-100 rounded-[2rem] shadow-sm transition-all duration-300;
+  @apply bg-white border border-gray-100 rounded-[1.5rem] md:rounded-[2rem] shadow-sm transition-all duration-300;
 }
 
 .card-premium:hover {
-  @apply shadow-xl shadow-gray-200/50 -translate-y-1 border-emerald-100;
+  @apply md:shadow-xl md:shadow-gray-200/50 md:-translate-y-1 md:border-emerald-100;
 }
 
 /* Glassmorphism Elements */
@@ -47,7 +59,8 @@
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -62,45 +75,51 @@
 
 /* Button Refinement */
 .btn-emerald {
-  @apply bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-2xl transition-all active:scale-95 shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2;
+  @apply bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 px-6 rounded-2xl transition-all active:scale-95 shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 min-h-[44px] min-w-[44px];
 }
 
 .btn-outline {
-  @apply bg-white border border-gray-200 hover:border-emerald-600 hover:text-emerald-600 text-gray-700 font-bold py-3 px-6 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2;
+  @apply bg-white border border-gray-200 hover:border-emerald-600 hover:text-emerald-600 active:bg-emerald-50 text-gray-700 font-bold py-3 px-6 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 min-h-[44px] min-w-[44px];
 }
 
-/* Table Styling */
+/* Table Styling - Responsive */
 .table-container {
-  @apply overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-sm;
+  @apply overflow-x-auto rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 bg-white shadow-sm;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-container table {
+  @apply min-w-full;
 }
 
 .table-header {
-  @apply bg-gray-50/50 border-b border-gray-100 text-gray-400 text-[11px] font-bold uppercase tracking-widest;
+  @apply bg-gray-50/50 border-b border-gray-100 text-gray-400 text-[10px] md:text-[11px] font-bold uppercase tracking-widest whitespace-nowrap;
 }
 
 .table-row {
   @apply border-b border-gray-50 last:border-0 hover:bg-emerald-50/30 transition-colors;
 }
 
-/* Animations */
+/* Animations - Reduced for mobile */
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-slide-up {
-  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Badge Styles */
-.badge-emerald {
-  @apply bg-emerald-50 text-emerald-700 text-[11px] font-bold px-3 py-1 rounded-full;
+/* Mobile List View Card */
+.mobile-list-card {
+  @apply p-4 border-b border-gray-50 last:border-0 flex flex-col gap-2;
 }
 
-.badge-amber {
-  @apply bg-amber-50 text-amber-700 text-[11px] font-bold px-3 py-1 rounded-full;
+/* Touch Spacing Helpers */
+.touch-spacing {
+  @apply space-y-4 md:space-y-6;
 }
 
-.badge-rose {
-  @apply bg-rose-50 text-rose-700 text-[11px] font-bold px-3 py-1 rounded-full;
+.touch-grid {
+  @apply grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 md:gap-6;
 }
