@@ -3,6 +3,7 @@ import { Tiro_Bangla, Hind_Siliguri } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers";
 import Script from "next/script";
+import LayoutWrapper from "./layout-wrapper";
 
 const tiroBangla = Tiro_Bangla({
   weight: "400",
@@ -45,7 +46,7 @@ export default function RootLayout({
     <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable}`}>
       <body className="antialiased font-hind">
         <AuthProvider>
-          {children}
+          <LayoutWrapper>{children}</LayoutWrapper>
         </AuthProvider>
         <Script id="register-sw" strategy="afterInteractive">
           {`
@@ -53,7 +54,6 @@ export default function RootLayout({
               window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js').then(function(registration) {
                   console.log('ServiceWorker registration successful');
-                  // Check for updates
                   registration.update();
                 }, function(err) {
                   console.log('ServiceWorker registration failed: ', err);
