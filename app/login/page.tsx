@@ -1,180 +1,135 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Stamp, Eye, EyeOff, Phone, Mail } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-
-const C = {
-  ink: "#1B4332", paper: "#FBF8F1", page: "#EDEAE0", border: "#E4DCC8",
-  gold: "#C9972D", red: "#A63D40", text: "#2B2B26", sub: "#8A8371", label: "#7A7364",
-};
+import { useRouter } from "next/navigation";
+import { LogIn, Phone, Key, ShieldCheck, Heart, ArrowRight, UserPlus } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [identifier, setIdentifier] = useState(""); // Can be phone or email
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const router = useRouter();
 
-  const getLoginEmail = (input: string) => {
-    if (input.includes("@")) return input; // Already an email
-    const cleanPhone = input.replace(/\D/g, "");
-    return `${cleanPhone}@foundation.app`;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
+    
+    const virtualEmail = phone.includes('@') ? phone : `${phone}@foundation.app`;
+    
+    const { error } = await supabase().auth.signInWithPassword({
+      email: virtualEmail,
+      password,
+    });
 
-    if (identifier.length < 5) {
-      setError("সঠিক ফোন নম্বর বা ইমেইল লিখুন");
-      setLoading(false);
-      return;
-    }
-
-    const loginEmail = getLoginEmail(identifier);
-    const isPhone = !identifier.includes("@");
-
-    try {
-      if (mode === "login") {
-        const { error } = await supabase().auth.signInWithPassword({ 
-          email: loginEmail, 
-          password 
-        });
-        if (error) {
-          const errMsg = error.message.includes("Invalid login credentials")
-            ? "তথ্য ভুল আছে — আবার চেষ্টা করুন"
-            : "লগইন হয়নি: " + error.message;
-          setError(errMsg);
-          setLoading(false);
-          return;
-        }
-      } else {
-        const { data: { user: authUser }, error: authError } = await supabase().auth.signUp({
-          email: loginEmail, 
-          password, 
-          options: { data: { name, phone: isPhone ? identifier : null } }
-        });
-        
-        if (authError) {
-          const sigupMsg = authError.message.includes("already registered")
-            ? "এই তথ্য দিয়ে ইতিমধ্যে একাউন্ট আছে — লগইন করুন"
-            : "নতুন একাউন্ট খোলা যাচ্ছে না: " + authError.message;
-          setError(sigupMsg);
-          setLoading(false);
-          return;
-        }
-
-        if (authUser) {
-          // Attempt to link member automatically if it's a phone
-          let memberId = null;
-          if (isPhone) {
-            const { data: memberData } = await supabase()
-              .from("members")
-              .select("id")
-              .eq("phone", identifier)
-              .maybeSingle();
-            if (memberData) memberId = memberData.id;
-          }
-
-          const { error: profileError } = await supabase()
-            .from("users")
-            .insert({ 
-              id: authUser.id, 
-              email: loginEmail, 
-              phone: isPhone ? identifier : null,
-              role: "member",
-              is_approved: false
-            });
-
-          if (memberId) {
-            await supabase()
-              .from("members")
-              .update({ user_id: authUser.id })
-              .eq("id", memberId);
-          }
-        }
-      }
-      router.push("/dashboard");
-      router.refresh();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "কিছু সমস্যা হয়েছে");
-    } finally {
-      setLoading(false);
-    }
+    if (error) alert("লগইন ব্যর্থ: " + error.message);
+    else router.push("/dashboard");
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: C.page }}>
-      <div className="w-full max-w-md rounded-sm shadow-lg overflow-hidden" style={{ background: C.paper, borderColor: C.border }}>
-        <div className="px-8 pt-8 pb-6 text-center" style={{ background: C.ink }}>
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden border-2 border-[#C9972D33]">
-              <img src="/assets/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+    <div className="min-h-screen bg-[#F8F9F8] flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-100/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-emerald-50/50 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+
+      <div className="w-full max-w-[1100px] bg-white rounded-[2.5rem] shadow-2xl shadow-emerald-900/5 overflow-hidden flex flex-col md:flex-row relative z-10">
+        {/* Left Side: Branding */}
+        <div className="md:w-[45%] bg-[#0F2922] p-12 text-white flex flex-col justify-between relative">
+          <div className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">
+             <div className="absolute -top-20 -right-20 w-64 h-64 border-[40px] border-emerald-400 rounded-full"></div>
+             <div className="absolute top-1/2 -left-20 w-40 h-40 border-[20px] border-emerald-500 rounded-full"></div>
+          </div>
+          
+          <div className="relative z-10">
+            <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mb-8 shadow-lg shadow-emerald-500/20">
+              <Heart size={32} className="text-white" />
+            </div>
+            <h1 className="text-[36px] font-bold font-tiro leading-tight mb-4">দাউলখার ফাউন্ডেশন</h1>
+            <p className="text-emerald-400/80 text-[16px] font-medium leading-relaxed max-w-xs">
+              স্বচ্ছতা এবং সেবার মাধ্যমে একটি সুন্দর আগামী গড়ে তোলার পথে আমাদের যাত্রা।
+            </p>
+          </div>
+
+          <div className="relative z-10 pt-12">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                <ShieldCheck size={20} className="text-emerald-400" />
+              </div>
+              <p className="text-[14px] font-medium text-emerald-100/70">নিরাপদ এবং স্বচ্ছ হিসাব ব্যবস্থাপনা</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                <LogIn size={20} className="text-emerald-400" />
+              </div>
+              <p className="text-[14px] font-medium text-emerald-100/70">সদস্যদের জন্য সহজ অ্যাক্সেস</p>
             </div>
           </div>
-          <h1 className="text-[20px] font-semibold" style={{ fontFamily: "'Tiro Bangla', serif", color: "#F3EFE2" }}>দৌলখাঁড় ফাউন্ডেশন</h1>
-          <p className="text-[11px]" style={{ color: "#B8CCC0" }}>হিসাব খাতা</p>
         </div>
 
-        <div className="flex border-b px-8" style={{ borderColor: C.border }}>
-          <button onClick={() => { setMode("login"); setError(""); }} className="flex-1 py-3 text-[13px] font-medium transition" style={{ color: mode === "login" ? C.ink : C.sub, borderBottom: mode === "login" ? `2px solid ${C.gold}` : "transparent" }}>লগইন</button>
-          <button onClick={() => { setMode("signup"); setError(""); }} className="flex-1 py-3 text-[13px] font-medium transition" style={{ color: mode === "signup" ? C.ink : C.sub, borderBottom: mode === "signup" ? `2px solid ${C.gold}` : "transparent" }}>নতুন একাউন্ট</button>
-        </div>
+        {/* Right Side: Login Form */}
+        <div className="md:w-[55%] p-12 md:p-20 flex flex-col justify-center">
+          <div className="mb-10">
+            <h2 className="text-[28px] font-bold text-gray-900 font-tiro mb-2">স্বাগতম!</h2>
+            <p className="text-gray-400 text-[14px] font-medium">আপনার ফোন নম্বর ও পাসওয়ার্ড দিয়ে লগইন করুন</p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="px-8 py-6 space-y-4">
-          {error && (
-            <div role="alert" className="text-[12.5px] px-3 py-2 rounded-sm border" style={{ background: C.red + "14", color: C.red, borderColor: C.red + "40" }}>
-              {error}
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[12px] font-bold text-gray-400 uppercase tracking-widest ml-1">ফোন নম্বর</label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                  type="text" 
+                  required 
+                  value={phone} 
+                  onChange={e => setPhone(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-transparent rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 transition-all"
+                  placeholder="017XXXXXXXX"
+                />
+              </div>
             </div>
-          )}
 
-          {mode === "signup" && (
-            <div>
-              <label htmlFor="name" className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>আপনার নাম</label>
-              <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full rounded-sm px-3 py-2.5 text-[13px] outline-none border focus:ring-1 transition" style={{ background: "#fff", borderColor: C.border }} />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <label className="text-[12px] font-bold text-gray-400 uppercase tracking-widest">পাসওয়ার্ড</label>
+                <button type="button" className="text-[12px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors">পাসওয়ার্ড ভুলে গেছেন?</button>
+              </div>
+              <div className="relative">
+                <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                  type="password" 
+                  required 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-transparent rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
             </div>
-          )}
 
-          <div>
-            <label htmlFor="identifier" className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>ফোন নম্বর বা ইমেইল</label>
-            <div className="relative">
-              <input id="identifier" type="text" placeholder="017XXXXXXXX বা email@example.com" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required className="w-full rounded-sm px-3 py-2.5 pl-10 text-[13px] outline-none border focus:ring-1 transition" style={{ background: "#fff", borderColor: C.border }} />
-              {identifier.includes("@") ? (
-                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              ) : (
-                <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full py-4 bg-[#1B4332] text-white rounded-2xl text-[16px] font-bold hover:bg-[#2D6A4F] transition-all shadow-xl shadow-emerald-900/20 flex items-center justify-center gap-2 group"
+            >
+              {loading ? "লগইন হচ্ছে..." : (
+                <>
+                  লগইন করুন <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </>
               )}
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="password" className="text-[12px] font-medium block mb-1.5" style={{ color: C.label }}>পাসওয়ার্ড</label>
-            <div className="relative">
-              <input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="w-full rounded-sm px-3 py-2.5 pr-10 text-[13px] outline-none border focus:ring-1 transition" style={{ background: "#fff", borderColor: C.border }} />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: C.sub }}>
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          <button type="submit" disabled={loading} className="w-full py-2.5 rounded-sm text-[13.5px] font-semibold transition hover:brightness-105 disabled:opacity-60" style={{ background: C.gold, color: C.ink }}>
-            {loading ? "প্রক্রিয়া চলছে..." : mode === "login" ? "লগইন করুন" : "নতুন একাউন্ট খুলুন"}
-          </button>
-        </form>
-
-        <div className="pb-6 px-8 text-center">
-          <p className="text-[10.5px]" style={{ color: C.sub }}>
-            {mode === "login" ? "একাউন্ট নেই? " : "ইতিমধ্যে একাউন্ট আছে? "}
-            <button onClick={() => setMode(mode === "login" ? "signup" : "login")} className="underline underline-offset-2 font-medium" style={{ color: C.ink }}>
-              {mode === "login" ? "নতুন একাউন্ট খুলুন" : "লগইন করুন"}
             </button>
-          </p>
+          </form>
+
+          <div className="mt-12 pt-8 border-t border-gray-100 text-center">
+            <p className="text-gray-400 text-[14px]">
+              আপনার কি একাউন্ট নেই? {" "}
+              <Link href="/signup" className="text-emerald-600 font-bold hover:underline inline-flex items-center gap-1">
+                নতুন একাউন্ট খুলুন <UserPlus size={14} />
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
