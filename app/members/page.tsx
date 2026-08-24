@@ -4,12 +4,15 @@ import { useState, useEffect } from "react";
 import { 
   Users, UserPlus, Search, Filter, 
   Phone, MapPin, ChevronRight, MoreHorizontal,
-  Shield, CheckCircle, XCircle, Mail
+  Shield, CheckCircle, XCircle, Trash2, Edit2,
+  Plus
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-import Link from "next/link";
+import { useAuth } from "@/components/providers";
 
 export default function MembersPage() {
+  const { role } = useAuth();
+  const isAdmin = role === 'admin';
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,6 +30,17 @@ export default function MembersPage() {
     fetchMembers();
   }, []);
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("আপনি কি নিশ্চিতভাবে এই সদস্যকে ডিলিট করতে চান?")) return;
+    try {
+      const { error } = await supabase().from("members").delete().eq("id", id);
+      if (error) throw error;
+      setMembers(members.filter(m => m.id !== id));
+    } catch (err) {
+      alert("ডিলিট করতে সমস্যা হয়েছে।");
+    }
+  };
+
   if (loading) return (
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
@@ -40,6 +54,15 @@ export default function MembersPage() {
           <h1 className="text-[28px] font-bold font-tiro text-gray-900">সদস্য তালিকা</h1>
           <p className="text-gray-500 text-[14px]">ফাউন্ডেশনের সকল নিবন্ধিত সদস্য</p>
         </div>
+        {isAdmin && (
+          <button 
+            onClick={() => alert("সদস্য যুক্ত করার ফিচারটি তৈরি করা হচ্ছে...")}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+          >
+            <Plus size={20} />
+            <span>নতুন সদস্য</span>
+          </button>
+        )}
       </div>
 
       <div className="card-premium overflow-hidden">
@@ -52,15 +75,31 @@ export default function MembersPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 divide-y md:divide-y-0 md:gap-px bg-gray-50">
           {members.map((member) => (
-            <div key={member.id} className="bg-white p-6 hover:bg-emerald-50/30 transition-all group">
+            <div key={member.id} className="bg-white p-6 hover:bg-emerald-50/30 transition-all group relative">
               <div className="flex items-start justify-between mb-4">
                 <div className="w-14 h-14 rounded-2xl bg-emerald-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-emerald-100">
                   {member.name[0]}
                 </div>
-                <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${member.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
-                  {member.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                <div className="flex flex-col items-end gap-2">
+                  <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${member.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
+                    {member.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors">
+                        <Edit2 size={14} />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(member.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
+              
               <h3 className="text-[17px] font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors">{member.name}</h3>
               <p className="text-xs text-gray-400 font-medium mb-4">{member.role || 'সদস্য'}</p>
               
