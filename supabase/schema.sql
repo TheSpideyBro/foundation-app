@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS public.donations (
     receipt_no TEXT NOT NULL,
     donation_month TEXT,
     received_by TEXT,
+    collected_by UUID REFERENCES auth.users(id),
     created_by UUID REFERENCES auth.users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -178,6 +179,7 @@ ALTER TABLE public.notices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Users Policies
+CREATE POLICY "users_read_all" ON public.users FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "users_read_own" ON public.users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "users_read_staff" ON public.users FOR SELECT USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
 CREATE POLICY "users_insert_self" ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
