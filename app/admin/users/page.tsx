@@ -35,10 +35,13 @@ export default function AdminUsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const { data } = await supabase().from("users").select("*").order("created_at", { ascending: false });
+      const { data } = await supabase()
+        .from("users")
+        .select("*, members(name)")
+        .order("created_at", { ascending: false });
       setUsers(data || []);
     } catch (err) {
-      console.error("Error fetching users:", err);
+      setError("ইউজার তালিকা লোড করতে সমস্যা হয়েছে।");
     } finally {
       setLoading(false);
     }
@@ -274,7 +277,7 @@ export default function AdminUsersPage() {
                     <Users size={20} />
                   </div>
                   <div>
-                    <p className="text-[15px] font-bold text-gray-900">{user.name || 'নাম নেই'}</p>
+                    <p className="text-[15px] font-bold text-gray-900">{user.members?.name || user.name || 'নাম নেই'}</p>
                     <p className="text-[12px] text-gray-500">{user.email}</p>
                     {user.phone && <p className="text-[11px] text-gray-400 font-bold">{user.phone}</p>}
                     <div className="flex items-center gap-2 mt-1">
