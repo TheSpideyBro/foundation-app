@@ -109,7 +109,10 @@ export async function GET(
     ctx.fillRect(0, 0, width, height);
 
     // 2. Header Section
-    ctx.fillStyle = '#064E3B';
+    const grad = ctx.createLinearGradient(0, 0, 0, 350);
+    grad.addColorStop(0, '#064E3B');
+    grad.addColorStop(1, '#065F46');
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, 320);
     
     // Bottom Wave
@@ -197,7 +200,20 @@ export async function GET(
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    const rows = [
+    // 6.5 Watermark
+    try {
+      const logoPath = path.join(process.cwd(), 'public', 'assets', 'logo.jpg');
+      if (fs.existsSync(logoPath)) {
+        const logo = await loadImage(logoPath);
+        ctx.save();
+        ctx.globalAlpha = 0.04;
+        const watermarkSize = 400;
+        ctx.drawImage(logo, (width - watermarkSize) / 2, cardY + (cardHeight - watermarkSize) / 2, watermarkSize, watermarkSize);
+        ctx.restore();
+      }
+    } catch (e) {}
+
+    // 7. QR Code Sectionst rows = [
       { label: "রসিদ নং", value: donation.receipt_no || 'N/A', icon: 'doc' },
       { label: "তারিখ", value: donation.date, icon: 'cal' },
       { label: "জনাব/জনাবা", value: donation.members?.name || 'অজ্ঞাত', icon: 'user' },
@@ -296,6 +312,20 @@ export async function GET(
     });
     const qrImage = await loadImage(qrBuffer);
     ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+    
+    // Verified Badge
+    ctx.fillStyle = '#059669';
+    ctx.beginPath();
+    ctx.arc(qrX + qrSize - 10, qrY + qrSize - 10, 18, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(qrX + qrSize - 18, qrY + qrSize - 10);
+    ctx.lineTo(qrX + qrSize - 12, qrY + qrSize - 4);
+    ctx.lineTo(qrX + qrSize - 4, qrY + qrSize - 16);
+    ctx.stroke();
 
     // 8. Signature Section
     const sigX = width - cardMargin - 280;
@@ -313,9 +343,9 @@ export async function GET(
     ctx.textAlign = 'center';
     ctx.fillText("আদায়কারীর স্বাক্ষর", sigX + 120, sigY + 40);
 
-    // Signature text
-    ctx.font = 'bold 32px Bengali';
-    ctx.fillStyle = '#111827';
+    // Signature text (Blue Ink Look)
+    ctx.font = 'bold 36px Bengali';
+    ctx.fillStyle = '#1E40AF';
     ctx.fillText(donation.collector?.name || "অ্যাডমিন", sigX + 120, sigY - 20);
 
     // 9. Footer Message
