@@ -238,6 +238,7 @@ export async function GET(
     } catch (e) {}
 
     // 7. QR Code Section
+    const amountInWords = numberToBengaliWords(donation.amount || 0);
     const rows = [
       { label: "রসিদ নং", value: donation.receipt_no || 'N/A', icon: 'doc' },
       { label: "তারিখ", value: donation.date, icon: 'cal' },
