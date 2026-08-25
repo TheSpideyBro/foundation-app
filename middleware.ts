@@ -40,7 +40,13 @@ export async function middleware(req: Request) {
     pathname.startsWith("/icons/") ||
     pathname.startsWith("/icon") ||
     pathname === "/favicon.ico";
-  const isPublic = pathname === "/login" || pathname.startsWith("/login/") || isPwaAsset;
+  const isPublic = 
+    pathname === "/" || 
+    pathname === "/login" || 
+    pathname.startsWith("/login/") || 
+    pathname === "/signup" || 
+    pathname.startsWith("/signup/") || 
+    isPwaAsset;
 
   if (!isPublic && !session) {
     const loginUrl = new URL("/login", req.url);
