@@ -28,6 +28,11 @@ export default function AdminUsersPage() {
     monthly_pledge: "0"
   });
 
+  // Manual linking state
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [availableMembers, setAvailableMembers] = useState<any[]>([]);
+  const [selectedMemberId, setSelectedMemberId] = useState("");
+
   const fetchUsers = async () => {
     try {
       const { data } = await supabase().from("users").select("*").order("created_at", { ascending: false });
@@ -134,6 +139,87 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleUnlinkProfile = async (user: any) => {
+    if (!confirm("আপনি কি নিশ্চিতভাবে এই প্রোফাইলটি আনলিঙ্ক করতে চান?")) return;
+    
+    try {
+      const memberId = user.member_id;
+      
+      // 1. Clear user_id in members table
+      const { error: memberError } = await supabase()
+        .from("members")
+        .update({ user_id: null })
+        .eq("id", memberId);
+      
+      if (memberError) throw memberError;
+      
+      // 2. Clear member_id in users table
+      const { error: userError } = await supabase()
+        .from("users")
+        .update({ member_id: null })
+        .eq("id", user.id);
+        
+      if (userError) throw userError;
+      
+      alert("প্রোফাইল সফলভাবে আনলিঙ্ক করা হয়েছে।");
+      fetchUsers();
+    } catch (err) {
+      console.error("Error unlinking profile:", err);
+      alert("আনলিঙ্ক করতে সমস্যা হয়েছে।");
+    }
+  };
+
+  const handleOpenLinkModal = async (user: any) => {
+    setSelectedUser(user);
+    try {
+      // Fetch members who are not linked to any user
+      const { data } = await supabase()
+        .from("members")
+        .select("id, name, phone")
+        .is("user_id", null)
+        .order("name");
+      setAvailableMembers(data || []);
+      setIsLinkModalOpen(true);
+    } catch (err) {
+      alert("সদস্য তালিকা লোড করতে সমস্যা হয়েছে।");
+    }
+  };
+
+  const handleManualLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMemberId) {
+      alert("দয়া করে একজন সদস্য সিলেক্ট করুন।");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      // 1. Link member to user
+      const { error: memberError } = await supabase()
+        .from("members")
+        .update({ user_id: selectedUser.id })
+        .eq("id", selectedMemberId);
+      
+      if (memberError) throw memberError;
+      
+      // 2. Link user to member
+      const { error: userError } = await supabase()
+        .from("users")
+        .update({ member_id: selectedMemberId })
+        .eq("id", selectedUser.id);
+        
+      if (userError) throw userError;
+      
+      alert("প্রোফাইল সফলভাবে লিঙ্ক করা হয়েছে!");
+      setIsLinkModalOpen(false);
+      fetchUsers();
+    } catch (err) {
+      console.error("Error linking profile:", err);
+      alert("লিঙ্ক করতে সমস্যা হয়েছে।");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) return (
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
@@ -217,13 +303,28 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  {!user.member_id && user.is_approved && (
+                  {user.member_id ? (
                     <button 
-                      onClick={() => handleOpenProfileModal(user)}
-                      className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[12px] font-bold hover:bg-blue-100 transition-all"
+                      onClick={() => handleUnlinkProfile(user)}
+                      className="px-4 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-[12px] font-bold hover:bg-rose-100 transition-all"
                     >
-                      প্রোফাইল তৈরি করুন
+                      আনলিঙ্ক
                     </button>
+                  ) : user.is_approved && (
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleOpenLinkModal(user)}
+                        className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-[12px] font-bold hover:bg-emerald-100 transition-all"
+                      >
+                        লিঙ্ক করুন
+                      </button>
+                      <button 
+                        onClick={() => handleOpenProfileModal(user)}
+                        className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[12px] font-bold hover:bg-blue-100 transition-all"
+                      >
+                        প্রোফাইল তৈরি করুন
+                      </button>
+                    </div>
                   )}
                   <select 
                     value={user.role} 
@@ -336,6 +437,61 @@ export default function AdminUsersPage() {
                   className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-900/20 transition-all flex items-center justify-center gap-2"
                 >
                   {submitting ? 'সেভ হচ্ছে...' : 'প্রোফাইল তৈরি করুন'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Link Modal */}
+      {isLinkModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsLinkModalOpen(false)}></div>
+          <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden">
+            <div className="p-6 sm:p-8 border-b border-gray-100 flex items-center justify-between bg-emerald-600 text-white">
+              <div>
+                <h2 className="text-xl font-bold font-tiro text-white">বিদ্যমান সদস্যের সাথে লিঙ্ক করুন</h2>
+                <p className="text-emerald-100 text-xs mt-1">ইউজার: {selectedUser?.phone || selectedUser?.email}</p>
+              </div>
+              <button onClick={() => setIsLinkModalOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                <XCircle size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleManualLink} className="p-6 sm:p-8 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[13px] font-bold text-gray-700 ml-1">সদস্য নির্বাচন করুন *</label>
+                <select 
+                  value={selectedMemberId}
+                  onChange={(e) => setSelectedMemberId(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  required
+                >
+                  <option value="">সদস্য সিলেক্ট করুন</option>
+                  {availableMembers.map(m => (
+                    <option key={m.id} value={m.id}>{m.name} ({m.phone || 'ফোন নেই'})</option>
+                  ))}
+                </select>
+                {availableMembers.length === 0 && (
+                  <p className="text-[11px] text-rose-500 mt-1 ml-1">কোনো প্রোফাইলবিহীন সদস্য পাওয়া যায়নি।</p>
+                )}
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setIsLinkModalOpen(false)}
+                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold text-sm hover:bg-gray-200 transition-all"
+                >
+                  বাতিল
+                </button>
+                <button 
+                  type="submit"
+                  disabled={submitting || !selectedMemberId}
+                  className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-bold text-sm hover:bg-emerald-700 shadow-lg shadow-emerald-900/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {submitting ? 'লিঙ্ক হচ্ছে...' : 'লিঙ্ক সম্পন্ন করুন'}
                 </button>
               </div>
             </form>
