@@ -88,6 +88,17 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Audit Log View
+CREATE OR REPLACE VIEW public.audit_log_view AS
+ SELECT id,
+    action,
+    target_table AS table_name,
+    target_id AS record_id,
+    details,
+    created_at,
+    actor_email AS user_email
+   FROM audit_log;
+
 -- 3. Functions & Triggers
 
 -- Function to get current user's role
@@ -141,6 +152,19 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER tr_set_donation_month
 BEFORE INSERT ON public.donations
 FOR EACH ROW EXECUTE FUNCTION public.set_donation_month();
+
+-- Audit Triggers
+CREATE OR REPLACE TRIGGER audit_members
+AFTER INSERT OR UPDATE OR DELETE ON public.members
+FOR EACH ROW EXECUTE FUNCTION public.log_audit_event();
+
+CREATE OR REPLACE TRIGGER audit_donations
+AFTER INSERT OR UPDATE OR DELETE ON public.donations
+FOR EACH ROW EXECUTE FUNCTION public.log_audit_event();
+
+CREATE OR REPLACE TRIGGER audit_expenses
+AFTER INSERT OR UPDATE OR DELETE ON public.expenses
+FOR EACH ROW EXECUTE FUNCTION public.log_audit_event();
 
 -- 4. RLS Policies
 
