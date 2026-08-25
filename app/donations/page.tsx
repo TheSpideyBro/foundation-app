@@ -37,13 +37,28 @@ export default function DonationsPage() {
     fetchData();
   }, []);
 
+  const { memberId } = useAuth();
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { data: donationsData } = await supabase()
+      let query = supabase()
         .from("donations")
         .select("*, members(name, phone)")
         .order("date", { ascending: false });
+      
+      if (role === 'member') {
+        if (memberId) {
+          query = query.eq("member_id", memberId);
+        } else {
+          // If member is not linked, show nothing
+          setDonations([]);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const { data: donationsData } = await query;
       
       const { data: membersData } = await supabase()
         .from("members")

@@ -222,13 +222,13 @@ export default function MembersPage() {
                   <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
                     <Phone size={14} />
                   </div>
-                  {member.phone || 'ফোন নেই'}
+                  {isStaff ? (member.phone || 'ফোন নেই') : 'পাবলিক নয়'}
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-600 font-medium">
                   <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
                     <MapPin size={14} />
                   </div>
-                  <span className="line-clamp-1">{member.address || 'ঠিকানা নেই'}</span>
+                  <span className="line-clamp-1">{isStaff ? (member.address || 'ঠিকানা নেই') : 'পাবলিক নয়'}</span>
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">মাসিক অঙ্গীকার</span>

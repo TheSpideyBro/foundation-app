@@ -64,12 +64,17 @@ export default function Dashboard() {
         netBalance: totalDonations - totalExpenses,
       });
 
-      const { data: recent } = await supabase()
-        .from("donations")
-        .select("*, members(name)")
-        .order("date", { ascending: false })
-        .limit(5);
-      setRecentDonations(recent || []);
+  const { role } = useAuth();
+  if (role !== 'member') {
+    const { data: recent } = await supabase()
+      .from("donations")
+      .select("*, members(name)")
+      .order("date", { ascending: false })
+      .limit(5);
+    setRecentDonations(recent || []);
+  } else {
+    setRecentDonations([]);
+  }
 
       setChartData([
         { name: "জানু", donation: 4000, expense: 2400 },
@@ -277,36 +282,38 @@ export default function Dashboard() {
 
       {/* Recent Donations */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
-        <div className="lg:col-span-2 card-premium p-4 sm:p-8">
-          <div className="flex items-center justify-between mb-4 sm:mb-8">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro">সাম্প্রতিক দান</h3>
-            <Link href="/donations" className="text-emerald-600 text-xs sm:text-sm font-bold flex items-center gap-1 hover:underline">
-              সব দেখুন <ChevronRight size={14} />
-            </Link>
-          </div>
-          <div className="space-y-3 sm:space-y-4">
-            {recentDonations.map((donation, i) => (
-              <div key={i} className="flex items-center justify-between p-3 sm:p-5 rounded-xl sm:rounded-[1.5rem] hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 group">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm sm:text-lg">
-                    {donation.members?.name?.[0] || "স"}
-                  </div>
-                  <div>
-                    <p className="text-sm sm:text-base font-bold text-gray-900 truncate max-w-[100px] sm:max-w-none">{donation.members?.name || "অজ্ঞাত সদস্য"}</p>
-                    <div className="flex items-center gap-1 text-[9px] sm:text-xs text-gray-400 font-medium">
-                      <Calendar size={10} />
-                      {donation.date ? new Date(donation.date).toLocaleDateString('bn-BD') : 'তারিখ নেই'}
+        {role !== 'member' && (
+          <div className="lg:col-span-2 card-premium p-4 sm:p-8">
+            <div className="flex items-center justify-between mb-4 sm:mb-8">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro">সাম্প্রতিক দান</h3>
+              <Link href="/donations" className="text-emerald-600 text-xs sm:text-sm font-bold flex items-center gap-1 hover:underline">
+                সব দেখুন <ChevronRight size={14} />
+              </Link>
+            </div>
+            <div className="space-y-3 sm:space-y-4">
+              {recentDonations.map((donation, i) => (
+                <div key={i} className="flex items-center justify-between p-3 sm:p-5 rounded-xl sm:rounded-[1.5rem] hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 group">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm sm:text-lg">
+                      {donation.members?.name?.[0] || "স"}
+                    </div>
+                    <div>
+                      <p className="text-sm sm:text-base font-bold text-gray-900 truncate max-w-[100px] sm:max-w-none">{donation.members?.name || "অজ্ঞাত সদস্য"}</p>
+                      <div className="flex items-center gap-1 text-[9px] sm:text-xs text-gray-400 font-medium">
+                        <Calendar size={10} />
+                        {donation.date ? new Date(donation.date).toLocaleDateString('bn-BD') : 'তারিখ নেই'}
+                      </div>
                     </div>
                   </div>
+                  <div className="text-right">
+                    <p className="text-sm sm:text-lg font-bold text-emerald-600">৳{donation.amount.toLocaleString()}</p>
+                    <p className="text-[8px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-widest">{donation.method || "ক্যাশ"}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm sm:text-lg font-bold text-emerald-600">৳{donation.amount.toLocaleString()}</p>
-                  <p className="text-[8px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-widest">{donation.method || "ক্যাশ"}</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="card-premium p-6 sm:p-8 bg-[#064E3B] text-white border-none overflow-hidden relative">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
