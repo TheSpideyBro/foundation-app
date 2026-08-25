@@ -14,6 +14,10 @@ if (fs.existsSync(fontPathBold)) {
 if (fs.existsSync(fontPathRegular)) {
   registerFont(fontPathRegular, { family: 'Bengali', weight: 'normal' });
 }
+const fontPathSignature = path.join(process.cwd(), 'public', 'fonts', 'MainakBuniyadi-Italic.ttf');
+if (fs.existsSync(fontPathSignature)) {
+  registerFont(fontPathSignature, { family: 'SignatureFont' });
+}
 
 const numberToBengaliWords = (n: number): string => {
   const units = ['', 'এক', 'দুই', 'তিন', 'চার', 'পাঁচ', 'ছয়', 'সাত', 'আট', 'নয়'];
@@ -334,32 +338,7 @@ export async function GET(
     const qrImage = await loadImage(qrBuffer);
     ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
     
-    // Embossed Gold Seal
-    const sealX = qrX + qrSize - 10;
-    const sealY = qrY + qrSize - 10;
-    const sealGrad = ctx.createRadialGradient(sealX, sealY, 0, sealX, sealY, 25);
-    sealGrad.addColorStop(0, '#F3E5AB');
-    sealGrad.addColorStop(1, '#D4AF37');
-    ctx.fillStyle = sealGrad;
-    ctx.beginPath();
-    for (let i = 0; i < 24; i++) {
-      const angle = (i * Math.PI * 2) / 24;
-      const r = i % 2 === 0 ? 25 : 20;
-      ctx.lineTo(sealX + Math.cos(angle) * r, sealY + Math.sin(angle) * r);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#B8860B';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    
-    ctx.strokeStyle = '#B8860B';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(sealX - 10, sealY);
-    ctx.lineTo(sealX - 3, sealY + 7);
-    ctx.lineTo(sealX + 10, sealY - 7);
-    ctx.stroke();
+    // Gold seal removed as requested
 
     // 8. Signature Section
     const sigX = width - cardMargin - 280;
@@ -377,9 +356,9 @@ export async function GET(
     ctx.textAlign = 'center';
     ctx.fillText("আদায়কারীর স্বাক্ষর", sigX + 120, sigY + 40);
 
-    // Signature text (Blue Ink Look)
-    ctx.font = 'bold 36px Bengali';
-    ctx.fillStyle = '#1E40AF';
+    // Signature text (Black Ink Look with new font)
+    ctx.font = '44px SignatureFont';
+    ctx.fillStyle = '#000000';
     ctx.fillText(donation.collector?.name || "অ্যাডমিন", sigX + 120, sigY - 20);
 
     // 9. Footer Message
