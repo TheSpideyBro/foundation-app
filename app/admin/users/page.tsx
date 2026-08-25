@@ -14,6 +14,7 @@ export default function AdminUsersPage() {
 
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   
   // Profile creation modal state
@@ -35,13 +36,17 @@ export default function AdminUsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const { data } = await supabase()
+      setError(null);
+      const { data, error } = await supabase()
         .from("users")
-        .select("*, members:member_id(name)")
+        .select("*, members!member_id(name)")
         .order("created_at", { ascending: false });
+      
+      if (error) throw error;
       setUsers(data || []);
-    } catch (err) {
-      setError("ইউজার তালিকা লোড করতে সমস্যা হয়েছে।");
+    } catch (err: any) {
+      console.error("Error fetching users:", err);
+      setError("ইউজার তালিকা লোড করতে সমস্যা হয়েছে: " + (err.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -265,7 +270,17 @@ export default function AdminUsersPage() {
         </div>
 
         <div className="divide-y divide-gray-50">
-          {users.filter(u => 
+          {loading ? (
+            <div className="p-12 text-center text-gray-500">লোড হচ্ছে...</div>
+          ) : error ? (
+            <div className="p-12 text-center text-red-500 flex flex-col items-center gap-2">
+              <AlertCircle size={24} />
+              <p>{error}</p>
+              <button onClick={() => fetchUsers()} className="mt-2 text-emerald-600 font-bold">আবার চেষ্টা করুন</button>
+            </div>
+          ) : users.length === 0 ? (
+            <div className="p-12 text-center text-gray-500 text-[14px]">কোনো ইউজার পাওয়া যায়নি।</div>
+          ) : users.filter(u => 
             u.email?.toLowerCase().includes(searchQuery.toLowerCase()) || 
             u.phone?.includes(searchQuery) || 
             u.name?.toLowerCase().includes(searchQuery.toLowerCase())

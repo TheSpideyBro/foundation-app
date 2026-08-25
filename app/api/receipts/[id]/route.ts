@@ -81,7 +81,7 @@ export async function GET(
 
   const { data: donation, error } = await supabase
     .from('donations')
-    .select('*, members!member_id(name), collector:users!collected_by(name, members:member_id(name))')
+    .select('*, members!member_id(name), collector:users!collected_by(name, members!member_id(name))')
     .eq('id', id)
     .single();
 

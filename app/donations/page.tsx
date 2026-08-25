@@ -188,6 +188,10 @@ export default function DonationsPage() {
   const handleShare = async (donation: any) => {
     try {
       const response = await fetch(`/api/receipts/${donation.id}`);
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Failed to fetch receipt');
+      }
       const blob = await response.blob();
       const file = new File([blob], `receipt_${donation.receipt_no}.jpg`, { type: 'image/jpeg' });
 
@@ -297,12 +301,16 @@ export default function DonationsPage() {
                         onClick={async () => {
                           try {
                             const response = await fetch(`/api/receipts/${d.id}`);
+                            if (!response.ok) {
+                              const text = await response.text();
+                              throw new Error(text || 'Failed to fetch receipt');
+                            }
                             const blob = await response.blob();
                             const url = URL.createObjectURL(blob);
                             setPreviewUrl(url);
-                          } catch (err) {
+                          } catch (err: any) {
                             console.error("Error previewing:", err);
-                            alert("প্রিভিউ করতে সমস্যা হয়েছে।");
+                            alert(`রসিদ প্রিভিউ করতে সমস্যা হয়েছে: ${err.message}`);
                           }
                         }}
                         className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-90"
