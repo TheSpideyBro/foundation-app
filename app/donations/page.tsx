@@ -72,8 +72,11 @@ export default function DonationsPage() {
       const { data: staffData } = await supabase()
         .from("users")
         .select(`
+          id,
           member_id,
           role,
+          name,
+          phone,
           members:member_id (
             id,
             name,
@@ -84,10 +87,12 @@ export default function DonationsPage() {
 
       console.log("Staff Data:", staffData);
 
-      // Map staff to member objects
-      const treasurersList = staffData
-        ?.map((s: any) => s.members)
-        .filter(Boolean) || [];
+      // Map staff to usable objects for the dropdown
+      const treasurersList = staffData?.map((s: any) => ({
+        id: s.id, // Use user ID for collected_by
+        name: s.members?.name || s.name || s.email || 'Staff',
+        phone: s.members?.phone || s.phone || ''
+      })) || [];
       
       console.log("Treasurers List:", treasurersList);
 
@@ -144,7 +149,7 @@ export default function DonationsPage() {
         donation_month: formData.donation_month,
         method: formData.method,
         receipt_no: formData.receipt_no,
-        collected_by: formData.collected_by,
+        collected_by: formData.collected_by || null,
         created_by: user?.id
       };
 
