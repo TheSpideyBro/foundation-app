@@ -186,7 +186,7 @@ export async function GET(
     const cardMargin = 70;
     const cardWidth = width - (cardMargin * 2);
     const cardY = 530;
-    const cardHeight = 820;
+    const cardHeight = 720;
     const rowHeight = 100;
 
     ctx.fillStyle = '#FDFDFD';
@@ -243,9 +243,9 @@ export async function GET(
     });
 
     // 7. QR Code Section
-    const qrSize = 160;
+    const qrSize = 120;
     const qrX = cardMargin + 40;
-    const qrY = height - 240;
+    const qrY = height - 220;
     
     const qrData = `https://daulkharfoundation.vercel.app/verify/${donation.receipt_no}`;
     const qrBuffer = await QRCode.toBuffer(qrData, {
@@ -261,7 +261,7 @@ export async function GET(
 
     // 8. Signature Section
     const sigX = width - cardMargin - 280;
-    const sigY = height - 120;
+    const sigY = height - 130;
     
     ctx.strokeStyle = '#C9A227';
     ctx.lineWidth = 3;
@@ -275,20 +275,20 @@ export async function GET(
     ctx.textAlign = 'center';
     ctx.fillText("আদায়কারীর স্বাক্ষর", sigX + 120, sigY + 40);
 
-    // Signature text (Simulated)
-    ctx.font = 'italic 32px cursive';
+    // Signature text
+    ctx.font = 'bold 32px Bengali';
     ctx.fillStyle = '#111827';
-    ctx.fillText(donation.collector?.name?.split(' ')[0] || "Admin", sigX + 120, sigY - 20);
+    ctx.fillText(donation.collector?.name || "অ্যাডমিন", sigX + 120, sigY - 20);
 
     // 9. Footer Message
     ctx.fillStyle = '#064E3B';
     ctx.font = 'bold 26px Bengali';
     ctx.textAlign = 'center';
-    ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2, height - 200);
+    ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2, height - 280);
     
     ctx.fillStyle = '#6B7280';
     ctx.font = '20px Bengali';
-    ctx.fillText("আল্লাহ আপনার দান কবুল করুন", width / 2, height - 165);
+    ctx.fillText("আল্লাহ আপনার দান কবুল করুন", width / 2, height - 245);
 
     const buffer = canvas.toBuffer('image/jpeg', { quality: 0.95 });
 
