@@ -17,6 +17,10 @@
 }
 
 @layer base {
+  *, ::after, ::before {
+    border-color: var(--color-border, currentColor);
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-text-primary);
@@ -29,140 +33,53 @@
     font-family: var(--font-tiro), serif;
     letter-spacing: 0;
   }
-
-  input, select, textarea {
-    font-size: 16px;
-    width: 100%;
-  }
 }
 
 @layer components {
   /* Premium Card Design */
   .card-premium {
-    background: white;
-    border: 1px solid #F3F4F6;
-    border-radius: 1.5rem;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    @apply bg-white border border-gray-100 rounded-[1.5rem] md:rounded-[2rem] shadow-sm transition-all duration-300;
   }
 
-  @media (min-width: 768px) {
-    .card-premium {
-      border-radius: 2rem;
-    }
-    .card-premium:hover {
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-      transform: translateY(-4px);
-      border-color: #D1FAE5;
-    }
+  .card-premium:hover {
+    @apply md:shadow-xl md:-translate-y-1 md:border-emerald-100;
   }
 
   /* Glassmorphism Elements */
   .glass {
-    background-color: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    @apply bg-white/70 backdrop-blur-lg border border-white/20;
   }
 
   /* Button Refinement */
   .btn-emerald {
-    background-color: #059669;
-    color: white;
-    font-weight: 700;
-    padding: 0.75rem 1.5rem;
-    border-radius: 1rem;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    min-height: 48px;
-    box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.2);
-  }
-
-  .btn-emerald:hover {
-    background-color: #047857;
-  }
-
-  .btn-emerald:active {
-    transform: scale(0.95);
+    @apply bg-emerald-600 text-white font-bold py-3 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 min-h-[48px] shadow-lg shadow-emerald-600/20 active:scale-95 hover:bg-emerald-700;
   }
 
   .btn-outline {
-    background-color: white;
-    border: 1px solid #E5E7EB;
-    color: #374151;
-    font-weight: 700;
-    padding: 0.75rem 1.5rem;
-    border-radius: 1rem;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    min-height: 48px;
-  }
-
-  .btn-outline:hover {
-    border-color: #059669;
-    color: #059669;
-  }
-
-  .btn-outline:active {
-    transform: scale(0.95);
+    @apply bg-white border border-gray-200 text-gray-700 font-bold py-3 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 min-h-[48px] active:scale-95 hover:border-emerald-600 hover:text-emerald-600;
   }
 
   /* Table Styling - Responsive */
   .table-container {
-    overflow-x: auto;
-    border-radius: 1.5rem;
-    border: 1px solid #F3F4F6;
-    background-color: white;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    @apply overflow-x-auto rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 bg-white shadow-sm;
     -webkit-overflow-scrolling: touch;
   }
 
-  @media (min-width: 768px) {
-    .table-container {
-      border-radius: 2rem;
-    }
-  }
-
   .table-container table {
-    width: 100%;
+    @apply min-w-full;
   }
 
   .table-header {
-    background-color: rgba(249, 250, 251, 0.5);
-    border-bottom: 1px solid #F3F4F6;
-    color: #9CA3AF;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    white-space: nowrap;
+    @apply bg-gray-50/50 border-b border-gray-100 text-gray-400 text-[10px] md:text-[11px] font-bold uppercase tracking-widest whitespace-nowrap;
   }
 
   .table-row {
-    border-bottom: 1px solid #F9FAFB;
-    transition: background-color 0.2s;
-  }
-
-  .table-row:hover {
-    background-color: rgba(209, 250, 229, 0.3);
+    @apply border-b border-gray-50 last:border-0 hover:bg-emerald-50/30 transition-colors;
   }
 
   /* Mobile List View Card */
   .mobile-list-card {
-    padding: 1rem;
-    border-bottom: 1px solid #F9FAFB;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .mobile-list-card:last-child {
-    border-bottom: 0;
+    @apply p-4 border-b border-gray-50 last:border-0 flex flex-col gap-2;
   }
 }
 
