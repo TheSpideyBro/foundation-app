@@ -45,16 +45,16 @@ export default function LoginPage() {
       <div className="absolute top-0 right-0 w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-emerald-50 rounded-full -mr-32 sm:-mr-64 -mt-32 sm:-mt-64 blur-3xl opacity-50"></div>
       <div className="absolute bottom-0 left-0 w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-emerald-100/30 rounded-full -ml-32 sm:-ml-64 -mb-32 sm:-mb-64 blur-3xl opacity-50"></div>
 
-      <div className="w-full max-w-[480px] relative z-10">
+      <div className="w-full max-w-[480px] relative z-10" style={{ opacity: 1 }}>
         <div className="text-center mb-8 sm:mb-10">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-600 rounded-2xl sm:rounded-[2rem] flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-2xl shadow-emerald-600/30 animate-bounce-slow">
-            <Heart className="text-white fill-white w-7 h-7 sm:w-8 sm:h-8" />
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-600 rounded-2xl sm:rounded-[2rem] flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-2xl shadow-emerald-600/30 animate-bounce-slow" style={{ background: '#059669', boxShadow: '0 25px 50px -12px rgba(5, 150, 105, 0.25)' }}>
+            <Heart className="text-white fill-white w-7 h-7 sm:w-8 sm:h-8" style={{ width: '32px', height: '32px' }} />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 font-tiro mb-2 sm:mb-3">দাউলখার ফাউন্ডেশন</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 font-tiro mb-2 sm:mb-3" style={{ fontFamily: 'var(--font-tiro), serif' }}>দাউলখার ফাউন্ডেশন</h1>
           <p className="text-sm sm:text-base text-gray-500 font-medium">আপনার একাউন্টে লগইন করুন</p>
         </div>
 
-        <div className="card-premium p-6 sm:p-10 bg-white/90 backdrop-blur-xl shadow-2xl shadow-emerald-900/5 border border-emerald-50">
+        <div className="p-6 sm:p-10 bg-white rounded-[1.5rem] md:rounded-[2rem] shadow-xl border border-gray-100" style={{ background: 'white', borderRadius: '2rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
           <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
             <div>
               <label className="block text-[13px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">মোবাইল নম্বর</label>
