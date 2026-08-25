@@ -83,7 +83,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto pt-4 pb-10">
-          <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">মেনু</p>
+          <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">মেনু</p>
           {visibleMenuItems.map((item) => (
             <Link
               key={item.path}
@@ -102,7 +102,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Admin Section in Sidebar */}
           {visibleAdminItems.length > 0 && (
             <>
-              <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-10 mb-4">অ্যাডমিন কন্ট্রোল</p>
+              <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-10 mb-4">অ্যাডমিন কন্ট্রোল</p>
               {visibleAdminItems.map((item) => (
                 <Link
                   key={item.path}
@@ -163,7 +163,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           
           <nav className="flex-1 space-y-1.5">
-            <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">মেনু</p>
+            <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">মেনু</p>
             {visibleMenuItems.map((item) => (
               <Link
                 key={item.path}
@@ -183,7 +183,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Admin Section in Mobile Drawer */}
             {visibleAdminItems.length > 0 && (
               <>
-                <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-8 mb-4">অ্যাডমিন কন্ট্রোল</p>
+                <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-8 mb-4">অ্যাডমিন কন্ট্রোল</p>
                 {visibleAdminItems.map((item) => (
                   <Link
                     key={item.path}
