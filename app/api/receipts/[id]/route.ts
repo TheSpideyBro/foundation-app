@@ -286,7 +286,7 @@ export async function GET(
     // 7. QR Code Section
     const qrSize = 120;
     const qrX = cardMargin + 40;
-    const qrY = height - 160;
+    const qrY = height - 260;
     
     const qrData = `https://daulkharfoundation.vercel.app/verify/${donation.receipt_no}`;
     const qrBuffer = await QRCode.toBuffer(qrData, {
@@ -299,7 +299,7 @@ export async function GET(
 
     // 8. Signature Section
     const sigX = width - cardMargin - 280;
-    const sigY = height - 70;
+    const sigY = height - 180;
     
     ctx.strokeStyle = '#C9A227';
     ctx.lineWidth = 3;
@@ -324,7 +324,7 @@ export async function GET(
     ctx.textAlign = 'center';
     
     // Heart Icon and Thank You
-    const footerY = height - 230;
+    const footerY = height - 80;
     ctx.beginPath();
     ctx.arc(width/2 - 220, footerY - 10, 15, 0, Math.PI*2);
     ctx.fill();
