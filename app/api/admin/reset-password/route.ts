@@ -13,11 +13,23 @@ export async function POST(req: Request) {
     // Check if the current user is an admin
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseServiceKey = process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseServiceKey) throw new Error("Service role key missing");
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
+    const tokenCookie = cookieStore.getAll().find((c) => /^sb-.*-auth-token$/.test(c.name));
+    let rawToken = tokenCookie?.value || "";
+    let accessToken = rawToken;
+    if (rawToken.startsWith("base64-")) {
+      try {
+        const json = Buffer.from(rawToken.slice(7), "base64url").toString("utf8");
+        const parsed = JSON.parse(json);
+        accessToken = typeof parsed?.access_token === "string" ? parsed.access_token : "";
+      } catch { accessToken = ""; }
+    }
+
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Cookie: cookieStore.toString() } }
+      global: { headers: { Authorization: `Bearer ${accessToken}` } }
     });
 
     const { data: { user } } = await supabase.auth.getUser();

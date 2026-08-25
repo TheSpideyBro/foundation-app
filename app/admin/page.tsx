@@ -23,10 +23,10 @@ export default function AdminPage() {
     try {
       const response = await fetch('/api/sync-sheets', { method: 'POST' });
       const data = await response.json();
-      if (data.success) {
+      if (data.ok || data.success) {
         setMessage({ type: 'success', text: 'গুগল শিটের সাথে সফলভাবে সিঙ্ক হয়েছে!' });
       } else {
-        throw new Error(data.error);
+        throw new Error(data.error || 'সিঙ্ক ব্যর্থ হয়েছে');
       }
     } catch (err: any) {
       setMessage({ type: 'error', text: `সিঙ্ক ব্যর্থ: ${err.message}` });
@@ -69,7 +69,7 @@ export default function AdminPage() {
       action: async () => {
         const res = await fetch('/api/admin/auto-link', { method: 'POST' }).then(r => r.json());
         if (res.error) alert("লিঙ্ক করতে সমস্যা হয়েছে: " + res.error);
-        else alert(`সফলভাবে ${res.count} জন সদস্যকে লিঙ্ক করা হয়েছে।`);
+        else alert(`সফলভাবে ${res.linkedCount || res.count || 0} জন সদস্যকে লিঙ্ক করা হয়েছে।`);
       },
       color: "purple"
     }

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 
-const execPromise = promisify(exec);
+const execFilePromise = promisify(execFile);
 
 export async function GET(
   request: NextRequest,
@@ -31,14 +31,16 @@ export async function GET(
   }
 
   // Security check: Admins can see all, members only their own
-  const { data: member } = await supabase
-    .from('members')
-    .select('id, role')
-    .eq('user_id', user.id)
+  const { data: userData } = await supabase
+    .from('users')
+    .select('role, member_id')
+    .eq('id', user.id)
     .single();
 
-  const isAdmin = (member as any)?.role === 'admin' || (member as any)?.role === 'treasurer';
-  if (!isAdmin && donation.member_id !== (member as any)?.id) {
+  const isAdmin = userData?.role === 'admin' || userData?.role === 'treasurer';
+  const isOwner = userData?.member_id === donation.member_id;
+  
+  if (!isAdmin && !isOwner) {
     return new NextResponse('Forbidden', { status: 403 });
   }
 
@@ -50,8 +52,17 @@ export async function GET(
   const scriptPath = path.join(process.cwd(), 'scripts', 'receipt_generator.py');
   
   try {
-    const cmd = `python3 ${scriptPath} --receipt "${donation.receipt_no || 'N/A'}" --name "${donation.members?.name || 'Guest'}" --amount "${donation.amount}" --date "${donation.date}" --method "${donation.method}" --received "${donation.received_by || 'Foundation'}" --output "${jpgPath}"`;
-    await execPromise(cmd);
+    const args = [
+      scriptPath,
+      '--receipt', donation.receipt_no || 'N/A',
+      '--name', donation.members?.name || 'Guest',
+      '--amount', String(donation.amount),
+      '--date', donation.date,
+      '--method', donation.method || 'Cash',
+      '--received', donation.received_by || 'Foundation',
+      '--output', jpgPath
+    ];
+    await execFilePromise('python3', args);
 
     const jpgBuffer = fs.readFileSync(jpgPath);
     
