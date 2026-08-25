@@ -176,16 +176,18 @@ export default function MembersPage() {
                     {member.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                   </div>
                   {isAdmin && (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1">
                       <button 
                         onClick={() => handleOpenModal(member)}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all active:scale-90"
+                        title="এডিট"
                       >
                         <Edit2 size={16} />
                       </button>
                       <button 
                         onClick={() => handleDelete(member.id)}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all active:scale-90"
+                        title="ডিলিট"
                       >
                         <Trash2 size={16} />
                       </button>
