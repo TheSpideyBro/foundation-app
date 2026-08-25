@@ -20,13 +20,13 @@ const hindSiliguri = Hind_Siliguri({
 });
 
 export const metadata: Metadata = {
-  title: "দৌলখার ফাউন্ডেশন",
+  title: "দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন",
   description: "একটি অলাভজনক সমাজসেবামূলক প্রতিষ্ঠান",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "দৌলখার ফাউন্ডেশন",
+    title: "দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন",
   },
 };
 

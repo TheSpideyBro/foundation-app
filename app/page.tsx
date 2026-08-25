@@ -17,7 +17,7 @@ export default function LandingPage() {
               <Heart className="text-white" size={20} fill="currentColor" />
             </div>
             <div>
-              <span className="text-lg font-bold text-gray-900 font-tiro block leading-tight">দাউলখার ফাউন্ডেশন</span>
+              <span className="text-lg font-bold text-gray-900 font-tiro block leading-tight">দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন</span>
               <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">সেবাই আমাদের ধর্ম</span>
             </div>
           </div>
@@ -144,7 +144,7 @@ export default function LandingPage() {
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
               <Heart className="text-white" size={16} fill="currentColor" />
             </div>
-            <span className="text-sm font-bold text-gray-900 font-tiro">দাউলখার ফাউন্ডেশন</span>
+            <span className="text-sm font-bold text-gray-900 font-tiro">দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন</span>
           </div>
           <p className="text-sm text-gray-400 font-medium">© ২০২৬ দৌলখাড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন। সর্বস্বত্ব সংরক্ষিত।</p>
           <div className="flex items-center gap-6">

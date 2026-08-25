@@ -140,14 +140,14 @@ export async function GET(
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'left';
     ctx.font = 'bold 38px Bengali';
-    ctx.fillText("দৌলখাঁড় পূর্বপাড়া হিলফুল ফুজুল ফাউন্ডেশন", 190, 85);
+    ctx.fillText("দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন", 190, 85);
     
     ctx.font = '16px Bengali';
     ctx.fillStyle = '#E6E1D4';
-    ctx.fillText("প্রতিষ্ঠিত: ০১/০১/২০০৯ইং | রেজি নং: ২২০৯৮৭ (প্রস্তাবিত)", 190, 120);
-    ctx.fillText("দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", 190, 145);
+    ctx.fillText("প্রতিষ্ঠিত: ০১/০১/২০০৯ইং, দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", 190, 120);
+    ctx.fillText("যোগাযোগ: (বিকাশ-নগদ) ০১৮৪০-৮২৮০১০, (বিকাশ-নগদ) ০১৮১৪-৯৪৮২২১", 190, 145);
     ctx.font = 'bold 16px Bengali';
-    ctx.fillText("যোগাযোগ: ০১৮৪০-৮২৮০১০, ০১৮১৪-৯৪৮২২১", 190, 175);
+    ctx.fillText("", 190, 175);
 
     // Watermark Logo
     try {
