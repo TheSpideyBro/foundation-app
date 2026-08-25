@@ -68,16 +68,26 @@ export default function DonationsPage() {
         .order("name");
 
       // Fetch treasurers and admins for the collected_by field
+      // We join with members to get their display name and phone
       const { data: staffData } = await supabase()
         .from("users")
-        .select("member_id, name, role")
+        .select(`
+          member_id,
+          role,
+          members:member_id (
+            id,
+            name,
+            phone
+          )
+        `)
         .in("role", ["admin", "treasurer"]);
 
       console.log("Staff Data:", staffData);
 
-      // Map staff to member objects if they have a member_id
-      const staffMemberIds = staffData?.map(s => s.member_id).filter(Boolean) || [];
-      const treasurersList = membersData?.filter(m => staffMemberIds.includes(m.id)) || [];
+      // Map staff to member objects
+      const treasurersList = staffData
+        ?.map((s: any) => s.members)
+        .filter(Boolean) || [];
       
       console.log("Treasurers List:", treasurersList);
 
