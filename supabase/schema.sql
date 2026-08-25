@@ -236,6 +236,9 @@ CREATE POLICY "members_insert_staff" ON public.members FOR INSERT WITH CHECK (ge
 DROP POLICY IF EXISTS "members_update_staff" ON public.members;
 CREATE POLICY "members_update_staff" ON public.members FOR UPDATE USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
 
+DROP POLICY IF EXISTS "members_update_own" ON public.members;
+CREATE POLICY "members_update_own" ON public.members FOR UPDATE USING (auth.uid() = user_id);
+
 DROP POLICY IF EXISTS "members_delete_admin" ON public.members;
 CREATE POLICY "members_delete_admin" ON public.members FOR DELETE USING (get_my_role() = 'admin');
 

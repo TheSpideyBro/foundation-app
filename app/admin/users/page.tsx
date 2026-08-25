@@ -15,6 +15,18 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Profile creation modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    address: "",
+    join_date: new Date().toISOString().split('T')[0],
+    monthly_pledge: "0"
+  });
 
   const fetchUsers = async () => {
     try {
@@ -54,6 +66,58 @@ export default function AdminUsersPage() {
       fetchUsers();
     } catch (err) {
       alert("রোল পরিবর্তন করতে সমস্যা হয়েছে।");
+    }
+  };
+
+  const handleOpenProfileModal = (user: any) => {
+    setSelectedUser(user);
+    setFormData({
+      name: user.name || "",
+      phone: user.phone || "",
+      address: "",
+      join_date: new Date().toISOString().split('T')[0],
+      monthly_pledge: "0"
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleCreateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      // 1. Create member record
+      const { data: memberData, error: memberError } = await supabase()
+        .from("members")
+        .insert([{
+          name: formData.name,
+          phone: formData.phone,
+          address: formData.address,
+          join_date: formData.join_date,
+          monthly_pledge: parseFloat(formData.monthly_pledge),
+          user_id: selectedUser.id,
+          status: 'active'
+        }])
+        .select()
+        .single();
+
+      if (memberError) throw memberError;
+
+      // 2. Link user to member
+      const { error: userError } = await supabase()
+        .from("users")
+        .update({ member_id: memberData.id })
+        .eq("id", selectedUser.id);
+
+      if (userError) throw userError;
+
+      alert("সদস্য প্রোফাইল সফলভাবে তৈরি ও লিঙ্ক করা হয়েছে!");
+      setIsModalOpen(false);
+      fetchUsers();
+    } catch (err) {
+      console.error("Error creating profile:", err);
+      alert("প্রোফাইল তৈরি করতে সমস্যা হয়েছে।");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -127,10 +191,27 @@ export default function AdminUsersPage() {
                           <XCircle size={10} /> পেন্ডিং
                         </span>
                       )}
+                      {user.member_id ? (
+                        <span className="flex items-center gap-1 text-[9px] text-blue-600 font-bold uppercase">
+                          <Shield size={10} /> প্রোফাইল লিঙ্কড
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[9px] text-rose-600 font-bold uppercase">
+                          <AlertCircle size={10} /> প্রোফাইল নেই
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  {!user.member_id && user.is_approved && (
+                    <button 
+                      onClick={() => handleOpenProfileModal(user)}
+                      className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[12px] font-bold hover:bg-blue-100 transition-all"
+                    >
+                      প্রোফাইল তৈরি করুন
+                    </button>
+                  )}
                   <select 
                     value={user.role} 
                     onChange={(e) => handleChangeRole(user.id, e.target.value)}
@@ -154,6 +235,100 @@ export default function AdminUsersPage() {
           ))}
         </div>
       </div>
+
+      {/* Profile Creation Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
+          <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden">
+            <div className="p-6 sm:p-8 border-b border-gray-100 flex items-center justify-between bg-blue-600 text-white">
+              <div>
+                <h2 className="text-xl font-bold font-tiro text-white">সদস্য প্রোফাইল তৈরি করুন</h2>
+                <p className="text-blue-100 text-xs mt-1">ইউজার: {selectedUser?.phone || selectedUser?.email}</p>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                <XCircle size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateProfile} className="p-6 sm:p-8 space-y-5">
+              <div className="space-y-2">
+                <label className="text-[13px] font-bold text-gray-700 ml-1">সদস্যের নাম *</label>
+                <input 
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  placeholder="পুরো নাম বাংলায় লিখুন"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[13px] font-bold text-gray-700 ml-1">ফোন নম্বর</label>
+                  <input 
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    placeholder="017XXXXXXXX"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[13px] font-bold text-gray-700 ml-1">যোগদানের তারিখ *</label>
+                  <input 
+                    type="date"
+                    value={formData.join_date}
+                    onChange={(e) => setFormData({...formData, join_date: e.target.value})}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[13px] font-bold text-gray-700 ml-1">ঠিকানা</label>
+                <input 
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  placeholder="গ্রাম, ডাকঘর, উপজেলা"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[13px] font-bold text-gray-700 ml-1">মাসিক অঙ্গীকার (৳)</label>
+                <input 
+                  type="number"
+                  value={formData.monthly_pledge}
+                  onChange={(e) => setFormData({...formData, monthly_pledge: e.target.value})}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  placeholder="৫০০"
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold text-sm hover:bg-gray-200 transition-all"
+                >
+                  বাতিল
+                </button>
+                <button 
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-900/20 transition-all flex items-center justify-center gap-2"
+                >
+                  {submitting ? 'সেভ হচ্ছে...' : 'প্রোফাইল তৈরি করুন'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
