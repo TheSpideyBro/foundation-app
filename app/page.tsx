@@ -16,7 +16,7 @@ export default function LandingPage() {
               <Heart className="text-white" size={20} fill="currentColor" />
             </div>
             <div>
-              <span className="text-lg font-bold text-gray-900 font-tiro block leading-tight">দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন</span>
+              <span className="text-lg font-bold text-gray-900 font-tiro block leading-tight">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span>
               <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">সেবাই আমাদের ধর্ম</span>
             </div>
           </div>
@@ -45,7 +45,7 @@ export default function LandingPage() {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-800">একতাবদ্ধ মোরা সকলে</span>
           </h1>
           <p className="max-w-2xl mx-auto text-lg text-gray-500 font-medium leading-relaxed mb-12 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-            দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশনের সকল আর্থিক হিসাব, সদস্য ব্যবস্থাপনা এবং অনুদান ট্র্যাকিং এখন আরও সহজ ও স্বচ্ছ।
+            দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশনের সকল আর্থিক হিসাব, সদস্য ব্যবস্থাপনা এবং অনুদান ট্র্যাকিং এখন আরও সহজ ও স্বচ্ছ।
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '0.3s' }}>
             <Link href="/signup" className="btn-emerald w-full sm:w-auto px-10 py-5 text-lg shadow-2xl shadow-emerald-600/30">
@@ -83,10 +83,10 @@ export default function LandingPage() {
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
               <Heart className="text-white" size={16} fill="currentColor" />
             </div>
-            <span className="text-sm font-bold text-gray-900 font-tiro">দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন</span>
+            <span className="text-sm font-bold text-gray-900 font-tiro">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span>
           </div>
           <div>
-            <p className="text-sm text-gray-400 font-medium">© ২০২৬ দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন। সর্বস্বত্ব সংরক্ষিত।</p>
+            <p className="text-sm text-gray-400 font-medium">© ২০২৬ দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন। সর্বস্বত্ব সংরক্ষিত।</p>
             <p className="text-[10px] text-gray-300 font-medium mt-1">Developed by Saddam Hossain Akash</p>
           </div>
           <div className="flex items-center gap-6">

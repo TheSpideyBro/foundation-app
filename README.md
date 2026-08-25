@@ -1,4 +1,4 @@
-# দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন — হিসাব খাতা
+# দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন — হিসাব খাতা
 
 Fund management web app for tracking member donations and expenses.
 Next.js + Supabase + Tailwind CSS.

@@ -36,7 +36,7 @@ export default function PendingPledgesPage() {
   };
 
   const sendReminder = (member: any) => {
-    const text = `আসসালামু আলাইকুম, ${member.name}। দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশনের ${month} মাসের আপনার মাসিক অঙ্গীকারের ৳${member.pledge} এর মধ্যে ৳${member.paid} জমা হয়েছে। বাকি ৳${member.remaining} দ্রুত জমা দেওয়ার জন্য অনুরোধ করা হলো। ধন্যবাদ।`;
+    const text = `আসসালামু আলাইকুম, ${member.name}। দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশনের ${month} মাসের আপনার মাসিক অঙ্গীকারের ৳${member.pledge} এর মধ্যে ৳${member.paid} জমা হয়েছে। বাকি ৳${member.remaining} দ্রুত জমা দেওয়ার জন্য অনুরোধ করা হলো। ধন্যবাদ।`;
     const url = `https://wa.me/${member.phone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };

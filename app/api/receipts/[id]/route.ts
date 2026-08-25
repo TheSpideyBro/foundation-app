@@ -140,7 +140,7 @@ export async function GET(
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'left';
     ctx.font = 'bold 38px Bengali';
-    ctx.fillText("দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন", 190, 85);
+    ctx.fillText("দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন", 190, 85);
     
     ctx.font = '16px Bengali';
     ctx.fillStyle = '#E6E1D4';
