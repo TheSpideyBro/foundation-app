@@ -89,31 +89,51 @@ export async function GET(
 
     // Title & Branding
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 32px Bengali';
-    const title = "দৌলখার পূর্বপাড়া হিলফুল ফুজুল ফাউন্ডেশন";
-    ctx.fillText(title.substring(0, 25) + (title.length > 25 ? '...' : ''), 170, 85);
+    ctx.font = 'bold 36px Bengali';
+    const title = "দৌলখাঁড় পূর্বপাড়া হিলফুল ফুজুল ফাউন্ডেশন";
+    ctx.fillText(title, 170, 70);
     
-    ctx.font = '20px Bengali';
-    ctx.fillText("মানবতার কল্যাণে আমাদের পথচলা", 170, 125);
+    ctx.font = '18px Bengali';
+    ctx.fillText("প্রতিষ্ঠিত: ০১/০১/২০০৯ইং, দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", 170, 105);
+    ctx.fillText("যোগাযোগ: (বিকাশ-নগদ) ০১৮৪০-৮২৮০১০, (বিকাশ-নগদ) ০১৮১৪-৯৪৮২২১", 170, 140);
+
+    // Watermark Logo
+    try {
+      const logoPath = path.join(process.cwd(), 'public', 'assets', 'logo.jpg');
+      if (fs.existsSync(logoPath)) {
+        const logo = await loadImage(logoPath);
+        ctx.globalAlpha = 0.08;
+        ctx.drawImage(logo, (width - 400) / 2, (height - 400) / 2, 400, 400);
+        ctx.globalAlpha = 1.0;
+      }
+    } catch (e) {}
 
     // Receipt Label
-    ctx.fillStyle = '#1C1B17';
-    ctx.font = 'bold 28px Bengali';
+    ctx.fillStyle = '#0F3D33';
+    ctx.fillRect(width / 2 - 150, 210, 300, 45);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 24px Bengali';
     ctx.textAlign = 'center';
-    ctx.fillText("অনুদান রসিদ", width / 2, 250);
+    ctx.fillText("অনুদান আদায়ের রসিদ", width / 2, 242);
 
     // Content
     ctx.textAlign = 'left';
-    let y = 380;
-    const lineHeight = 70;
+    let y = 350;
+    const lineHeight = 80;
+    
+    // Helper function for amount in words (simplified Bengali)
+    const amountInWords = (n: number) => {
+      // For now simple representation, can be expanded
+      return `${n} টাকা মাত্র`;
+    };
     
     const details = [
       ["রসিদ নং:", donation.receipt_no || 'N/A'],
       ["তারিখ:", donation.date],
-      ["সদস্যের নাম:", donation.members?.name || 'Guest'],
-      ["টাকার পরিমাণ:", `৳ ${donation.amount}/-`],
-      ["পেমেন্ট মেথড:", donation.method === 'cash' ? 'নগদ' : donation.method],
-      ["গ্রহীতা:", donation.received_by || 'ফাউন্ডেশন']
+      ["জনাব/জনাবা:", donation.members?.name || 'Guest'],
+      ["মাসের নাম:", donation.donation_month || 'N/A'],
+      ["টাকার পরিমাণ কথায়:", amountInWords(donation.amount)],
+      ["টাকার পরিমাণ:", `৳ ${donation.amount}/-`]
     ];
 
     details.forEach(([label, value]) => {
@@ -140,17 +160,12 @@ export async function GET(
     ctx.lineWidth = 2;
     
     ctx.beginPath();
-    ctx.moveTo(100, height - 200);
-    ctx.lineTo(300, height - 200);
-    ctx.stroke();
-    ctx.font = '18px Bengali';
-    ctx.fillText("কর্তৃপক্ষের স্বাক্ষর", 120, height - 170);
-    
-    ctx.beginPath();
     ctx.moveTo(width - 300, height - 200);
     ctx.lineTo(width - 100, height - 200);
     ctx.stroke();
-    ctx.fillText("সদস্যের স্বাক্ষর", width - 260, height - 170);
+    ctx.font = '18px Bengali';
+    ctx.textAlign = 'right';
+    ctx.fillText("আদায়কারীর স্বাক্ষর", width - 100, height - 170);
 
     // Footer
     ctx.textAlign = 'center';
