@@ -206,7 +206,7 @@ export async function GET(
       if (fs.existsSync(logoPath)) {
         const logo = await loadImage(logoPath);
         ctx.save();
-        ctx.globalAlpha = 0.04;
+        ctx.globalAlpha = 0.08;
         const watermarkSize = 400;
         ctx.drawImage(logo, (width - watermarkSize) / 2, cardY + (cardHeight - watermarkSize) / 2, watermarkSize, watermarkSize);
         ctx.restore();
