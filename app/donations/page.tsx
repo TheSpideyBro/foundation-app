@@ -90,9 +90,12 @@ export default function DonationsPage() {
       // Map staff to usable objects for the dropdown
       const treasurersList = staffData?.map((s: any) => ({
         id: s.id, // Use user ID for collected_by
-        name: s.members?.name || s.name || s.email || 'Staff',
+        name: s.members?.name || s.name || s.email || "Staff",
         phone: s.members?.phone || s.phone || ''
       })) || [];
+      
+      // If a staff member has a name but no member_id link, we still show them
+      console.log("Treasurers List for UI:", treasurersList);
       
       console.log("Treasurers List:", treasurersList);
 
