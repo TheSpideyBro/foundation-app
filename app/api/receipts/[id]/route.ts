@@ -156,19 +156,20 @@ export async function GET(
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
 
-    // Center text in the remaining space (from x=200 to x=1000, center is 600)
-    const textCenterX = 600;
+    // Adjust text to the right of the logo (logo ends around x=180)
+    const textLeftX = 250;
 
-    ctx.font = 'bold 54px Bengali';
-    ctx.fillText("দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন", textCenterX, 110);
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 42px Bengali';
+    ctx.fillText("দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন", textLeftX, 110);
     
     ctx.shadowBlur = 4;
-    ctx.font = 'bold 32px Bengali';
-    ctx.fillText("প্রতিষ্ঠিত: ০১/০১/২০০৯ইং", textCenterX, 175);
+    ctx.font = 'bold 28px Bengali';
+    ctx.fillText("প্রতিষ্ঠিত: ০১/০১/২০০৯ইং", textLeftX, 175);
     
-    ctx.font = '28px Bengali';
-    ctx.fillText("📍 দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", textCenterX, 230);
-    ctx.fillText("📞 ০১৮৪০-৮২৮০১০ | ০১৮১৪-৯৪৮২২৪", textCenterX, 275);
+    ctx.font = '24px Bengali';
+    ctx.fillText("📍 দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", textLeftX, 230);
+    ctx.fillText("📞 ০১৮৪০-৮২৮০১০ | ০১৮১৪-৯৪৮২২৪", textLeftX, 275);
     
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
