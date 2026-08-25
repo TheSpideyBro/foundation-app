@@ -76,10 +76,12 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-[28px] font-bold font-tiro text-gray-900">অ্যাডমিন প্যানেল</h1>
-        <p className="text-gray-500 text-[14px]">ফাউন্ডেশনের প্রশাসনিক নিয়ন্ত্রণ কেন্দ্র</p>
+    <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">অ্যাডমিন প্যানেল</h1>
+          <p className="text-sm text-gray-500 font-medium">ফাউন্ডেশনের প্রশাসনিক নিয়ন্ত্রণ কেন্দ্র</p>
+        </div>
       </div>
 
       {message && (
@@ -92,34 +94,34 @@ export default function AdminPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="card-premium p-8 border border-emerald-50 shadow-sm bg-gradient-to-br from-white to-emerald-50/30">
+        <div className="card-premium p-6 sm:p-8 border border-emerald-50 shadow-sm bg-gradient-to-br from-white to-emerald-50/30">
           <div className="flex items-start justify-between mb-6">
-            <div className="w-14 h-14 bg-emerald-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-100">
-              <RefreshCw size={28} className={syncing ? "animate-spin" : ""} />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-emerald-600 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-100">
+              <RefreshCw size={24} className={syncing ? "animate-spin" : ""} />
             </div>
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">গুগল শিট সিঙ্ক</h3>
-          <p className="text-gray-500 text-sm mb-6">ফাউন্ডেশনের সব ডাটা গুগল শিটের সাথে সিঙ্ক করুন যাতে ব্যাকআপ এবং রিপোর্ট তৈরি করা সহজ হয়।</p>
+          <h3 className="text-xl font-bold text-gray-900 mb-2 font-tiro">গুগল শিট সিঙ্ক</h3>
+          <p className="text-gray-500 text-sm mb-6 font-medium">ফাউন্ডেশনের সব ডাটা গুগল শিটের সাথে সিঙ্ক করুন যাতে ব্যাকআপ এবং রিপোর্ট তৈরি করা সহজ হয়।</p>
           <button 
             onClick={handleSync}
             disabled={syncing}
-            className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full btn-emerald h-14 text-base"
           >
             {syncing ? "সিঙ্ক হচ্ছে..." : "এখনই সিঙ্ক করুন"}
           </button>
         </div>
 
-        <div className="card-premium p-8 border border-blue-50 shadow-sm bg-gradient-to-br from-white to-blue-50/30">
+        <div className="card-premium p-6 sm:p-8 border border-blue-50 shadow-sm bg-gradient-to-br from-white to-blue-50/30">
           <div className="flex items-start justify-between mb-6">
-            <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
-              <Database size={28} />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-600 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
+              <Database size={24} />
             </div>
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">ডাটা ব্যাকআপ</h3>
-          <p className="text-gray-500 text-sm mb-6">পুরো সিস্টেমের একটি ব্যাকআপ ফাইল ডাউনলোড করুন। এটি যেকোনো সময় ডাটা রিস্টোর করতে সাহায্য করবে।</p>
+          <h3 className="text-xl font-bold text-gray-900 mb-2 font-tiro">ডাটা ব্যাকআপ</h3>
+          <p className="text-gray-500 text-sm mb-6 font-medium">পুরো সিস্টেমের একটি ব্যাকআপ ফাইল ডাউনলোড করুন। এটি যেকোনো সময় ডাটা রিস্টোর করতে সাহায্য করবে।</p>
           <button 
             onClick={() => alert("ব্যাকআপ তৈরির ফিচারটি প্রসেস করা হচ্ছে...")}
-            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold h-14 transition-all shadow-lg shadow-blue-100 active:scale-95"
           >
             ব্যাকআপ ডাউনলোড করুন
           </button>

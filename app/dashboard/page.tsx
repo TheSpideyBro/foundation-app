@@ -111,25 +111,25 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="touch-spacing animate-slide-up pb-8">
+    <div className="touch-spacing animate-slide-up pb-8 px-1 sm:px-0">
       {/* Welcome Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
         <div>
-          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 font-tiro">আসসালামু আলাইকুম!</h1>
-          <p className="text-xs sm:text-sm text-gray-500 font-medium">আজকের ফাউন্ডেশন কার্যক্রমের চিত্র।</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-1 font-tiro">আসসালামু আলাইকুম!</h1>
+          <p className="text-sm text-gray-500 font-medium">আজকের ফাউন্ডেশন কার্যক্রমের চিত্র।</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button 
             onClick={handleSync}
             disabled={syncing}
-            className="flex-1 sm:flex-none btn-outline px-4 py-2.5 text-sm"
+            className="flex-1 sm:flex-none btn-outline h-12 px-5"
           >
-            <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+            <RefreshCw size={18} className={syncing ? "animate-spin" : ""} />
             <span className="hidden sm:inline">শিট সিঙ্ক</span>
             <span className="sm:hidden">সিঙ্ক</span>
           </button>
-          <Link href="/donations" className="flex-1 sm:flex-none btn-emerald px-4 py-2.5 text-sm">
-            <Plus size={16} />
+          <Link href="/donations" className="flex-1 sm:flex-none btn-emerald h-12 px-5">
+            <Plus size={18} />
             <span className="hidden sm:inline">নতুন ডোনেশন</span>
             <span className="sm:hidden">নতুন দান</span>
           </Link>
@@ -137,26 +137,26 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {[
           { label: "মোট সদস্য", value: stats.totalMembers, icon: Users, color: "bg-blue-600", trend: "+12%" },
           { label: "মোট সংগ্রহ", value: stats.totalDonations, icon: CreditCard, color: "bg-emerald-600", trend: "+8%" },
           { label: "মোট ব্যয়", value: stats.totalExpenses, icon: Wallet, color: "bg-rose-600", trend: "-5%" },
           { label: "তহবিল", value: stats.netBalance, icon: TrendingUp, color: "bg-amber-600", trend: "+15%" },
         ].map((stat, i) => (
-          <div key={i} className="card-premium p-4 sm:p-8 group">
-            <div className="flex items-center justify-between mb-3 sm:mb-6">
-              <div className={`w-10 h-10 sm:w-14 sm:h-14 ${stat.color} rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-current/20`}>
-                <stat.icon size={20} className="sm:hidden" />
+          <div key={i} className="card-premium p-6 sm:p-8 group border border-emerald-50/50">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <div className={`w-12 h-12 sm:w-14 sm:h-14 ${stat.color} rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-current/20`}>
+                <stat.icon size={24} className="sm:hidden" />
                 <stat.icon size={28} className="hidden sm:block" />
               </div>
-              <div className={`flex items-center gap-0.5 text-[10px] sm:text-[12px] font-bold ${stat.trend.startsWith('+') ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {stat.trend.startsWith('+') ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+              <div className={`flex items-center gap-0.5 text-xs sm:text-sm font-bold ${stat.trend.startsWith('+') ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {stat.trend.startsWith('+') ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                 {stat.trend}
               </div>
             </div>
-            <h3 className="text-gray-400 text-[9px] sm:text-[11px] font-bold uppercase tracking-widest mb-0.5 sm:mb-1">{stat.label}</h3>
-            <p className="text-base sm:text-3xl font-bold text-gray-900 font-tiro truncate">৳{stat.value.toLocaleString()}</p>
+            <h3 className="text-gray-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest mb-1">{stat.label}</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900 font-tiro truncate">৳{stat.value.toLocaleString()}</p>
           </div>
         ))}
       </div>

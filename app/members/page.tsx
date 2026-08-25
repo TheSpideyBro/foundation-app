@@ -133,16 +133,16 @@ export default function MembersPage() {
   );
 
   return (
-    <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
         <div>
-          <h1 className="text-[28px] font-bold font-tiro text-gray-900">সদস্য তালিকা</h1>
-          <p className="text-gray-500 text-[14px]">ফাউন্ডেশনের সকল নিবন্ধিত সদস্য</p>
+          <h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">সদস্য তালিকা</h1>
+          <p className="text-sm text-gray-500 font-medium">ফাউন্ডেশনের সকল নিবন্ধিত সদস্য</p>
         </div>
         {isAdmin && (
           <button 
             onClick={() => handleOpenModal()}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 active:scale-95"
+            className="flex items-center justify-center gap-2 btn-emerald h-12 px-6"
           >
             <Plus size={20} />
             <span>নতুন সদস্য</span>
@@ -164,11 +164,11 @@ export default function MembersPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 divide-y md:divide-y-0 md:gap-px bg-gray-50">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 sm:p-6 bg-gray-50/50">
           {filteredMembers.map((member) => (
-            <div key={member.id} className="bg-white p-6 hover:bg-emerald-50/30 transition-all group relative">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-emerald-100">
+            <div key={member.id} className="bg-white p-6 rounded-3xl border border-emerald-50/50 hover:shadow-xl hover:shadow-emerald-100/20 transition-all group relative">
+              <div className="flex items-start justify-between mb-5">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-emerald-100 group-hover:scale-105 transition-transform">
                   {member.name[0]}
                 </div>
                 <div className="flex flex-col items-end gap-2">
@@ -176,16 +176,16 @@ export default function MembersPage() {
                     {member.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                   </div>
                   {isAdmin && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={() => handleOpenModal(member)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors active:scale-90"
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all active:scale-90"
                       >
                         <Edit2 size={16} />
                       </button>
                       <button 
                         onClick={() => handleDelete(member.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-600 transition-colors active:scale-90"
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all active:scale-90"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -194,19 +194,25 @@ export default function MembersPage() {
                 </div>
               </div>
               
-              <h3 className="text-[17px] font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors">{member.name}</h3>
-              <p className="text-xs text-gray-400 font-medium mb-4">{member.role || 'সদস্য'}</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors font-tiro">{member.name}</h3>
+              <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-4">{member.role || 'সদস্য'}</p>
               
-              <div className="space-y-2.5 pt-4 border-t border-gray-50">
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <Phone size={14} className="text-emerald-600" /> {member.phone || 'ফোন নেই'}
+              <div className="space-y-3 pt-4 border-t border-gray-50">
+                <div className="flex items-center gap-3 text-sm text-gray-600 font-medium">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <Phone size={14} />
+                  </div>
+                  {member.phone || 'ফোন নেই'}
                 </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <MapPin size={14} className="text-emerald-600" /> {member.address || 'ঠিকানা নেই'}
+                <div className="flex items-center gap-3 text-sm text-gray-600 font-medium">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <MapPin size={14} />
+                  </div>
+                  <span className="line-clamp-1">{member.address || 'ঠিকানা নেই'}</span>
                 </div>
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50/50">
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">মাসিক অঙ্গীকার</span>
-                  <span className="text-sm font-bold text-emerald-600 font-tiro">৳{Number(member.monthly_pledge || 0).toLocaleString()}</span>
+                  <span className="text-base font-bold text-emerald-600 font-tiro">৳{Number(member.monthly_pledge || 0).toLocaleString()}</span>
                 </div>
               </div>
             </div>

@@ -45,11 +45,22 @@
 
 /* Premium Card Design */
 .card-premium {
-  @apply bg-white border border-gray-100 rounded-[1.5rem] md:rounded-[2rem] shadow-sm transition-all duration-300;
+  background: white;
+  border: 1px solid #F3F4F6;
+  border-radius: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.card-premium:hover {
-  @apply md:shadow-xl md:shadow-gray-200/50 md:-translate-y-1 md:border-emerald-100;
+@media (min-width: 768px) {
+  .card-premium {
+    border-radius: 2rem;
+  }
+  .card-premium:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transform: translateY(-4px);
+    border-color: #D1FAE5;
+  }
 }
 
 /* Glassmorphism Elements */
@@ -75,11 +86,50 @@
 
 /* Button Refinement */
 .btn-emerald {
-  @apply bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 px-6 rounded-2xl transition-all active:scale-95 shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 min-h-[44px] min-w-[44px];
+  background-color: #059669;
+  color: white;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border-radius: 1rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.2);
+}
+
+.btn-emerald:hover {
+  background-color: #047857;
+}
+
+.btn-emerald:active {
+  transform: scale(0.95);
 }
 
 .btn-outline {
-  @apply bg-white border border-gray-200 hover:border-emerald-600 hover:text-emerald-600 active:bg-emerald-50 text-gray-700 font-bold py-3 px-6 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 min-h-[44px] min-w-[44px];
+  background-color: white;
+  border: 1px solid #E5E7EB;
+  color: #374151;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border-radius: 1rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+}
+
+.btn-outline:hover {
+  border-color: #059669;
+  color: #059669;
+}
+
+.btn-outline:active {
+  transform: scale(0.95);
 }
 
 /* Table Styling - Responsive */

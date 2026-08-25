@@ -166,16 +166,16 @@ export default function DonationsPage() {
   );
 
   return (
-    <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
         <div>
-          <h1 className="text-[28px] font-bold font-tiro text-gray-900">অনুদান ও জমা</h1>
-          <p className="text-gray-500 text-[14px]">ফাউন্ডেশনের সকল জমার হিসাব</p>
+          <h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">অনুদান ও জমা</h1>
+          <p className="text-sm text-gray-500 font-medium">ফাউন্ডেশনের সকল জমার হিসাব</p>
         </div>
         {isAdmin && (
           <button 
             onClick={() => handleOpenModal()}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 active:scale-95"
+            className="flex items-center justify-center gap-2 btn-emerald h-12 px-6"
           >
             <Plus size={20} />
             <span>নতুন জমা</span>
@@ -197,7 +197,7 @@ export default function DonationsPage() {
           </div>
         </div>
 
-        <div className="divide-y divide-gray-50">
+        <div className="divide-y divide-gray-50 bg-gray-50/30">
           {filteredDonations.length === 0 ? (
             <div className="p-20 text-center text-gray-400">
               <Wallet size={48} className="mx-auto mb-4 opacity-20" />
@@ -205,68 +205,67 @@ export default function DonationsPage() {
             </div>
           ) : (
             filteredDonations.map((d) => (
-              <div key={d.id} className="p-6 hover:bg-emerald-50/30 transition-all group relative">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div key={d.id} className="p-5 sm:p-6 bg-white hover:bg-emerald-50/30 transition-all group relative border-b border-gray-50 last:border-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-100">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-100 group-hover:scale-105 transition-transform">
                       {d.members?.name?.[0] || 'U'}
                     </div>
                     <div>
-                      <p className="text-[15px] font-bold text-gray-900">{d.members?.name || 'অজ্ঞাত'}</p>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
-                        <div className="flex items-center gap-1">
-                          <Calendar size={12} className="text-gray-400" />
-                          <p className="text-[11px] text-gray-500 font-medium">{d.date}</p>
+                      <p className="text-[15px] sm:text-base font-bold text-gray-900 font-tiro">{d.members?.name || 'অজ্ঞাত'}</p>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                        <div className="flex items-center gap-1.5 text-[11px] text-gray-500 font-medium bg-gray-50 px-2 py-0.5 rounded-md">
+                          <Calendar size={12} className="text-emerald-600" />
+                          {d.date}
                         </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-1 h-1 rounded-full bg-gray-300"></div>
-                          <p className="text-[11px] text-gray-500 font-bold tracking-tighter uppercase">{d.receipt_no}</p>
+                        <div className="flex items-center gap-1.5 text-[11px] text-gray-500 font-bold tracking-tighter uppercase bg-gray-50 px-2 py-0.5 rounded-md">
+                          <span className="text-emerald-600 opacity-50">#</span>{d.receipt_no}
                         </div>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between md:justify-end gap-6 md:gap-8">
+                  <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-10">
                     <div className="text-right">
-                      <p className="text-lg font-bold text-emerald-600 font-tiro">৳{Number(d.amount).toLocaleString()}</p>
+                      <p className="text-lg sm:text-xl font-bold text-emerald-600 font-tiro">৳{Number(d.amount).toLocaleString()}</p>
                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{d.donation_month || 'সাধারণ'}</p>
                     </div>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       <button 
                         onClick={() => setPreviewUrl(`/api/receipts/${d.id}`)}
-                        className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:text-blue-600 hover:bg-blue-50 transition-all active:scale-90"
+                        className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-90"
                         title="প্রিভিউ"
                       >
                         <Eye size={18} />
                       </button>
                       <button 
                         onClick={() => handleShare(d)}
-                        className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90"
+                        className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all active:scale-90"
                         title="শেয়ার"
                       >
                         <Share2 size={18} />
                       </button>
                       <button 
                         onClick={() => window.open(`/api/receipts/${d.id}`, "_blank")}
-                        className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:text-emerald-600 hover:bg-emerald-50 transition-all active:scale-90"
+                        className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all active:scale-90"
                         title="ডাউনলোড"
                       >
                         <Download size={18} />
                       </button>
                       
                       {isAdmin && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 sm:gap-2 ml-1 sm:ml-2 pl-1 sm:pl-2 border-l border-gray-100">
                           <button 
                             onClick={() => handleOpenModal(d)}
-                            className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:text-blue-600 hover:bg-blue-50 transition-all active:scale-90"
+                            className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all active:scale-90"
                             title="এডিট"
                           >
                             <Edit2 size={18} />
                           </button>
                           <button 
                             onClick={() => handleDelete(d.id)}
-                            className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:text-red-600 hover:bg-red-50 transition-all active:scale-90"
+                            className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-90"
                             title="ডিলিট"
                           >
                             <Trash2 size={18} />

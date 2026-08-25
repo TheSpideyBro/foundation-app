@@ -44,14 +44,14 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9F8] flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-[#FDFDFC] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
       {/* Background Elements */}
-      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-emerald-100/50 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/2"></div>
-      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-emerald-50/50 rounded-full blur-3xl translate-y-1/2 translate-x-1/2"></div>
+      <div className="absolute top-0 left-0 w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-emerald-100/30 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/2 opacity-50"></div>
+      <div className="absolute bottom-0 right-0 w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-emerald-50/30 rounded-full blur-3xl translate-y-1/2 translate-x-1/2 opacity-50"></div>
 
-      <div className="w-full max-w-[1100px] bg-white rounded-[2.5rem] shadow-2xl shadow-emerald-900/5 overflow-hidden flex flex-col md:flex-row-reverse relative z-10">
+      <div className="w-full max-w-[1000px] bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl shadow-emerald-900/10 overflow-hidden flex flex-col md:flex-row-reverse relative z-10 border border-emerald-50">
         {/* Left Side: Branding */}
-        <div className="md:w-[45%] bg-[#0F2922] p-12 text-white flex flex-col justify-between relative">
+        <div className="md:w-[40%] bg-[#064E3B] p-8 sm:p-12 text-white flex flex-col justify-between relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">
              <div className="absolute -top-20 -left-20 w-64 h-64 border-[40px] border-emerald-400 rounded-full"></div>
              <div className="absolute top-1/2 -right-20 w-40 h-40 border-[20px] border-emerald-500 rounded-full"></div>
@@ -84,53 +84,53 @@ export default function SignupPage() {
         </div>
 
         {/* Right Side: Signup Form */}
-        <div className="md:w-[55%] p-12 md:p-20 flex flex-col justify-center">
-          <div className="mb-10">
-            <h2 className="text-[28px] font-bold text-gray-900 font-tiro mb-2">নতুন একাউন্ট</h2>
-            <p className="text-gray-400 text-[14px] font-medium">আপনার তথ্য দিয়ে রেজিস্ট্রেশন সম্পন্ন করুন</p>
+        <div className="md:w-[60%] p-8 sm:p-12 md:p-16 flex flex-col justify-center bg-white/50 backdrop-blur-sm">
+          <div className="mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 font-tiro mb-2">নতুন একাউন্ট</h2>
+            <p className="text-gray-500 text-sm font-medium">আপনার তথ্য দিয়ে রেজিস্ট্রেশন সম্পন্ন করুন</p>
           </div>
 
-          <form onSubmit={handleSignup} className="space-y-6">
+          <form onSubmit={handleSignup} className="space-y-5 sm:space-y-6">
             <div className="space-y-2">
-              <label className="text-[12px] font-bold text-gray-400 uppercase tracking-widest ml-1">ফোন নম্বর</label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">মোবাইল নম্বর</label>
+              <div className="relative group">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
                 <input 
                   type="text" 
                   required 
                   value={phone} 
                   onChange={e => setPhone(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-transparent rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 transition-all"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-bold text-gray-900"
                   placeholder="017XXXXXXXX"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
               <div className="space-y-2">
-                <label className="text-[12px] font-bold text-gray-400 uppercase tracking-widest ml-1">পাসওয়ার্ড</label>
-                <div className="relative">
-                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">পাসওয়ার্ড</label>
+                <div className="relative group">
+                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
                   <input 
                     type="password" 
                     required 
                     value={password} 
                     onChange={e => setPassword(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-transparent rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 transition-all"
+                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-bold text-gray-900"
                     placeholder="••••••••"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[12px] font-bold text-gray-400 uppercase tracking-widest ml-1">নিশ্চিত করুন</label>
-                <div className="relative">
-                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">নিশ্চিত করুন</label>
+                <div className="relative group">
+                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
                   <input 
                     type="password" 
                     required 
                     value={confirmPassword} 
                     onChange={e => setConfirmPassword(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-transparent rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 transition-all"
+                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-bold text-gray-900"
                     placeholder="••••••••"
                   />
                 </div>
@@ -140,9 +140,9 @@ export default function SignupPage() {
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full py-4 bg-emerald-700 text-white rounded-2xl text-[16px] font-bold hover:bg-emerald-800 transition-all shadow-xl shadow-emerald-900/20 flex items-center justify-center gap-2 group"
+              className="w-full btn-emerald py-4 text-lg shadow-xl shadow-emerald-900/20"
             >
-              {loading ? "প্রসেস হচ্ছে..." : (
+              {loading ? <Loader2 className="animate-spin" size={24} /> : (
                 <>
                   একাউন্ট তৈরি করুন <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </>
