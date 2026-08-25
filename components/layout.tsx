@@ -24,10 +24,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const menuItems = [
     { name: "ড্যাশবোর্ড", icon: LayoutDashboard, path: "/dashboard", roles: ["admin", "treasurer", "member"] },
-    { name: "সদস্য তালিকা", icon: Users, path: "/members", roles: ["admin", "treasurer"] },
+    { name: "সদস্য তালিকা", icon: Users, path: "/members", roles: ["admin", "treasurer", "member"] },
     { name: "দান সংগ্রহ", icon: CreditCard, path: "/donations", roles: ["admin", "treasurer", "member"] },
-    { name: "খরচের হিসাব", icon: Wallet, path: "/expenses", roles: ["admin", "treasurer"] },
-    { name: "প্রতিবেদন", icon: BarChart3, path: "/reports", roles: ["admin", "treasurer"] },
+    { name: "খরচের হিসাব", icon: Wallet, path: "/expenses", roles: ["admin", "treasurer", "member"] },
+    { name: "প্রতিবেদন", icon: BarChart3, path: "/reports", roles: ["admin", "treasurer", "member"] },
     { name: "প্রোফাইল", icon: UserCircle, path: "/profile", roles: ["admin", "treasurer", "member"] },
   ];
 
@@ -237,13 +237,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <CreditCard size={22} />
           <span className="text-[10px] font-bold">দান</span>
         </Link>
-        {/* Only show Expenses for staff */}
-        {isStaff && (
-          <Link href="/expenses" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/expenses') ? 'text-emerald-600' : 'text-gray-400'}`}>
-            <Wallet size={22} />
-            <span className="text-[10px] font-bold">খরচ</span>
-          </Link>
-        )}
+        <Link href="/expenses" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/expenses') ? 'text-emerald-600' : 'text-gray-400'}`}>
+          <Wallet size={22} />
+          <span className="text-[10px] font-bold">খরচ</span>
+        </Link>
         <Link href="/members" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/members') ? 'text-emerald-600' : 'text-gray-400'}`}>
           <Users size={22} />
           <span className="text-[10px] font-bold">সদস্য</span>
