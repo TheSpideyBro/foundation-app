@@ -37,25 +37,20 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const { data: noticeData } = await supabase()
-        .from("notices")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(3);
+      // Parallel data fetching for better performance
+      const [
+        { data: noticeData },
+        { count: membersCount },
+        { data: donations },
+        { data: expenses }
+      ] = await Promise.all([
+        supabase().from("notices").select("*").eq("is_active", true).order("created_at", { ascending: false }).limit(3),
+        supabase().from("members").select("*", { count: "exact", head: true }),
+        supabase().from("donations").select("amount, date"),
+        supabase().from("expenses").select("amount, category")
+      ]);
+
       setNotices(noticeData || []);
-      const { count: membersCount } = await supabase()
-        .from("members")
-        .select("*", { count: "exact", head: true });
-
-      const { data: donations } = await supabase()
-        .from("donations")
-        .select("amount, date");
-      
-      const { data: expenses } = await supabase()
-        .from("expenses")
-        .select("amount, category");
-
       const totalDonations = donations?.reduce((sum, d) => sum + (Number(d.amount) || 0), 0) || 0;
       const totalExpenses = expenses?.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 0;
 
