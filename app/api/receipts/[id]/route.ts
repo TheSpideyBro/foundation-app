@@ -138,28 +138,41 @@ export async function GET(
         const logo = await loadImage(logoPath);
         ctx.save();
         ctx.beginPath();
-        ctx.arc(140, 140, 90, 0, Math.PI * 2);
+        ctx.arc(100, 155, 75, 0, Math.PI * 2);
         ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 10;
+        ctx.lineWidth = 6;
         ctx.stroke();
         ctx.clip();
-        ctx.drawImage(logo, 50, 50, 180, 180);
+        ctx.drawImage(logo, 25, 80, 150, 150);
         ctx.restore();
       }
     } catch (e) {}
 
     // 4. Header Text
     ctx.fillStyle = '#FFFFFF';
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 48px Bengali';
-    ctx.fillText("দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন", 260, 110);
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+
+    // Center text in the remaining space (from x=180 to x=1000, center is 590)
+    const textCenterX = 590;
+
+    ctx.font = 'bold 62px Bengali';
+    ctx.fillText("দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন", textCenterX, 110);
     
-    ctx.font = '22px Bengali';
-    ctx.fillText("প্রতিষ্ঠিত: ০১/০১/২০০৯ইং", 260, 160);
+    ctx.shadowBlur = 4;
+    ctx.font = 'bold 34px Bengali';
+    ctx.fillText("প্রতিষ্ঠিত: ০১/০১/২০০৯ইং", textCenterX, 175);
     
-    ctx.font = '20px Bengali';
-    ctx.fillText("📍 দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", 260, 205);
-    ctx.fillText("📞 ০১৮৪০-৮২৮০১০ | ০১৮১৪-৯৪৮২২১", 260, 245);
+    ctx.font = '30px Bengali';
+    ctx.fillText("📍 দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", textCenterX, 235);
+    ctx.fillText("📞 ০১৮৪০-৮২৮০১০ | ০১৮১৪-৯৪৮২২৪", textCenterX, 285);
+    
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
 
     // 5. Receipt Title Badge
     const badgeWidth = 500;
@@ -219,14 +232,15 @@ export async function GET(
       }
     } catch (e) {}
 
-    // 7. QR Code Sectionst rows = [
+    // 7. QR Code Section
+    const rows = [
       { label: "রসিদ নং", value: donation.receipt_no || 'N/A', icon: 'doc' },
       { label: "তারিখ", value: donation.date, icon: 'cal' },
       { label: "জনাব/জনাবা", value: donation.members?.name || 'অজ্ঞাত', icon: 'user' },
       { label: "মাসের নাম", value: getBengaliMonthName(donation.donation_month), icon: 'month' },
-      { label: "টাকার পরিমাণ কথায়", value: numberToBengaliWords(donation.amount) + ' টাকা', icon: 'text' },
-      { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-`, icon: 'money' },
-      { label: "আদায়কারী", value: donation.collector?.name || 'অ্যাডমিন', icon: 'edit' }
+      { label: "টাকার পরিমাণ কথায়", value: `${amountInWords} টাকা`, icon: 'text' },
+      { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-`, icon: 'cash' },
+      { label: "আদায়কারী", value: donation.collector?.name || "অ্যাডমিন", icon: 'pen' }
     ];
 
     rows.forEach((row, i) => {
