@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { 
-  Heart, Shield, TrendingUp, Users, 
-  ChevronRight, ArrowRight, CheckCircle2,
-  Phone, Globe, Award, Zap
+  Heart, ChevronRight, ArrowRight, 
+  Phone, Globe, Zap
 } from "lucide-react";
 import Image from "next/image";
 
@@ -22,8 +21,6 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="hidden md:flex items-center gap-8">
-            <Link href="#features" className="text-sm font-bold text-gray-500 hover:text-emerald-600 transition-colors">বৈশিষ্ট্য</Link>
-            <Link href="#about" className="text-sm font-bold text-gray-500 hover:text-emerald-600 transition-colors">আমাদের সম্পর্কে</Link>
             <Link href="/login" className="text-sm font-bold text-gray-900 hover:text-emerald-600 transition-colors">লগইন</Link>
             <Link href="/signup" className="btn-emerald py-2.5 px-6 text-sm shadow-none">
               সদস্য হন <ArrowRight size={16} />
@@ -61,65 +58,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-            {[
-              { label: "মোট সদস্য", value: "১২০+", icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-              { label: "সংগৃহীত অনুদান", value: "৳ ৫.৫ লক্ষ", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
-              { label: "সফল প্রজেক্ট", value: "১৫+", icon: Award, color: "text-amber-600", bg: "bg-amber-50" },
-              { label: "নিরাপত্তা", value: "১০০%", icon: Shield, color: "text-rose-600", bg: "bg-rose-50" }
-            ].map((stat, i) => (
-              <div key={i} className="text-center group">
-                <div className={`w-16 h-16 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-500 shadow-sm`}>
-                  <stat.icon size={28} />
-                </div>
-                <h4 className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</h4>
-                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-32 bg-[#FDFDFC]">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl font-bold text-gray-900 font-tiro mb-4">কেন আমাদের অ্যাপ ব্যবহার করবেন?</h2>
-            <p className="text-gray-500 font-medium">আধুনিক প্রযুক্তি ও স্বচ্ছতার সমন্বয়ে তৈরি আমাদের এই প্ল্যাটফর্ম।</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { 
-                title: "স্বচ্ছ হিসাব", 
-                desc: "প্রতিটি টাকার হিসাব রাখা হয় ডিজিটাল পদ্ধতিতে, যা যেকোনো সময় সদস্যরা দেখতে পারেন।",
-                icon: Shield
-              },
-              { 
-                title: "ডিজিটাল রসিদ", 
-                desc: "অনুদান দেওয়ার সাথে সাথেই মোবাইল নম্বরে কনফার্মেশন এবং ডিজিটাল রসিদ পৌঁছে যায়।",
-                icon: Globe
-              },
-              { 
-                title: "সহজ ব্যবস্থাপনা", 
-                desc: "অ্যাডমিন প্যানেল থেকে খুব সহজেই সদস্য ও তাদের চাঁদার হিসাব পরিচালনা করা সম্ভব।",
-                icon: Zap
-              }
-            ].map((feature, i) => (
-              <div key={i} className="card-premium p-10 hover:border-emerald-200 group">
-                <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500">
-                  <feature.icon size={24} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4 font-tiro">{feature.title}</h3>
-                <p className="text-gray-500 font-medium leading-relaxed">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="py-20">
