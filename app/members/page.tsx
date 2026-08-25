@@ -191,6 +191,21 @@ export default function MembersPage() {
                       >
                         <Trash2 size={16} />
                       </button>
+                      <button 
+                        onClick={async () => {
+                          const res = await fetch(`/api/members/${member.id}/qr`).then(r => r.json());
+                          if (res.qrImage) {
+                            const link = document.createElement('a');
+                            link.href = res.qrImage;
+                            link.download = `QR_${member.name}.png`;
+                            link.click();
+                          }
+                        }}
+                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all active:scale-90"
+                        title="কিউআর কোড"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+                      </button>
                     </div>
                   )}
                 </div>

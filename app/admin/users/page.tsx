@@ -10,6 +10,7 @@ import {
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchUsers = async () => {
     try {
@@ -71,12 +72,18 @@ export default function AdminUsersPage() {
         <div className="p-6 border-b border-gray-100">
           <div className="relative max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input type="text" placeholder="ইউজার খুঁজুন..." className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border-none rounded-xl text-[14px] outline-none focus:bg-white transition-all" />
+            <input 
+              type="text" 
+              placeholder="ইউজার বা ফোন খুঁজুন..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border-none rounded-xl text-[14px] outline-none focus:bg-white transition-all" 
+            />
           </div>
         </div>
 
         <div className="divide-y divide-gray-50">
-          {users.map((user) => (
+          {users.filter(u => u.email?.toLowerCase().includes(searchQuery.toLowerCase()) || u.phone?.includes(searchQuery)).map((user) => (
             <div key={user.id} className="p-6 hover:bg-gray-50/50 transition-all">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
@@ -85,6 +92,7 @@ export default function AdminUsersPage() {
                   </div>
                   <div>
                     <p className="text-[15px] font-bold text-gray-900">{user.email}</p>
+                    {user.phone && <p className="text-[11px] text-gray-400 font-bold">{user.phone}</p>}
                     <div className="flex items-center gap-2 mt-1">
                       <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[9px] font-bold uppercase rounded-lg tracking-wider">
                         {user.role}

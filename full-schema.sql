@@ -32,6 +32,9 @@ create table if not exists users (
   email text not null unique,
   role text not null default 'member'
     check (role in ('admin', 'treasurer', 'member')),
+  is_approved boolean not null default false,
+  member_id uuid,
+  phone text,
   created_at timestamptz not null default now()
 );
 alter table users enable row level security;
@@ -390,3 +393,26 @@ grant select, insert, update, delete on expense_categories to authenticated;
 -- বানানো যাবে না — এটা ইচ্ছাকৃত সুরক্ষা)। তারপর থেকে Admin প্যানেল
 -- থেকে যেকোনো user-এর role পরিবর্তন/মুছা যাবে।
 -- ============================================================
+
+-- ============================================================
+-- SECTION 6 — notices (নোটিশ বোর্ড)
+-- ============================================================
+
+create table if not exists public.notices (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  content text not null,
+  is_active boolean default true,
+  created_at timestamp with time zone default now(),
+  created_by uuid references users(id)
+);
+alter table public.notices enable row level security;
+
+create policy "notices_select_all" on notices for select
+  using (true);
+create policy "notices_insert_admin" on notices for insert
+  with check (get_my_role() = 'admin');
+create policy "notices_update_admin" on notices for update
+  using (get_my_role() = 'admin');
+create policy "notices_delete_admin" on notices for delete
+  using (get_my_role() = 'admin');

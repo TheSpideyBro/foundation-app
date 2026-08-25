@@ -63,6 +63,34 @@ export default function AdminPage() {
       color: "emerald"
     },
     {
+      title: "বাকি চাঁদার তালিকা",
+      desc: "অনাদায়ী অঙ্গীকার এবং হোয়াটসঅ্যাপ রিমাইন্ডার",
+      icon: <Clock size={24} />,
+      link: "/admin/pending",
+      color: "rose"
+    },
+    {
+      title: "নোটিশ বোর্ড",
+      desc: "সদস্যদের জন্য ঘোষণা এবং আপডেট তৈরি করুন",
+      icon: <Megaphone size={24} />,
+      link: "/admin/notices",
+      color: "amber"
+    },
+    {
+      title: "ক্যাটাগরি ম্যানেজমেন্ট",
+      desc: "খরচের ক্যাটাগরিগুলো নিয়ন্ত্রণ করুন",
+      icon: <Tag size={24} />,
+      link: "/admin/categories",
+      color: "blue"
+    },
+    {
+      title: "বাল্ক ইম্পোর্ট/এক্সপোর্ট",
+      desc: "এক্সেল ফাইলের মাধ্যমে ডাটা ব্যাকআপ ও আপলোড",
+      icon: <Database size={24} />,
+      link: "/admin/bulk",
+      color: "emerald"
+    },
+    {
       title: "অটো-লিঙ্ক সদস্য",
       desc: "ফোন নম্বর অনুযায়ী মেম্বারদের অটো-লিঙ্ক করুন",
       icon: <UserPlus size={24} />,

@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [expenseData, setExpenseData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [notices, setNotices] = useState<any[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -34,6 +35,13 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
+      const { data: noticeData } = await supabase()
+        .from("notices")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(3);
+      setNotices(noticeData || []);
       const { count: membersCount } = await supabase()
         .from("members")
         .select("*", { count: "exact", head: true });
@@ -244,6 +252,28 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Notices Section */}
+      {notices.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-2 h-8 bg-emerald-600 rounded-full"></div>
+            <h2 className="text-xl font-bold font-tiro text-gray-900">সর্বশেষ ঘোষণা</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {notices.map((n) => (
+              <div key={n.id} className="card-premium p-6 bg-emerald-50/30 border-emerald-100">
+                <div className="flex items-center gap-2 text-emerald-600 mb-3">
+                  <Activity size={16} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">{new Date(n.created_at).toLocaleDateString('bn-BD')}</span>
+                </div>
+                <h3 className="font-bold text-gray-900 mb-2 font-tiro">{n.title}</h3>
+                <p className="text-xs text-gray-600 line-clamp-2">{n.content}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent Donations */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
