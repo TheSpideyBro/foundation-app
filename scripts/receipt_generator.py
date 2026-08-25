@@ -23,6 +23,7 @@ def generate_receipt_image(receipt_no, member_name, amount, date, payment_method
     
     # Try to load fonts, fallback to default
     font_paths = [
+        "/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"
@@ -69,14 +70,20 @@ def generate_receipt_image(receipt_no, member_name, amount, date, payment_method
 
     # Title & Branding
     title_text = "Doulkhand East Hilful Fuzul Foundation"
-    draw.text((170, 55), title_text, fill=(255, 255, 255), font=font_title)
+    # Wrap title if needed
+    if len(title_text) > 30:
+        title_lines = [title_text[:28] + "-", title_text[28:]]
+        draw.text((170, 45), title_lines[0], fill=(255, 255, 255), font=font_title)
+        draw.text((170, 90), title_lines[1], fill=(255, 255, 255), font=font_title)
+    else:
+        draw.text((170, 55), title_text, fill=(255, 255, 255), font=font_title)
     
     sub_text = "Charity & Community Development"
     try:
         w = draw.textlength(sub_text, font=font_sub)
-        draw.text(((width-w)/2, 120), sub_text, fill=(255, 255, 255), font=font_sub)
+        draw.text(((width-w)/2, 140), sub_text, fill=(255, 255, 255), font=font_sub)
     except:
-        draw.text((170, 120), sub_text, fill=(255, 255, 255), font=font_sub)
+        draw.text((170, 140), sub_text, fill=(255, 255, 255), font=font_sub)
 
     # Receipt Label
     label = "DONATION RECEIPT"

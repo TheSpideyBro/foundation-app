@@ -72,7 +72,8 @@ export async function GET(
     return new NextResponse(jpgBuffer, {
       headers: {
         'Content-Type': 'image/jpeg',
-        'Content-Disposition': `inline; filename="receipt_${donation.receipt_no || id}.jpg"`,
+        'Content-Disposition': `attachment; filename="receipt_${donation.receipt_no || id}.jpg"`,
+        'Content-Length': jpgBuffer.length.toString(),
       },
     });
   } catch (err) {
