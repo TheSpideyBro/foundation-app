@@ -20,8 +20,12 @@ const hindSiliguri = Hind_Siliguri({
 });
 
 export const metadata: Metadata = {
-  title: "দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন",
-  description: "একটি অলাভজনক সমাজসেবামূলক প্রতিষ্ঠান",
+  metadataBase: new URL("https://daulkharfoundation.vercel.app"),
+  title: {
+    default: "দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন",
+    template: "%s | দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন",
+  },
+  description: "২০০৯ সাল থেকে স্বচ্ছতা ও আস্থার সাথে আর্তমানবতার সেবায় নিয়োজিত একটি অলাভজনক সমাজসেবামূলক প্রতিষ্ঠান।",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -29,6 +33,32 @@ export const metadata: Metadata = {
     title: "দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন",
   },
   authors: [{ name: "Saddam Hossain Akash" }],
+  openGraph: {
+    type: "website",
+    locale: "bn_BD",
+    url: "https://daulkharfoundation.vercel.app",
+    title: "দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন",
+    description: "২০০৯ সাল থেকে স্বচ্ছতা ও আস্থার সাথে আর্তমানবতার সেবায় নিয়োজিত একটি অলাভজনক সমাজসেবামূলক প্রতিষ্ঠান।",
+    siteName: "দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন",
+    images: [
+      {
+        url: "/icons/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন লোগো",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন",
+    description: "২০০৯ সাল থেকে স্বচ্ছতা ও আস্থার সাথে আর্তমানবতার সেবায় নিয়োজিত একটি অলাভজনক সমাজসেবামূলক প্রতিষ্ঠান।",
+    images: ["/icons/icon-512.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export const viewport: Viewport = {
