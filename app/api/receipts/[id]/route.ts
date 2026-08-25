@@ -78,7 +78,7 @@ export async function GET(
   // Fetch donation details with collected_by info
   const { data: donation, error } = await supabase
     .from('donations')
-    .select('*, members!member_id(name), collector:members!collected_by(name)')
+    .select('*, members!member_id(name), collector:users!collected_by(name)')
     .eq('id', id)
     .single();
 
@@ -186,13 +186,14 @@ export async function GET(
     const cardMargin = 70;
     const cardWidth = width - (cardMargin * 2);
     const cardY = 530;
+    const cardHeight = 820;
     const rowHeight = 100;
 
     ctx.fillStyle = '#FDFDFD';
     ctx.shadowColor = 'rgba(0,0,0,0.1)';
     ctx.shadowBlur = 30;
     ctx.beginPath();
-    ctx.roundRect(cardMargin, cardY, cardWidth, 700, 25);
+    ctx.roundRect(cardMargin, cardY, cardWidth, cardHeight, 25);
     ctx.fill();
     ctx.shadowBlur = 0;
 
@@ -201,43 +202,33 @@ export async function GET(
     ctx.stroke();
 
     const rows = [
-      { label: "রসিদ নং", value: donation.receipt_no || 'N/A', icon: '📄' },
-      { label: "তারিখ", value: donation.date, icon: '📅' },
-      { label: "জনাব/জনাবা", value: donation.members?.name || 'অজ্ঞাত', icon: '👤' },
-      { label: "মাসের নাম", value: getBengaliMonthName(donation.donation_month), icon: '🗓️' },
-      { label: "টাকার পরিমাণ কথায়", value: numberToBengaliWords(donation.amount) + ' টাকা মাত্র', icon: '💵' },
-      { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-`, icon: '💰' },
-      { label: "আদায়কারী", value: donation.collector?.name || 'অ্যাডমিন', icon: '✍️' }
+      { label: "রসিদ নং", value: donation.receipt_no || 'N/A' },
+      { label: "তারিখ", value: donation.date },
+      { label: "জনাব/জনাবা", value: donation.members?.name || 'অজ্ঞাত' },
+      { label: "মাসের নাম", value: getBengaliMonthName(donation.donation_month) },
+      { label: "টাকার পরিমাণ কথায়", value: numberToBengaliWords(donation.amount) + ' টাকা মাত্র' },
+      { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-` },
+      { label: "আদায়কারী", value: donation.collector?.name || 'অ্যাডমিন' }
     ];
 
     rows.forEach((row, i) => {
       const y = cardY + 80 + (i * rowHeight);
       
-      // Icon Box
-      ctx.fillStyle = '#F3F4F6';
-      ctx.beginPath();
-      ctx.roundRect(cardMargin + 40, y - 35, 60, 60, 15);
-      ctx.fill();
-      
-      ctx.font = '28px serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(row.icon, cardMargin + 70, y + 5);
+// Label
+	      ctx.textAlign = 'left';
+	      ctx.fillStyle = '#4B5563';
+	      ctx.font = 'bold 24px Bengali';
+	      ctx.fillText(row.label, cardMargin + 40, y);
+	      
+	      ctx.fillStyle = '#9CA3AF';
+	      ctx.fillText(":", cardMargin + 380, y);
 
-      // Label
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#4B5563';
-      ctx.font = 'bold 24px Bengali';
-      ctx.fillText(row.label, cardMargin + 130, y);
-      
-      ctx.fillStyle = '#9CA3AF';
-      ctx.fillText(":", cardMargin + 380, y);
-
-      // Value
-      ctx.fillStyle = '#111827';
-      ctx.font = i === 5 ? 'bold 32px Bengali' : 'bold 26px Bengali';
-      if (row.label.includes('কথায়')) ctx.font = 'italic 22px Bengali';
-      
-      ctx.fillText(String(row.value), cardMargin + 410, y);
+	      // Value
+	      ctx.fillStyle = '#111827';
+	      ctx.font = i === 5 ? 'bold 32px Bengali' : 'bold 26px Bengali';
+	      if (row.label.includes('কথায়')) ctx.font = 'italic 22px Bengali';
+	      
+	      ctx.fillText(String(row.value), cardMargin + 410, y);
 
       // Divider
       if (i < rows.length - 1) {
@@ -293,11 +284,11 @@ export async function GET(
     ctx.fillStyle = '#064E3B';
     ctx.font = 'bold 26px Bengali';
     ctx.textAlign = 'center';
-    ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2, height - 280);
+    ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2, height - 200);
     
     ctx.fillStyle = '#6B7280';
     ctx.font = '20px Bengali';
-    ctx.fillText("আল্লাহ আপনার দান কবুল করুন", width / 2, height - 245);
+    ctx.fillText("আল্লাহ আপনার দান কবুল করুন", width / 2, height - 165);
 
     const buffer = canvas.toBuffer('image/jpeg', { quality: 0.95 });
 

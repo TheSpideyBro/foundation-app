@@ -80,7 +80,7 @@ export default function DonationsPage() {
             name
           )
         `)
-        .in("role", ["admin", "treasurer"]);
+        .eq("role", "treasurer");
 
       // Map staff to usable objects for the dropdown
       const treasurersList = staffData?.map((s: any) => ({
@@ -89,9 +89,9 @@ export default function DonationsPage() {
       })) || [];
       
       // If a staff member has a name but no member_id link, we still show them
-      console.log("Treasurers List for UI:", treasurersList);
       
-      console.log("Treasurers List:", treasurersList);
+      
+      
 
       setDonations(donationsData || []);
       setMembers(membersData || []);
@@ -192,7 +192,7 @@ export default function DonationsPage() {
       const file = new File([blob], `receipt_${donation.receipt_no}.jpg`, { type: 'image/jpeg' });
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        const shareText = `আসসালামু আলাইকুম, ${donation.members?.name}।\n\nদৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশনে আপনার অনুদানটি সফলভাবে গ্রহণ করা হয়েছে।\n\nরসিদ নং: ${donation.receipt_no}\nপরিমাণ: ৳${donation.amount}/-\nতারিখ: ${donation.date}\n\nআপনার মহানুভবতার জন্য ধন্যবাদ!`;
+        const shareText = `আসসালামু আলাইকুম, ${donation.members?.name}।\n\n*দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন*-এ আপনার অনুদানটি সফলভাবে গ্রহণ করা হয়েছে।\n\n✅ *রসিদ নং:* ${donation.receipt_no}\n💰 *পরিমাণ:* ৳${donation.amount}/-\n📅 *তারিখ:* ${donation.date}\n\nআপনার মহানুভবতার জন্য অসংখ্য ধন্যবাদ! আল্লাহ আপনার দান কবুল করুন।`;
         await navigator.share({
           files: [file],
           title: 'অনুদান রসিদ',
