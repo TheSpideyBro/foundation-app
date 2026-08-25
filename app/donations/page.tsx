@@ -13,6 +13,7 @@ import { useAuth } from "@/components/providers";
 export default function DonationsPage() {
   const { user, role } = useAuth();
   const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
+  const isStaff = isAdmin || role === 'treasurer';
   
   const [donations, setDonations] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
@@ -181,7 +182,7 @@ export default function DonationsPage() {
           <h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">অনুদান ও জমা</h1>
           <p className="text-sm text-gray-500 font-medium">ফাউন্ডেশনের সকল জমার হিসাব</p>
         </div>
-        {isAdmin && (
+        {isStaff && (
           <button 
             onClick={() => handleOpenModal()}
             className="flex items-center justify-center gap-2 btn-emerald h-12 px-6"
@@ -273,7 +274,7 @@ export default function DonationsPage() {
                         <Download size={18} />
                       </button>
                       
-                      {isAdmin && (
+                      {isStaff && (
                         <div className="flex items-center gap-1.5 sm:gap-2 ml-1 sm:ml-2 pl-1 sm:pl-2 border-l border-gray-100">
                           <button 
                             onClick={() => handleOpenModal(d)}
@@ -282,13 +283,15 @@ export default function DonationsPage() {
                           >
                             <Edit2 size={18} />
                           </button>
-                          <button 
-                            onClick={() => handleDelete(d.id)}
-                            className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-90"
-                            title="ডিলিট"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                          {isAdmin && (
+                            <button 
+                              onClick={() => handleDelete(d.id)}
+                              className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-90"
+                              title="ডিলিট"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

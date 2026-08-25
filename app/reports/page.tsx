@@ -25,7 +25,7 @@ export default function ReportsPage() {
     try {
       const { data: donations } = await supabase().from("donations").select("amount");
       const { data: expenses } = await supabase().from("expenses").select("amount");
-      const { data: members } = await supabase().from("members").select("id").eq("status", "Active");
+      const { data: members } = await supabase().from("members").select("id").eq("status", "active");
 
       const totalD = donations?.reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
       const totalE = expenses?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;

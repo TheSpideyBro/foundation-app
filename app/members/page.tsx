@@ -13,6 +13,7 @@ import { useAuth } from "@/components/providers";
 export default function MembersPage() {
   const { user, role } = useAuth();
   const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
+  const isStaff = isAdmin || role === 'treasurer';
   
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,7 +140,7 @@ export default function MembersPage() {
           <h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">সদস্য তালিকা</h1>
           <p className="text-sm text-gray-500 font-medium">ফাউন্ডেশনের সকল নিবন্ধিত সদস্য</p>
         </div>
-        {isAdmin && (
+        {isStaff && (
           <button 
             onClick={() => handleOpenModal()}
             className="flex items-center justify-center gap-2 btn-emerald h-12 px-6"
@@ -175,7 +176,7 @@ export default function MembersPage() {
                   <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${member.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
                     {member.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                   </div>
-                  {isAdmin && (
+                  {isStaff && (
                     <div className="flex items-center gap-1">
                       <button 
                         onClick={() => handleOpenModal(member)}
@@ -184,13 +185,15 @@ export default function MembersPage() {
                       >
                         <Edit2 size={16} />
                       </button>
-                      <button 
-                        onClick={() => handleDelete(member.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all active:scale-90"
-                        title="ডিলিট"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {isAdmin && (
+                        <button 
+                          onClick={() => handleDelete(member.id)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all active:scale-90"
+                          title="ডিলিট"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                       <button 
                         onClick={async () => {
                           const res = await fetch(`/api/members/${member.id}/qr`).then(r => r.json());

@@ -14,6 +14,7 @@ import { useAuth } from "@/components/providers";
 export default function AdminPage() {
   const { user, role } = useAuth();
   const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
+  const isStaff = isAdmin || role === 'treasurer';
   
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
@@ -36,14 +37,14 @@ export default function AdminPage() {
     }
   };
 
-  if (!isAdmin) {
+  if (!isStaff) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center">
         <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-red-100">
           <Shield size={40} />
         </div>
         <h1 className="text-2xl font-bold font-tiro text-gray-900 mb-2">প্রবেশাধিকার সংরক্ষিত</h1>
-        <p className="text-gray-500 max-w-xs">এই পেজটি শুধুমাত্র অ্যাডমিনদের জন্য। আপনার যদি মনে হয় এটি ভুল, তবে প্রধান অ্যাডমিনের সাথে যোগাযোগ করুন।</p>
+        <p className="text-gray-500 max-w-xs">এই পেজটি শুধুমাত্র অ্যাডমিন ও ট্রেজারারদের জন্য। আপনার যদি মনে হয় এটি ভুল, তবে প্রধান অ্যাডমিনের সাথে যোগাযোগ করুন।</p>
       </div>
     );
   }

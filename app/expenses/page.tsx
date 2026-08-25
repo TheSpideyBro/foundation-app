@@ -12,6 +12,7 @@ import { useAuth } from "@/components/providers";
 export default function ExpensesPage() {
   const { user, role } = useAuth();
   const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
+  const isStaff = isAdmin || role === 'treasurer';
   
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +136,7 @@ export default function ExpensesPage() {
           <h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">ব্যয় ও খরচ</h1>
           <p className="text-sm text-gray-500 font-medium">ফাউন্ডেশনের সকল খরচের হিসাব</p>
         </div>
-        {isAdmin && (
+        {isStaff && (
           <button 
             onClick={() => handleOpenModal()}
             className="flex items-center justify-center gap-2 bg-rose-600 text-white rounded-2xl font-bold h-12 px-6 hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 active:scale-95"
@@ -192,7 +193,7 @@ export default function ExpensesPage() {
                       <p className="text-lg sm:text-xl font-bold text-rose-600 font-tiro">৳{Number(e.amount).toLocaleString()}</p>
                     </div>
                     
-                    {isAdmin && (
+                    {isStaff && (
                       <div className="flex items-center gap-1.5 sm:gap-2">
                         <button 
                           onClick={() => handleOpenModal(e)}
@@ -201,13 +202,15 @@ export default function ExpensesPage() {
                         >
                           <Edit2 size={18} />
                         </button>
-                        <button 
-                          onClick={() => handleDelete(e.id)}
-                          className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-90"
-                          title="ডিলিট"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        {isAdmin && (
+                          <button 
+                            onClick={() => handleDelete(e.id)}
+                            className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-90"
+                            title="ডিলিট"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
