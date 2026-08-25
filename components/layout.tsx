@@ -38,9 +38,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isActive = (path: string) => pathname === path;
 
+  const isAdminEmail = user?.email === "saddamakash234@gmail.com";
+  const isStaff = role === "admin" || role === "treasurer" || isAdminEmail;
+
   // Filter items based on current user role
-  const visibleMenuItems = menuItems.filter(item => item.roles.includes(role || ""));
-  const visibleAdminItems = user?.email === "saddamakash234@gmail.com" ? adminItems : adminItems.filter(item => item.roles.includes(role || ""));
+  const visibleMenuItems = menuItems.filter(item => item.roles.includes(role || "") || (isAdminEmail && item.roles.includes("admin")));
+  const visibleAdminItems = isAdminEmail ? adminItems : adminItems.filter(item => item.roles.includes(role || ""));
 
   if (loading && !user) return null;
 
@@ -96,7 +99,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           ))}
 
           {/* Admin Section in Sidebar */}
-          {(role === "admin" || visibleAdminItems.length > 0) && (
+          {visibleAdminItems.length > 0 && (
             <>
               <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-10 mb-4">অ্যাডমিন কন্ট্রোল</p>
               {visibleAdminItems.map((item) => (
@@ -124,7 +127,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900 truncate">{user?.email?.split('@')[0]}</p>
-              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{role === 'admin' ? 'অ্যাডমিন' : 'সদস্য'}</p>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{isStaff ? 'অ্যাডমিন' : 'সদস্য'}</p>
             </div>
           </div>
           <button
@@ -177,7 +180,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             ))}
 
             {/* Admin Section in Mobile Drawer */}
-            {(role === "admin" || visibleAdminItems.length > 0) && (
+            {visibleAdminItems.length > 0 && (
               <>
                 <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-8 mb-4">অ্যাডমিন কন্ট্রোল</p>
                 {visibleAdminItems.map((item) => (
@@ -206,7 +209,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
               <div>
                 <p className="text-sm font-bold text-gray-900 truncate max-w-[150px]">{user?.email?.split('@')[0]}</p>
-                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{role === 'admin' ? 'অ্যাডমিন' : 'সদস্য'}</p>
+                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{isStaff ? 'অ্যাডমিন' : 'সদস্য'}</p>
               </div>
             </div>
             <button
@@ -220,7 +223,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation Bar - Simplified for Staff Roles */}
+      {/* Mobile Bottom Navigation Bar */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-xl border-t border-emerald-100/50 z-[40] flex items-center justify-around px-2 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
         <Link href="/dashboard" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/dashboard') ? 'text-emerald-600' : 'text-gray-400'}`}>
           <Home size={22} />
@@ -231,7 +234,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="text-[10px] font-bold">দান</span>
         </Link>
         {/* Only show Expenses for staff */}
-        {(role === "admin" || role === "treasurer") && (
+        {isStaff && (
           <Link href="/expenses" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/expenses') ? 'text-emerald-600' : 'text-gray-400'}`}>
             <Wallet size={22} />
             <span className="text-[10px] font-bold">খরচ</span>
