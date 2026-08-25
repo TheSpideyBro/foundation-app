@@ -144,7 +144,7 @@ export default function DonationsPage() {
         amount: parseFloat(formData.amount),
         date: formData.date,
         donation_month: formData.donation_month,
-        method: formData.method,
+        method: formData.method.toLowerCase(),
         receipt_no: formData.receipt_no,
         collected_by: formData.collected_by,
         created_by: user?.id
