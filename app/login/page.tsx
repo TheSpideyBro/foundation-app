@@ -50,7 +50,7 @@ export default function LoginPage() {
           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-600 rounded-2xl sm:rounded-[2rem] flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-2xl shadow-emerald-600/30 animate-bounce-slow" style={{ background: '#059669', boxShadow: '0 25px 50px -12px rgba(5, 150, 105, 0.25)' }}>
             <Heart className="text-white fill-white w-7 h-7 sm:w-8 sm:h-8" style={{ width: '32px', height: '32px' }} />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 font-tiro mb-2 sm:mb-3" style={{ fontFamily: 'var(--font-tiro), serif' }}>দাউলখার ফাউন্ডেশন</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 font-tiro mb-2 sm:mb-3" style={{ fontFamily: 'var(--font-tiro), serif' }}>দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন</h1>
           <p className="text-sm sm:text-base text-gray-500 font-medium">আপনার একাউন্টে লগইন করুন</p>
         </div>
 

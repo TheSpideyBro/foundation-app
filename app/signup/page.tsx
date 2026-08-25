@@ -63,7 +63,7 @@ export default function SignupPage() {
             </div>
             <h1 className="text-[36px] font-bold font-tiro leading-tight mb-4">আমাদের সাথে যুক্ত হোন</h1>
             <p className="text-emerald-400/80 text-[16px] font-medium leading-relaxed max-w-xs">
-              দাউলখার ফাউন্ডেশনের সদস্য হিসেবে স্বচ্ছ ও জবাবদিহিমূলক সেবায় অংশগ্রহণ করুন।
+              দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশনের সদস্য হিসেবে স্বচ্ছ ও জবাবদিহিমূলক সেবায় অংশগ্রহণ করুন।
             </p>
           </div>
 

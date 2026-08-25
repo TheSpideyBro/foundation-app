@@ -1,5 +1,5 @@
 -- ============================================================
--- FULL SCHEMA — দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযূল ফাউন্ডেশন
+-- FULL SCHEMA — দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন
 -- Fund Management App (fresh start — একটাই ফাইল, সবকিছু একে)
 --
 -- Run once in Supabase Dashboard > SQL Editor
