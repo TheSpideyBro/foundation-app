@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, CreditCard, Wallet, 
   BarChart3, UserCircle, LogOut, Menu, X,
   ShieldCheck, Settings, Bell, Search,
-  Leaf, Home
+  Leaf, Home, History
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
 
@@ -32,8 +32,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   const adminItems = [
+    { name: "অ্যাডমিন প্যানেল", icon: Settings, path: "/admin", roles: ["admin"] },
     { name: "ইউজার কন্ট্রোল", icon: ShieldCheck, path: "/admin/users", roles: ["admin"] },
-    { name: "অডিট লগ", icon: Settings, path: "/admin/audit", roles: ["admin"] },
+    { name: "অডিট লগ", icon: History, path: "/admin/audit", roles: ["admin"] },
   ];
 
   const isActive = (path: string) => pathname === path;
