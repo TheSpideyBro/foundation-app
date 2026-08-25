@@ -75,7 +75,6 @@ export async function GET(
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  // Fetch donation details with collected_by info
   const { data: donation, error } = await supabase
     .from('donations')
     .select('*, members!member_id(name), collector:users!collected_by(name)')
@@ -86,7 +85,6 @@ export async function GET(
     return new NextResponse('Donation not found', { status: 404 });
   }
 
-  // Security check: Admins can see all, members only their own
   const { data: userData } = await supabase
     .from('users')
     .select('role, member_id')
@@ -101,21 +99,20 @@ export async function GET(
   }
 
   try {
-    // Canvas setup (A4 ratio)
     const width = 1000;
     const height = 1500;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
-    // 1. Background (Pure White)
+    // 1. Background
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, width, height);
 
-    // 2. Header Section (Deep Green Gradient Style)
+    // 2. Header Section
     ctx.fillStyle = '#064E3B';
     ctx.fillRect(0, 0, width, 320);
     
-    // Bottom Curve for Header
+    // Bottom Wave
     ctx.beginPath();
     ctx.moveTo(0, 320);
     ctx.bezierCurveTo(width/4, 380, 3*width/4, 260, width, 320);
@@ -167,7 +164,6 @@ export async function GET(
     const badgeX = (width - badgeWidth) / 2;
     const badgeY = 400;
 
-    // Dark Badge Background
     ctx.fillStyle = '#17201C';
     ctx.beginPath();
     ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 40);
@@ -190,45 +186,90 @@ export async function GET(
     const rowHeight = 100;
 
     ctx.fillStyle = '#FDFDFD';
-    ctx.shadowColor = 'rgba(0,0,0,0.1)';
-    ctx.shadowBlur = 30;
+    ctx.shadowColor = 'rgba(0,0,0,0.05)';
+    ctx.shadowBlur = 20;
     ctx.beginPath();
     ctx.roundRect(cardMargin, cardY, cardWidth, cardHeight, 25);
     ctx.fill();
     ctx.shadowBlur = 0;
 
     ctx.strokeStyle = '#E8E8E8';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
 
     const rows = [
-      { label: "রসিদ নং", value: donation.receipt_no || 'N/A' },
-      { label: "তারিখ", value: donation.date },
-      { label: "জনাব/জনাবা", value: donation.members?.name || 'অজ্ঞাত' },
-      { label: "মাসের নাম", value: getBengaliMonthName(donation.donation_month) },
-      { label: "টাকার পরিমাণ কথায়", value: numberToBengaliWords(donation.amount) + ' টাকা' },
-      { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-` },
-      { label: "আদায়কারী", value: donation.collector?.name || 'অ্যাডমিন' }
+      { label: "রসিদ নং", value: donation.receipt_no || 'N/A', icon: 'doc' },
+      { label: "তারিখ", value: donation.date, icon: 'cal' },
+      { label: "জনাব/জনাবা", value: donation.members?.name || 'অজ্ঞাত', icon: 'user' },
+      { label: "মাসের নাম", value: getBengaliMonthName(donation.donation_month), icon: 'month' },
+      { label: "টাকার পরিমাণ কথায়", value: numberToBengaliWords(donation.amount) + ' টাকা', icon: 'text' },
+      { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-`, icon: 'money' },
+      { label: "আদায়কারী", value: donation.collector?.name || 'অ্যাডমিন', icon: 'edit' }
     ];
 
     rows.forEach((row, i) => {
       const y = cardY + 80 + (i * rowHeight);
       
-// Label
-	      ctx.textAlign = 'left';
-	      ctx.fillStyle = '#4B5563';
-	      ctx.font = 'bold 24px Bengali';
-	      ctx.fillText(row.label, cardMargin + 40, y);
-	      
-	      ctx.fillStyle = '#9CA3AF';
-	      ctx.fillText(":", cardMargin + 380, y);
+      // Draw Custom Icons
+      ctx.strokeStyle = '#064E3B';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const iconX = cardMargin + 40;
+      const iconY = y - 35;
+      
+      // Icon Box
+      ctx.fillStyle = '#F3F4F6';
+      ctx.beginPath();
+      ctx.roundRect(iconX, iconY, 60, 60, 15);
+      ctx.fill();
 
-	      // Value
-	      ctx.fillStyle = '#111827';
-	      ctx.font = i === 5 ? 'bold 32px Bengali' : 'bold 26px Bengali';
-	      if (row.label.includes('কথায়')) ctx.font = 'italic 22px Bengali';
-	      
-	      ctx.fillText(String(row.value), cardMargin + 410, y);
+      // Icon drawing based on type
+      ctx.strokeStyle = '#064E3B';
+      ctx.lineWidth = 2.5;
+      const cx = iconX + 30;
+      const cy = iconY + 30;
+      
+      if (row.icon === 'doc') {
+        ctx.strokeRect(cx-12, cy-15, 24, 30);
+        ctx.beginPath(); ctx.moveTo(cx-6, cy-5); ctx.lineTo(cx+6, cy-5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx-6, cy+5); ctx.lineTo(cx+6, cy+5); ctx.stroke();
+      } else if (row.icon === 'cal') {
+        ctx.strokeRect(cx-15, cy-12, 30, 24);
+        ctx.beginPath(); ctx.moveTo(cx-15, cy-4); ctx.lineTo(cx+15, cy-4); ctx.stroke();
+      } else if (row.icon === 'user') {
+        ctx.beginPath(); ctx.arc(cx, cy-8, 8, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy+15, 12, Math.PI, 0); ctx.stroke();
+      } else if (row.icon === 'month') {
+        ctx.strokeRect(cx-15, cy-15, 30, 30);
+        ctx.beginPath(); ctx.moveTo(cx-15, cy); ctx.lineTo(cx+15, cy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx, cy-15); ctx.lineTo(cx, cy+15); ctx.stroke();
+      } else if (row.icon === 'text') {
+        ctx.beginPath(); ctx.moveTo(cx-15, cy-10); ctx.lineTo(cx+15, cy-10); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx-15, cy); ctx.lineTo(cx+5, cy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx-15, cy+10); ctx.lineTo(cx+10, cy+10); ctx.stroke();
+      } else if (row.icon === 'money') {
+        ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI*2); ctx.stroke();
+        ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center'; ctx.fillStyle = '#064E3B'; ctx.fillText('৳', cx, cy+6);
+      } else if (row.icon === 'edit') {
+        ctx.beginPath(); ctx.moveTo(cx-12, cy+12); ctx.lineTo(cx+12, cy-12); ctx.stroke();
+        ctx.strokeRect(cx-15, cy+10, 5, 5);
+      }
+
+      // Label
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#4B5563';
+      ctx.font = 'bold 24px Bengali';
+      ctx.fillText(row.label, cardMargin + 130, y);
+      
+      ctx.fillStyle = '#9CA3AF';
+      ctx.fillText(":", cardMargin + 380, y);
+
+      // Value
+      ctx.fillStyle = '#111827';
+      ctx.font = i === 5 ? 'bold 32px Bengali' : 'bold 26px Bengali';
+      if (row.label.includes('কথায়')) ctx.font = 'italic 22px Bengali';
+      
+      ctx.fillText(String(row.value), cardMargin + 410, y);
 
       // Divider
       if (i < rows.length - 1) {
@@ -251,10 +292,7 @@ export async function GET(
     const qrBuffer = await QRCode.toBuffer(qrData, {
       margin: 1,
       width: qrSize,
-      color: {
-        dark: '#064E3B',
-        light: '#FFFFFF'
-      }
+      color: { dark: '#064E3B', light: '#FFFFFF' }
     });
     const qrImage = await loadImage(qrBuffer);
     ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
@@ -282,13 +320,31 @@ export async function GET(
 
     // 9. Footer Message
     ctx.fillStyle = '#064E3B';
-    ctx.font = 'bold 26px Bengali';
+    ctx.font = 'bold 28px Bengali';
     ctx.textAlign = 'center';
-    ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2, height - 280);
+    
+    // Heart Icon and Thank You
+    const footerY = height - 280;
+    ctx.beginPath();
+    ctx.arc(width/2 - 220, footerY - 10, 15, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2 + 20, height - 190);
     
     ctx.fillStyle = '#6B7280';
-    ctx.font = '20px Bengali';
-    ctx.fillText("আল্লাহ আপনার দান কবুল করুন", width / 2, height - 245);
+    ctx.font = '22px Bengali';
+    ctx.fillText("আল্লাহ আপনার দান কবুল করুন", width / 2, height - 150);
+
+    // Gold Stars
+    ctx.fillStyle = '#C9A227';
+    const drawStar = (x: number, y: number) => {
+      ctx.beginPath();
+      ctx.moveTo(x, y-10); ctx.lineTo(x+3, y-3); ctx.lineTo(x+10, y);
+      ctx.lineTo(x+3, y+3); ctx.lineTo(x, y+10); ctx.lineTo(x-3, y+3);
+      ctx.lineTo(x-10, y); ctx.lineTo(x-3, y-3); ctx.closePath();
+      ctx.fill();
+    };
+    drawStar(width/2 - 150, height - 150);
+    drawStar(width/2 + 150, height - 150);
 
     const buffer = canvas.toBuffer('image/jpeg', { quality: 0.95 });
 
