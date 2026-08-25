@@ -286,7 +286,7 @@ export async function GET(
     // 7. QR Code Section
     const qrSize = 120;
     const qrX = cardMargin + 40;
-    const qrY = height - 260;
+    const qrY = height - 240;
     
     const qrData = `https://daulkharfoundation.vercel.app/verify/${donation.receipt_no}`;
     const qrBuffer = await QRCode.toBuffer(qrData, {
