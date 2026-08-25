@@ -44,10 +44,8 @@ export async function GET(
     return new NextResponse('Forbidden', { status: 403 });
   }
 
-  // Prepare temporary path for PDF
-  const tempDir = path.join(process.cwd(), 'tmp');
-  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-  const jpgPath = path.join(tempDir, `receipt_${id}.jpg`);
+  // Use /tmp for serverless environments
+  const jpgPath = path.join('/tmp', `receipt_${id}_${Date.now()}.jpg`);
 
   const scriptPath = path.join(process.cwd(), 'scripts', 'receipt_generator.py');
   
@@ -58,22 +56,39 @@ export async function GET(
       '--name', donation.members?.name || 'Guest',
       '--amount', String(donation.amount),
       '--date', donation.date,
-      '--method', donation.method || 'Cash',
+      '--method', donation.method || 'cash',
       '--received', donation.received_by || 'Foundation',
       '--output', jpgPath
     ];
+    
+    // Ensure script exists
+    if (!fs.existsSync(scriptPath)) {
+      console.error('Script not found at:', scriptPath);
+      return new NextResponse('Generator script missing', { status: 500 });
+    }
+
     await execFilePromise('python3', args);
 
+    if (!fs.existsSync(jpgPath)) {
+      throw new Error('Output file not created');
+    }
+
     const jpgBuffer = fs.readFileSync(jpgPath);
+    const stats = fs.statSync(jpgPath);
     
     // Cleanup
-    fs.unlinkSync(jpgPath);
+    try { fs.unlinkSync(jpgPath); } catch (e) {}
+
+    if (jpgBuffer.length === 0) {
+      throw new Error('Generated file is empty');
+    }
 
     return new NextResponse(jpgBuffer, {
       headers: {
         'Content-Type': 'image/jpeg',
         'Content-Disposition': `attachment; filename="receipt_${donation.receipt_no || id}.jpg"`,
-        'Content-Length': jpgBuffer.length.toString(),
+        'Content-Length': stats.size.toString(),
+        'Cache-Control': 'no-cache',
       },
     });
   } catch (err) {
