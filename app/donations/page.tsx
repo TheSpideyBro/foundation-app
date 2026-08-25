@@ -23,6 +23,7 @@ export default function DonationsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [treasurers, setTreasurers] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     member_id: "",
@@ -66,8 +67,19 @@ export default function DonationsPage() {
         .eq("status", "active")
         .order("name");
 
+      // Fetch treasurers and admins for the collected_by field
+      const { data: staffData } = await supabase()
+        .from("users")
+        .select("member_id, name, role")
+        .in("role", ["admin", "treasurer"]);
+
+      // Map staff to member objects if they have a member_id
+      const staffIds = staffData?.map(s => s.member_id).filter(Boolean) || [];
+      const treasurers = membersData?.filter(m => staffIds.includes(m.id)) || [];
+
       setDonations(donationsData || []);
       setMembers(membersData || []);
+      setTreasurers(treasurers);
     } catch (err) {
       console.error("Error fetching data:", err);
     } finally {
@@ -104,16 +116,21 @@ export default function DonationsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.member_id || !formData.amount || !formData.date) {
-      alert("সবগুলো প্রয়োজনীয় ঘর পূরণ করুন।");
+    if (!formData.member_id || !formData.amount || !formData.date || !formData.collected_by) {
+      alert("সবগুলো প্রয়োজনীয় ঘর পূরণ করুন। (আদায়কারী সহ)");
       return;
     }
 
     setSubmitting(true);
     try {
-      const payload = {
-        ...formData,
+      const payload: any = {
+        member_id: formData.member_id,
         amount: parseFloat(formData.amount),
+        date: formData.date,
+        donation_month: formData.donation_month,
+        method: formData.method,
+        receipt_no: formData.receipt_no,
+        collected_by: formData.collected_by,
         created_by: user?.id
       };
 
@@ -132,9 +149,9 @@ export default function DonationsPage() {
 
       setIsModalOpen(false);
       fetchData();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error saving donation:", err);
-      alert("সেভ করতে সমস্যা হয়েছে।");
+      alert(`সেভ করতে সমস্যা হয়েছে: ${err.message || "Unknown error"}`);
     } finally {
       setSubmitting(false);
     }
@@ -447,7 +464,7 @@ export default function DonationsPage() {
                   required
                 >
                   <option value="">আদায়কারী সিলেক্ট করুন</option>
-                  {members.map(m => (
+                  {treasurers.map(m => (
                     <option key={m.id} value={m.id}>{m.name} ({m.phone})</option>
                   ))}
                 </select>
