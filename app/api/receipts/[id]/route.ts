@@ -67,9 +67,15 @@ export async function GET(
       return new NextResponse('Generator script missing', { status: 500 });
     }
 
-    await execFilePromise('python3', args);
+    const { stdout, stderr } = await execFilePromise('python3', args);
+    
+    if (stderr) {
+      console.error('Python Stderr:', stderr);
+    }
 
     if (!fs.existsSync(jpgPath)) {
+      console.error('Output file not found at:', jpgPath);
+      console.log('Python Stdout:', stdout);
       throw new Error('Output file not created');
     }
 
@@ -91,8 +97,8 @@ export async function GET(
         'Cache-Control': 'no-cache',
       },
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Receipt Generation Error:', err);
-    return new NextResponse('Error generating receipt', { status: 500 });
+    return new NextResponse(`Error generating receipt: ${err.message}`, { status: 500 });
   }
 }
