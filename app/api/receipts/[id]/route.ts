@@ -206,7 +206,7 @@ export async function GET(
       { label: "তারিখ", value: donation.date },
       { label: "জনাব/জনাবা", value: donation.members?.name || 'অজ্ঞাত' },
       { label: "মাসের নাম", value: getBengaliMonthName(donation.donation_month) },
-      { label: "টাকার পরিমাণ কথায়", value: numberToBengaliWords(donation.amount) + ' টাকা মাত্র' },
+      { label: "টাকার পরিমাণ কথায়", value: numberToBengaliWords(donation.amount) + ' টাকা' },
       { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-` },
       { label: "আদায়কারী", value: donation.collector?.name || 'অ্যাডমিন' }
     ];
