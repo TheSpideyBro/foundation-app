@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, CreditCard, Wallet, 
   BarChart3, UserCircle, LogOut, Menu, X,
   ShieldCheck, Settings, Bell, Search,
-  Heart, Leaf, Home, MoreHorizontal
+  Leaf, Home
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
 
@@ -220,7 +220,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation Bar - Enhanced for Admin Visibility */}
+      {/* Mobile Bottom Navigation Bar - Simplified for Staff Roles */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-xl border-t border-emerald-100/50 z-[40] flex items-center justify-around px-2 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
         <Link href="/dashboard" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/dashboard') ? 'text-emerald-600' : 'text-gray-400'}`}>
           <Home size={22} />
@@ -230,69 +230,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <CreditCard size={22} />
           <span className="text-[10px] font-bold">দান</span>
         </Link>
+        {/* Only show Expenses for staff */}
+        {(role === "admin" || role === "treasurer") && (
+          <Link href="/expenses" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/expenses') ? 'text-emerald-600' : 'text-gray-400'}`}>
+            <Wallet size={22} />
+            <span className="text-[10px] font-bold">খরচ</span>
+          </Link>
+        )}
         <Link href="/members" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/members') ? 'text-emerald-600' : 'text-gray-400'}`}>
           <Users size={22} />
           <span className="text-[10px] font-bold">সদস্য</span>
         </Link>
-        {/* If admin, show admin link directly or keep More for others */}
-        {role === "admin" ? (
-          <Link href="/admin/users" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/admin/users') ? 'text-emerald-600' : 'text-gray-400'}`}>
-            <ShieldCheck size={22} />
-            <span className="text-[10px] font-bold">অ্যাডমিন</span>
-          </Link>
-        ) : (
-          <Link href="/profile" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/profile') ? 'text-emerald-600' : 'text-gray-400'}`}>
-            <UserCircle size={22} />
-            <span className="text-[10px] font-bold">প্রোফাইল</span>
-          </Link>
-        )}
-        <button onClick={() => setIsSidebarOpen(true)} className="flex flex-col items-center gap-1 p-2 text-gray-400 active:scale-90 transition-transform">
-          <Menu size={22} />
-          <span className="text-[10px] font-bold">আরও</span>
-        </button>
+        <Link href="/profile" className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/profile') ? 'text-emerald-600' : 'text-gray-400'}`}>
+          <UserCircle size={22} />
+          <span className="text-[10px] font-bold">প্রোফাইল</span>
+        </Link>
       </nav>
 
       {/* Main Content Area */}
       <main className="flex-1 lg:ml-72 min-h-screen relative pb-20 lg:pb-0">
-        {/* Top Decorative Bar */}
         <div className="hidden lg:block h-1 bg-emerald-600 w-full sticky top-0 z-20"></div>
-        
-        {/* Desktop Top Navbar */}
-        <div className="hidden lg:flex items-center justify-between px-10 h-20 bg-white/50 backdrop-blur-sm sticky top-1 z-10">
-          <div className="flex items-center gap-6 flex-1">
-            <div className="relative max-w-md w-full group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
-              <input 
-                type="text" 
-                placeholder="সদস্য বা লেনদেন খুঁজুন..." 
-                className="w-full bg-white border border-emerald-100/50 rounded-2xl py-2.5 pl-12 pr-4 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500/30 transition-all shadow-sm"
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="w-11 h-11 rounded-xl bg-white border border-emerald-100/50 flex items-center justify-center text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-sm relative">
-              <Bell size={20} />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
-            </button>
-            <div className="h-8 w-[1px] bg-emerald-100/50 mx-2"></div>
-            <div className="flex items-center gap-3 pl-2">
-              <div className="text-right">
-                <p className="text-sm font-bold text-gray-900 leading-tight truncate max-w-[120px]">{user?.email?.split('@')[0]}</p>
-                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{role === 'admin' ? 'অ্যাডমিন' : 'সদস্য'}</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold shadow-md shadow-emerald-200">
-                {user?.email?.[0].toUpperCase() || "U"}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Content Wrapper */}
-        <div className="p-4 sm:p-6 lg:p-12">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
-        </div>
+        {children}
       </main>
     </div>
   );
