@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { 
   Heart, ChevronRight, ArrowRight, 
-  Phone, Globe, Zap
+  Phone, Globe, Zap, Calendar, Award, ShieldCheck
 } from "lucide-react";
 import Image from "next/image";
 
@@ -37,8 +37,14 @@ export default function LandingPage() {
         </div>
         
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-full text-emerald-700 text-xs font-bold uppercase tracking-widest mb-8 animate-slide-up">
-            <Zap size={14} fill="currentColor" /> নতুন যুগের ফাউন্ডেশন ম্যানেজমেন্ট
+          <div className="flex flex-col items-center gap-4 mb-8 animate-slide-up">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100/50 border border-emerald-200 text-emerald-700 text-xs font-bold tracking-wide">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>২০০৯ থেকে মানবতার সেবায় নিয়োজিত</span>
+            </div>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-full text-emerald-700 text-xs font-bold uppercase tracking-widest">
+              <Zap size={14} fill="currentColor" /> নতুন যুগের ফাউন্ডেশন ম্যানেজমেন্ট
+            </div>
           </div>
           <h1 className="text-5xl md:text-7xl font-bold text-gray-900 font-tiro leading-[1.1] mb-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
             মানবতার কল্যাণে, <br />
@@ -58,7 +64,40 @@ export default function LandingPage() {
         </div>
       </section>
 
-
+      {/* About Us Section (Option 2 Modified) */}
+      <section className="py-20 bg-white relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="bg-gray-50 rounded-[3rem] p-8 md:p-16 border border-gray-100 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-50/50 blur-[100px] rounded-full -mr-32 -mt-32"></div>
+            
+            <div className="max-w-3xl mx-auto text-center relative z-10">
+              <div className="flex items-center justify-center gap-2 text-emerald-600 font-bold mb-6">
+                <Award className="w-6 h-6" />
+                <span className="uppercase tracking-widest text-sm">আমাদের পথচলা</span>
+              </div>
+              
+              <h2 className="text-3xl md:text-5xl font-bold text-gray-900 font-tiro mb-8 leading-tight">
+                ২০০৯ সাল থেকে আস্থার সাথে মানবতার সেবায়
+              </h2>
+              
+              <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-10">
+                ২০০৯ সালে প্রতিষ্ঠিত হওয়ার পর থেকে, <span className="text-emerald-700 font-bold">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span> আর্তমানবতার সেবায় এবং সামাজিক উন্নয়নে নিরলসভাবে কাজ করে যাচ্ছে। গত ১৫ বছর ধরে আমরা আপনাদের বিশ্বাস ও ভালোবাসায় স্বচ্ছতার সাথে এগিয়ে চলছি।
+              </p>
+              
+              <div className="flex flex-wrap justify-center gap-8">
+                <div className="flex items-center gap-2 px-6 py-3 bg-white rounded-2xl shadow-sm border border-gray-100">
+                  <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                  <span className="font-bold text-gray-700">১০০% স্বচ্ছতা</span>
+                </div>
+                <div className="flex items-center gap-2 px-6 py-3 bg-white rounded-2xl shadow-sm border border-gray-100">
+                  <Heart className="w-5 h-5 text-red-500" />
+                  <span className="font-bold text-gray-700">নিঃস্বার্থ সেবা</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* CTA Section */}
       <section className="py-20">
