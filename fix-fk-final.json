@@ -1,0 +1,4 @@
+{
+  "project_id": "pvfdgrdvvoytsfmjyvde",
+  "query": "ALTER TABLE members DROP CONSTRAINT IF EXISTS members_user_id_fkey; ALTER TABLE users DROP CONSTRAINT IF EXISTS users_member_id_fkey; ALTER TABLE users ADD CONSTRAINT users_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE SET NULL;"
+}
