@@ -1,0 +1,4 @@
+{
+  "project_id": "pvfdgrdvvoytsfmjyvde",
+  "query": "SELECT pg_get_functiondef('get_my_role'::regproc);"
+}

@@ -1,0 +1,4 @@
+{
+  "project_id": "pvfdgrdvvoytsfmjyvde",
+  "query": "SELECT column_name FROM information_schema.columns WHERE table_name = 'users';"
+}

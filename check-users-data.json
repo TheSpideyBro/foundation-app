@@ -1,0 +1,4 @@
+{
+  "project_id": "pvfdgrdvvoytsfmjyvde",
+  "query": "SELECT id, email, role, member_id FROM users LIMIT 10;"
+}

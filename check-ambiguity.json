@@ -1,0 +1,4 @@
+{
+  "project_id": "pvfdgrdvvoytsfmjyvde",
+  "query": "SELECT conname, pg_get_constraintdef(c.oid) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace WHERE contype = 'f' AND (conrelid::regclass::text = 'users' OR conrelid::regclass::text = 'members') AND (confrelid::regclass::text = 'users' OR confrelid::regclass::text = 'members');"
+}

@@ -1,0 +1,4 @@
+{
+  "project_id": "pvfdgrdvvoytsfmjyvde",
+  "query": "DROP POLICY IF EXISTS users_read_all ON users; CREATE POLICY users_read_all ON users FOR SELECT USING (auth.uid() IS NOT NULL OR get_my_role() = 'admin');"
+}

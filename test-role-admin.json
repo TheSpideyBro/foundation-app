@@ -1,0 +1,4 @@
+{
+  "project_id": "pvfdgrdvvoytsfmjyvde",
+  "query": "SELECT role FROM users WHERE email = 'saddamakash234@gmail.com';"
+}

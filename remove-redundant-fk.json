@@ -1,0 +1,4 @@
+{
+  "project_id": "pvfdgrdvvoytsfmjyvde",
+  "query": "ALTER TABLE users DROP CONSTRAINT IF EXISTS fk_users_member;"
+}
