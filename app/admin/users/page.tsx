@@ -99,7 +99,11 @@ export default function AdminUsersPage() {
         </div>
 
         <div className="divide-y divide-gray-50">
-          {users.filter(u => u.email?.toLowerCase().includes(searchQuery.toLowerCase()) || u.phone?.includes(searchQuery)).map((user) => (
+          {users.filter(u => 
+            u.email?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            u.phone?.includes(searchQuery) || 
+            u.name?.toLowerCase().includes(searchQuery.toLowerCase())
+          ).map((user) => (
             <div key={user.id} className="p-6 hover:bg-gray-50/50 transition-all">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
@@ -107,7 +111,8 @@ export default function AdminUsersPage() {
                     <Users size={20} />
                   </div>
                   <div>
-                    <p className="text-[15px] font-bold text-gray-900">{user.email}</p>
+                    <p className="text-[15px] font-bold text-gray-900">{user.name || 'নাম নেই'}</p>
+                    <p className="text-[12px] text-gray-500">{user.email}</p>
                     {user.phone && <p className="text-[11px] text-gray-400 font-bold">{user.phone}</p>}
                     <div className="flex items-center gap-2 mt-1">
                       <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[9px] font-bold uppercase rounded-lg tracking-wider">
