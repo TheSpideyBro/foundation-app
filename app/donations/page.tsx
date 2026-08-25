@@ -30,7 +30,8 @@ export default function DonationsPage() {
     date: new Date().toISOString().split('T')[0],
     donation_month: new Date().toISOString().slice(0, 7), // YYYY-MM
     method: "cash",
-    receipt_no: `R-${Date.now().toString().slice(-6)}`
+    receipt_no: `R-${Date.now().toString().slice(-6)}`,
+    collected_by: ""
   });
 
   useEffect(() => {
@@ -83,7 +84,8 @@ export default function DonationsPage() {
         date: donation.date,
         donation_month: donation.donation_month || "",
         method: donation.method || "cash",
-        receipt_no: donation.receipt_no
+        receipt_no: donation.receipt_no,
+        collected_by: donation.collected_by || ""
       });
     } else {
       setEditingDonation(null);
@@ -93,7 +95,8 @@ export default function DonationsPage() {
         date: new Date().toISOString().split('T')[0],
         donation_month: new Date().toISOString().slice(0, 7),
         method: "cash",
-        receipt_no: `R-${Date.now().toString().slice(-6)}`
+        receipt_no: `R-${Date.now().toString().slice(-6)}`,
+        collected_by: ""
       });
     }
     setIsModalOpen(true);
@@ -412,20 +415,20 @@ export default function DonationsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-gray-700 ml-1">মাসের নাম</label>
+                  <label className="text-sm font-bold text-gray-700">মাসের নাম</label>
                   <input 
-                    type="month"
+                    type="month" 
                     value={formData.donation_month}
                     onChange={(e) => setFormData({...formData, donation_month: e.target.value})}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all" 
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-gray-700 ml-1">পেমেন্ট মেথড</label>
+                  <label className="text-sm font-bold text-gray-700">পেমেন্ট মেথড</label>
                   <select 
                     value={formData.method}
                     onChange={(e) => setFormData({...formData, method: e.target.value})}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   >
                     <option value="cash">নগদ (Cash)</option>
                     <option value="bkash">বিকাশ (bKash)</option>
@@ -433,6 +436,21 @@ export default function DonationsPage() {
                     <option value="bank">ব্যাংক (Bank)</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700">আদায়কারী (টাকা গ্রহণ করেছেন) *</label>
+                <select 
+                  value={formData.collected_by}
+                  onChange={(e) => setFormData({...formData, collected_by: e.target.value})}
+                  className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  required
+                >
+                  <option value="">আদায়কারী সিলেক্ট করুন</option>
+                  {members.map(m => (
+                    <option key={m.id} value={m.id}>{m.name} ({m.phone})</option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2">

@@ -75,10 +75,10 @@ export async function GET(
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  // Fetch donation details
+  // Fetch donation details with collected_by info
   const { data: donation, error } = await supabase
     .from('donations')
-    .select('*, members(name)')
+    .select('*, members!member_id(name), collector:members!collected_by(name)')
     .eq('id', id)
     .single();
 
@@ -103,168 +103,163 @@ export async function GET(
   try {
     // Canvas setup (A4 ratio)
     const width = 1000;
-    const height = 1414;
+    const height = 1500;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
-    // 1. Background (Warm Ivory)
-    ctx.fillStyle = '#FAF9F5';
+    // 1. Background (Pure White)
+    ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, width, height);
 
-    // 2. Premium Border (Deep Green)
-    ctx.strokeStyle = '#064E3B';
-    ctx.lineWidth = 20;
-    ctx.strokeRect(10, 10, width - 20, height - 20);
-    
-    // Inner Gold Line
-    ctx.strokeStyle = '#C9A227';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(30, 30, width - 60, height - 60);
-
-    // 3. Header Section (Deep Green)
+    // 2. Header Section (Deep Green Gradient Style)
     ctx.fillStyle = '#064E3B';
+    ctx.fillRect(0, 0, width, 320);
+    
+    // Bottom Curve for Header
     ctx.beginPath();
-    ctx.moveTo(30, 30);
-    ctx.lineTo(width - 30, 30);
-    ctx.lineTo(width - 30, 280);
-    ctx.quadraticCurveTo(width/2, 320, 30, 280);
-    ctx.closePath();
+    ctx.moveTo(0, 320);
+    ctx.bezierCurveTo(width/4, 380, 3*width/4, 260, width, 320);
+    ctx.lineTo(width, 0);
+    ctx.lineTo(0, 0);
     ctx.fill();
 
-    // 4. Logo
+    // Gold Accent Line
+    ctx.strokeStyle = '#C9A227';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(0, 325);
+    ctx.bezierCurveTo(width/4, 385, 3*width/4, 265, width, 325);
+    ctx.stroke();
+
+    // 3. Logo
     try {
       const logoPath = path.join(process.cwd(), 'public', 'assets', 'logo.jpg');
       if (fs.existsSync(logoPath)) {
         const logo = await loadImage(logoPath);
-        // Gold Circle behind logo
-        ctx.fillStyle = '#C9A227';
-        ctx.beginPath();
-        ctx.arc(120, 140, 75, 0, Math.PI * 2);
-        ctx.fill();
-        
         ctx.save();
         ctx.beginPath();
-        ctx.arc(120, 140, 70, 0, Math.PI * 2);
+        ctx.arc(140, 140, 90, 0, Math.PI * 2);
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 10;
+        ctx.stroke();
         ctx.clip();
-        ctx.drawImage(logo, 50, 70, 140, 140);
+        ctx.drawImage(logo, 50, 50, 180, 180);
         ctx.restore();
       }
     } catch (e) {}
 
-    // 5. Header Text
+    // 4. Header Text
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'left';
-    ctx.font = 'bold 42px Bengali';
-    ctx.fillText("দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন", 220, 110);
+    ctx.font = 'bold 48px Bengali';
+    ctx.fillText("দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন", 260, 110);
     
-    ctx.font = '18px Bengali';
-    ctx.fillStyle = '#FAF9F5';
-    ctx.fillText("প্রতিষ্ঠিত: ০১/০১/২০০৯ইং", 220, 150);
+    ctx.font = '22px Bengali';
+    ctx.fillText("প্রতিষ্ঠিত: ০১/০১/২০০৯ইং", 260, 160);
     
-    // Location and Contact with simple icons (simulated with text)
-    ctx.font = '16px Bengali';
-    ctx.fillText("📍 দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", 220, 185);
-    ctx.fillText("📞 ০১৮৪০-৮২৮০১০ | ০১৮১৪-৯৪৮২২১", 220, 215);
+    ctx.font = '20px Bengali';
+    ctx.fillText("📍 দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", 260, 205);
+    ctx.fillText("📞 ০১৮৪০-৮২৮০১০ | ০১৮১৪-৯৪৮২২১", 260, 245);
 
-    // 6. Watermark
-    try {
-      const logoPath = path.join(process.cwd(), 'public', 'assets', 'logo.jpg');
-      if (fs.existsSync(logoPath)) {
-        const logo = await loadImage(logoPath);
-        ctx.save();
-        ctx.globalAlpha = 0.03;
-        ctx.drawImage(logo, (width - 600) / 2, (height - 600) / 2 + 100, 600, 600);
-        ctx.restore();
-      }
-    } catch (e) {}
-
-    // 7. Receipt Title Badge
-    const badgeWidth = 450;
-    const badgeHeight = 70;
+    // 5. Receipt Title Badge
+    const badgeWidth = 500;
+    const badgeHeight = 80;
     const badgeX = (width - badgeWidth) / 2;
-    const badgeY = 360;
+    const badgeY = 400;
 
-    ctx.fillStyle = '#064E3B';
+    // Dark Badge Background
+    ctx.fillStyle = '#17201C';
     ctx.beginPath();
-    ctx.moveTo(badgeX, badgeY);
-    ctx.lineTo(badgeX + badgeWidth, badgeY);
-    ctx.lineTo(badgeX + badgeWidth - 30, badgeY + badgeHeight);
-    ctx.lineTo(badgeX + 30, badgeY + badgeHeight);
-    ctx.closePath();
+    ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 40);
     ctx.fill();
     
     ctx.strokeStyle = '#C9A227';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.stroke();
 
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 30px Bengali';
+    ctx.font = 'bold 36px Bengali';
     ctx.textAlign = 'center';
-    ctx.fillText("অনুদান আদায়ের রশিদ", width / 2, badgeY + 45);
+    ctx.fillText("অনুদান আদায়ের রশিদ", width / 2, badgeY + 52);
 
-    // 8. Info Card
-    const cardMargin = 80;
+    // 6. Main Content Card
+    const cardMargin = 70;
     const cardWidth = width - (cardMargin * 2);
-    const cardY = 480;
-    const rowHeight = 95;
+    const cardY = 530;
+    const rowHeight = 100;
 
-    ctx.fillStyle = '#FFFFFF';
-    ctx.shadowColor = 'rgba(0,0,0,0.05)';
-    ctx.shadowBlur = 20;
+    ctx.fillStyle = '#FDFDFD';
+    ctx.shadowColor = 'rgba(0,0,0,0.1)';
+    ctx.shadowBlur = 30;
     ctx.beginPath();
-    ctx.roundRect(cardMargin, cardY, cardWidth, 620, 20);
+    ctx.roundRect(cardMargin, cardY, cardWidth, 700, 25);
     ctx.fill();
-    ctx.shadowBlur = 0; // Reset shadow
+    ctx.shadowBlur = 0;
 
-    ctx.strokeStyle = '#D9DDD9';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(cardMargin, cardY, cardWidth, 620);
+    ctx.strokeStyle = '#E8E8E8';
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
     const rows = [
-      { label: "রসিদ নং", value: donation.receipt_no || 'N/A' },
-      { label: "তারিখ", value: donation.date },
-      { label: "জনাব/জনাবা", value: donation.members?.name || 'Guest' },
-      { label: "মাসের নাম", value: getBengaliMonthName(donation.donation_month) },
-      { label: "টাকার পরিমাণ কথায়", value: numberToBengaliWords(donation.amount) + ' টাকা মাত্র' },
-      { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-` }
+      { label: "রসিদ নং", value: donation.receipt_no || 'N/A', icon: '📄' },
+      { label: "তারিখ", value: donation.date, icon: '📅' },
+      { label: "জনাব/জনাবা", value: donation.members?.name || 'অজ্ঞাত', icon: '👤' },
+      { label: "মাসের নাম", value: getBengaliMonthName(donation.donation_month), icon: '🗓️' },
+      { label: "টাকার পরিমাণ কথায়", value: numberToBengaliWords(donation.amount) + ' টাকা মাত্র', icon: '💵' },
+      { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-`, icon: '💰' },
+      { label: "আদায়কারী", value: donation.collector?.name || 'অ্যাডমিন', icon: '✍️' }
     ];
 
     rows.forEach((row, i) => {
-      const y = cardY + 70 + (i * rowHeight);
+      const y = cardY + 80 + (i * rowHeight);
       
+      // Icon Box
+      ctx.fillStyle = '#F3F4F6';
+      ctx.beginPath();
+      ctx.roundRect(cardMargin + 40, y - 35, 60, 60, 15);
+      ctx.fill();
+      
+      ctx.font = '28px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(row.icon, cardMargin + 70, y + 5);
+
       // Label
       ctx.textAlign = 'left';
-      ctx.fillStyle = '#064E3B';
+      ctx.fillStyle = '#4B5563';
       ctx.font = 'bold 24px Bengali';
-      ctx.fillText(row.label, cardMargin + 100, y);
+      ctx.fillText(row.label, cardMargin + 130, y);
       
-      ctx.fillText(":", cardMargin + 350, y);
+      ctx.fillStyle = '#9CA3AF';
+      ctx.fillText(":", cardMargin + 380, y);
 
       // Value
-      ctx.fillStyle = '#17201C';
-      ctx.font = i === 5 ? 'bold 28px Bengali' : '24px Bengali';
-      if (row.label.includes('কথায়')) ctx.font = 'italic 20px Bengali';
+      ctx.fillStyle = '#111827';
+      ctx.font = i === 5 ? 'bold 32px Bengali' : 'bold 26px Bengali';
+      if (row.label.includes('কথায়')) ctx.font = 'italic 22px Bengali';
       
-      ctx.fillText(String(row.value), cardMargin + 380, y);
+      ctx.fillText(String(row.value), cardMargin + 410, y);
 
       // Divider
       if (i < rows.length - 1) {
-        ctx.strokeStyle = '#F0F0F0';
+        ctx.strokeStyle = '#F3F4F6';
+        ctx.setLineDash([5, 5]);
         ctx.beginPath();
-        ctx.moveTo(cardMargin + 50, y + 35);
-        ctx.lineTo(cardMargin + cardWidth - 50, y + 35);
+        ctx.moveTo(cardMargin + 40, y + 45);
+        ctx.lineTo(cardMargin + cardWidth - 40, y + 45);
         ctx.stroke();
+        ctx.setLineDash([]);
       }
     });
 
-    // 9. QR Code
-    const qrSize = 150;
-    const qrX = cardMargin + 50;
-    const qrY = height - 320;
+    // 7. QR Code Section
+    const qrSize = 160;
+    const qrX = cardMargin + 40;
+    const qrY = height - 240;
     
     const qrData = `https://daulkharfoundation.vercel.app/verify/${donation.receipt_no}`;
     const qrBuffer = await QRCode.toBuffer(qrData, {
       margin: 1,
+      width: qrSize,
       color: {
         dark: '#064E3B',
         light: '#FFFFFF'
@@ -272,50 +267,37 @@ export async function GET(
     });
     const qrImage = await loadImage(qrBuffer);
     ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-    
-    ctx.fillStyle = '#64706A';
-    ctx.font = '14px Bengali';
-    ctx.textAlign = 'center';
-    ctx.fillText("রশিদ যাচাই করুন", qrX + qrSize/2, qrY + qrSize + 25);
 
-    // 10. Signature
-    const sigX = width - cardMargin - 250;
-    const sigY = height - 220;
+    // 8. Signature Section
+    const sigX = width - cardMargin - 280;
+    const sigY = height - 120;
     
     ctx.strokeStyle = '#C9A227';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(sigX, sigY);
-    ctx.lineTo(sigX + 200, sigY);
+    ctx.lineTo(sigX + 240, sigY);
     ctx.stroke();
     
-    ctx.fillStyle = '#17201C';
-    ctx.font = 'italic 28px cursive'; // Signature style
-    ctx.textAlign = 'center';
-    ctx.fillText("Akash", sigX + 100, sigY - 20);
-
-    ctx.fillStyle = '#064E3B';
-    ctx.font = 'bold 18px Bengali';
-    ctx.fillText("আদায়কারীর স্বাক্ষর", sigX + 100, sigY + 30);
-
-    // 11. Footer
-    ctx.textAlign = 'center';
     ctx.fillStyle = '#064E3B';
     ctx.font = 'bold 22px Bengali';
-    ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2, height - 120);
+    ctx.textAlign = 'center';
+    ctx.fillText("আদায়কারীর স্বাক্ষর", sigX + 120, sigY + 40);
+
+    // Signature text (Simulated)
+    ctx.font = 'italic 32px cursive';
+    ctx.fillStyle = '#111827';
+    ctx.fillText(donation.collector?.name?.split(' ')[0] || "Admin", sigX + 120, sigY - 20);
+
+    // 9. Footer Message
+    ctx.fillStyle = '#064E3B';
+    ctx.font = 'bold 26px Bengali';
+    ctx.textAlign = 'center';
+    ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2, height - 280);
     
-    ctx.fillStyle = '#64706A';
-    ctx.font = 'italic 18px Bengali';
-    ctx.fillText("আল্লাহ আপনার দান কবুল করুন", width / 2, height - 85);
-    
-    // Decorative Bottom Element
-    ctx.fillStyle = '#C9A227';
-    ctx.beginPath();
-    ctx.moveTo(width/2 - 100, height - 60);
-    ctx.lineTo(width/2 + 100, height - 60);
-    ctx.lineTo(width/2, height - 50);
-    ctx.closePath();
-    ctx.fill();
+    ctx.fillStyle = '#6B7280';
+    ctx.font = '20px Bengali';
+    ctx.fillText("আল্লাহ আপনার দান কবুল করুন", width / 2, height - 245);
 
     const buffer = canvas.toBuffer('image/jpeg', { quality: 0.95 });
 
