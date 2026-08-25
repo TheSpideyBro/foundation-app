@@ -23,8 +23,6 @@
     font-family: var(--font-inter), var(--font-hind), sans-serif;
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.01em;
-    /* Prevent auto-zoom on iOS */
-    @apply text-base;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -32,14 +30,9 @@
     letter-spacing: 0;
   }
 
-  /* Responsive Headings */
-  h1 { @apply text-3xl md:text-4xl lg:text-5xl font-bold; }
-  h2 { @apply text-2xl md:text-3xl lg:text-4xl font-bold; }
-  h3 { @apply text-xl md:text-2xl lg:text-3xl font-bold; }
-
-  /* Mobile-friendly Inputs */
   input, select, textarea {
-    @apply text-[16px] w-full; /* Force 16px to prevent iOS zoom */
+    font-size: 16px;
+    width: 100%;
   }
 }
 
@@ -65,7 +58,9 @@
 
 /* Glassmorphism Elements */
 .glass {
-  @apply bg-white/70 backdrop-blur-lg border border-white/20;
+  background-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Custom Scrollbar */
@@ -134,23 +129,45 @@
 
 /* Table Styling - Responsive */
 .table-container {
-  @apply overflow-x-auto rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 bg-white shadow-sm;
+  overflow-x: auto;
+  border-radius: 1.5rem;
+  border: 1px solid #F3F4F6;
+  background-color: white;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   -webkit-overflow-scrolling: touch;
 }
 
+@media (min-width: 768px) {
+  .table-container {
+    border-radius: 2rem;
+  }
+}
+
 .table-container table {
-  @apply min-w-full;
+  width: 100%;
 }
 
 .table-header {
-  @apply bg-gray-50/50 border-b border-gray-100 text-gray-400 text-[10px] md:text-[11px] font-bold uppercase tracking-widest whitespace-nowrap;
+  background-color: rgba(249, 250, 251, 0.5);
+  border-bottom: 1px solid #F3F4F6;
+  color: #9CA3AF;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
 }
 
 .table-row {
-  @apply border-b border-gray-50 last:border-0 hover:bg-emerald-50/30 transition-colors;
+  border-bottom: 1px solid #F9FAFB;
+  transition: background-color 0.2s;
 }
 
-/* Animations - Reduced for mobile */
+.table-row:hover {
+  background-color: rgba(209, 250, 229, 0.3);
+}
+
+/* Animations */
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -162,14 +179,13 @@
 
 /* Mobile List View Card */
 .mobile-list-card {
-  @apply p-4 border-b border-gray-50 last:border-0 flex flex-col gap-2;
+  padding: 1rem;
+  border-bottom: 1px solid #F9FAFB;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-/* Touch Spacing Helpers */
-.touch-spacing {
-  @apply space-y-4 md:space-y-6;
-}
-
-.touch-grid {
-  @apply grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 md:gap-6;
+.mobile-list-card:last-child {
+  border-bottom: 0;
 }
