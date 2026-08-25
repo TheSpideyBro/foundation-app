@@ -5,7 +5,8 @@ import {
   Users, Shield, History, Settings, 
   Database, RefreshCw, Download, 
   ChevronRight, AlertTriangle, CheckCircle2,
-  Lock, Smartphone, UserPlus
+  Lock, Smartphone, UserPlus,
+  Clock, Megaphone, Tag
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/providers";
