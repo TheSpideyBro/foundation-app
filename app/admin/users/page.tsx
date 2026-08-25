@@ -37,7 +37,7 @@ export default function AdminUsersPage() {
     try {
       const { data } = await supabase()
         .from("users")
-        .select("*, members(name)")
+        .select("*, members:member_id(name)")
         .order("created_at", { ascending: false });
       setUsers(data || []);
     } catch (err) {

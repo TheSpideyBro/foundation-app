@@ -1,0 +1,4 @@
+{
+  "project_id": "pvfdgrdvvoytsfmjyvde",
+  "query": "SELECT u.id, u.email, u.name as user_name, m.name as member_name FROM public.users u LEFT JOIN public.members m ON u.member_id = m.id LIMIT 5;"
+}
