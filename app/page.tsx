@@ -48,7 +48,7 @@ export default function LandingPage() {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-800">একতাবদ্ধ মোরা সকলে</span>
           </h1>
           <p className="max-w-2xl mx-auto text-lg text-gray-500 font-medium leading-relaxed mb-12 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-            দৌলখাড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশনের সকল আর্থিক হিসাব, সদস্য ব্যবস্থাপনা এবং অনুদান ট্র্যাকিং এখন আরও সহজ ও স্বচ্ছ।
+            দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশনের সকল আর্থিক হিসাব, সদস্য ব্যবস্থাপনা এবং অনুদান ট্র্যাকিং এখন আরও সহজ ও স্বচ্ছ।
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '0.3s' }}>
             <Link href="/signup" className="btn-emerald w-full sm:w-auto px-10 py-5 text-lg shadow-2xl shadow-emerald-600/30">
@@ -146,7 +146,7 @@ export default function LandingPage() {
             </div>
             <span className="text-sm font-bold text-gray-900 font-tiro">দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন</span>
           </div>
-          <p className="text-sm text-gray-400 font-medium">© ২০২৬ দৌলখাড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন। সর্বস্বত্ব সংরক্ষিত।</p>
+          <p className="text-sm text-gray-400 font-medium">© ২০২৬ দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন। সর্বস্বত্ব সংরক্ষিত।</p>
           <div className="flex items-center gap-6">
             <Link href="#" className="text-gray-400 hover:text-emerald-600 transition-colors"><Phone size={20} /></Link>
             <Link href="#" className="text-gray-400 hover:text-emerald-600 transition-colors"><Globe size={20} /></Link>
