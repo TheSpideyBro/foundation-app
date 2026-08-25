@@ -68,30 +68,24 @@ export default function DonationsPage() {
         .order("name");
 
       // Fetch treasurers and admins for the collected_by field
-      // We join with members to get their display name and phone
       const { data: staffData } = await supabase()
         .from("users")
         .select(`
           id,
-          member_id,
-          role,
           name,
+          email,
           phone,
+          role,
           members:member_id (
-            id,
-            name,
-            phone
+            name
           )
         `)
         .in("role", ["admin", "treasurer"]);
 
-      console.log("Staff Data:", staffData);
-
       // Map staff to usable objects for the dropdown
       const treasurersList = staffData?.map((s: any) => ({
-        id: s.id, // Use user ID for collected_by
-        name: s.members?.name || s.name || s.email || "Staff",
-        phone: s.members?.phone || s.phone || ''
+        id: s.id,
+        name: s.members?.name || s.name || s.email?.split('@')[0] || "Staff",
       })) || [];
       
       // If a staff member has a name but no member_id link, we still show them
@@ -152,7 +146,7 @@ export default function DonationsPage() {
         donation_month: formData.donation_month,
         method: formData.method,
         receipt_no: formData.receipt_no,
-        collected_by: formData.collected_by || null,
+        collected_by: formData.collected_by,
         created_by: user?.id
       };
 
