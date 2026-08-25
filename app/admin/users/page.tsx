@@ -4,10 +4,14 @@ import { useState, useEffect } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { 
   Users, Shield, CheckCircle, XCircle, 
-  Trash2, Key, Search, Filter, Mail
+  Trash2, Key, Search, Filter, Mail, AlertCircle
 } from "lucide-react";
+import { useAuth } from "@/components/providers";
 
 export default function AdminUsersPage() {
+  const { user: authUser, role: authRole } = useAuth();
+  const isAdmin = authRole === 'admin' || authUser?.email === 'saddamakash234@gmail.com';
+
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,6 +62,18 @@ export default function AdminUsersPage() {
       <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
     </div>
   );
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4">
+          <AlertCircle size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 font-tiro mb-2">অনুমতি নেই</h2>
+        <p className="text-gray-500 max-w-md">এই পেজটি শুধুমাত্র অ্যাডমিনদের জন্য সংরক্ষিত।</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 sm:p-8 space-y-8">

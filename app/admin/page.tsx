@@ -50,13 +50,13 @@ export default function AdminPage() {
   }
 
   const adminTools = [
-    {
+    ...(isAdmin ? [{
       title: "ইউজার ম্যানেজমেন্ট",
       desc: "ইউজারদের রোল এবং অ্যাপ্রুভাল নিয়ন্ত্রণ করুন",
       icon: <Users size={24} />,
       link: "/admin/users",
       color: "blue"
-    },
+    }] : []),
     {
       title: "অডিট লগ",
       desc: "সিস্টেমের সকল কার্যক্রমের ইতিহাস দেখুন",

@@ -51,7 +51,6 @@ export default function DonationsPage() {
         if (memberId) {
           query = query.eq("member_id", memberId);
         } else {
-          // If member is not linked, show nothing
           setDonations([]);
           setLoading(false);
           return;
