@@ -51,7 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#FDFCF9] flex flex-col lg:flex-row font-hind overflow-x-hidden">
       {/* Mobile Top Header */}
-      <header className="lg:hidden sticky top-0 left-0 right-0 h-16 bg-white/90 backdrop-blur-xl border-b border-emerald-100/50 z-[40] px-5 flex items-center justify-between shadow-sm">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-xl border-b border-emerald-100/50 z-[40] px-5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-emerald-200">
             <Leaf size={18} fill="currentColor" />
@@ -252,8 +252,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* Main Content Area */}
-      <main className="flex-1 lg:ml-72 min-h-screen relative pb-20 lg:pb-0">
-        <div className="hidden lg:block h-1 bg-emerald-600 w-full sticky top-0 z-20"></div>
+      <main className="flex-1 lg:ml-72 min-h-screen relative pt-16 lg:pt-0 pb-20 lg:pb-0">
+        <div className="hidden lg:block h-1 bg-emerald-600 w-full fixed top-0 z-20"></div>
         {children}
       </main>
     </div>

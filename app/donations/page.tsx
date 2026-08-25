@@ -135,22 +135,31 @@ export default function DonationsPage() {
   };
 
   const handleShare = async (donation: any) => {
-    const receiptUrl = `${window.location.origin}/api/receipts/${donation.id}`;
-    
-    if (navigator.share) {
-      try {
+    try {
+      const response = await fetch(`/api/receipts/${donation.id}`);
+      const blob = await response.blob();
+      const file = new File([blob], `receipt_${donation.receipt_no}.jpg`, { type: 'image/jpeg' });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
+          files: [file],
           title: 'অনুদান রসিদ',
           text: `${donation.members?.name} এর অনুদান রসিদ (নং: ${donation.receipt_no})`,
-          url: receiptUrl,
         });
-      } catch (err) {
-        console.error("Error sharing:", err);
+      } else {
+        // Fallback: Download and alert
+        const receiptUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = receiptUrl;
+        link.download = `receipt_${donation.receipt_no}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        alert("আপনার ব্রাউজারে সরাসরি শেয়ার সাপোর্ট করে না। রসিদটি ডাউনলোড করা হয়েছে, এখন আপনি এটি শেয়ার করতে পারেন।");
       }
-    } else {
-      // Fallback: Copy to clipboard
-      navigator.clipboard.writeText(receiptUrl);
-      alert("রসিদ লিঙ্ক কপি করা হয়েছে। আপনি এখন এটি WhatsApp বা অন্য কোথাও শেয়ার করতে পারেন।");
+    } catch (err) {
+      console.error("Error sharing:", err);
+      alert("শেয়ার করতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।");
     }
   };
 
@@ -233,7 +242,17 @@ export default function DonationsPage() {
                     
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <button 
-                        onClick={() => setPreviewUrl(`/api/receipts/${d.id}`)}
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`/api/receipts/${d.id}`);
+                            const blob = await response.blob();
+                            const url = URL.createObjectURL(blob);
+                            setPreviewUrl(url);
+                          } catch (err) {
+                            console.error("Error previewing:", err);
+                            alert("প্রিভিউ করতে সমস্যা হয়েছে।");
+                          }
+                        }}
                         className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-90"
                         title="প্রিভিউ"
                       >
