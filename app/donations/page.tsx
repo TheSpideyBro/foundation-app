@@ -73,13 +73,17 @@ export default function DonationsPage() {
         .select("member_id, name, role")
         .in("role", ["admin", "treasurer"]);
 
+      console.log("Staff Data:", staffData);
+
       // Map staff to member objects if they have a member_id
-      const staffIds = staffData?.map(s => s.member_id).filter(Boolean) || [];
-      const treasurers = membersData?.filter(m => staffIds.includes(m.id)) || [];
+      const staffMemberIds = staffData?.map(s => s.member_id).filter(Boolean) || [];
+      const treasurersList = membersData?.filter(m => staffMemberIds.includes(m.id)) || [];
+      
+      console.log("Treasurers List:", treasurersList);
 
       setDonations(donationsData || []);
       setMembers(membersData || []);
-      setTreasurers(treasurers);
+      setTreasurers(treasurersList);
     } catch (err) {
       console.error("Error fetching data:", err);
     } finally {
