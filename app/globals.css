@@ -36,31 +36,144 @@
   }
 }
 
-/* Premium Card Design */
-.card-premium {
-  background: white;
-  border: 1px solid #F3F4F6;
-  border-radius: 1.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@media (min-width: 768px) {
+@layer components {
+  /* Premium Card Design */
   .card-premium {
-    border-radius: 2rem;
+    background: white;
+    border: 1px solid #F3F4F6;
+    border-radius: 1.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .card-premium:hover {
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    transform: translateY(-4px);
-    border-color: #D1FAE5;
+
+  @media (min-width: 768px) {
+    .card-premium {
+      border-radius: 2rem;
+    }
+    .card-premium:hover {
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      transform: translateY(-4px);
+      border-color: #D1FAE5;
+    }
+  }
+
+  /* Glassmorphism Elements */
+  .glass {
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  /* Button Refinement */
+  .btn-emerald {
+    background-color: #059669;
+    color: white;
+    font-weight: 700;
+    padding: 0.75rem 1.5rem;
+    border-radius: 1rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 48px;
+    box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.2);
+  }
+
+  .btn-emerald:hover {
+    background-color: #047857;
+  }
+
+  .btn-emerald:active {
+    transform: scale(0.95);
+  }
+
+  .btn-outline {
+    background-color: white;
+    border: 1px solid #E5E7EB;
+    color: #374151;
+    font-weight: 700;
+    padding: 0.75rem 1.5rem;
+    border-radius: 1rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 48px;
+  }
+
+  .btn-outline:hover {
+    border-color: #059669;
+    color: #059669;
+  }
+
+  .btn-outline:active {
+    transform: scale(0.95);
+  }
+
+  /* Table Styling - Responsive */
+  .table-container {
+    overflow-x: auto;
+    border-radius: 1.5rem;
+    border: 1px solid #F3F4F6;
+    background-color: white;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (min-width: 768px) {
+    .table-container {
+      border-radius: 2rem;
+    }
+  }
+
+  .table-container table {
+    width: 100%;
+  }
+
+  .table-header {
+    background-color: rgba(249, 250, 251, 0.5);
+    border-bottom: 1px solid #F3F4F6;
+    color: #9CA3AF;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  .table-row {
+    border-bottom: 1px solid #F9FAFB;
+    transition: background-color 0.2s;
+  }
+
+  .table-row:hover {
+    background-color: rgba(209, 250, 229, 0.3);
+  }
+
+  /* Mobile List View Card */
+  .mobile-list-card {
+    padding: 1rem;
+    border-bottom: 1px solid #F9FAFB;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .mobile-list-card:last-child {
+    border-bottom: 0;
   }
 }
 
-/* Glassmorphism Elements */
-.glass {
-  background-color: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+/* Animations */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Custom Scrollbar */
@@ -77,115 +190,4 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #D1D5DB;
-}
-
-/* Button Refinement */
-.btn-emerald {
-  background-color: #059669;
-  color: white;
-  font-weight: 700;
-  padding: 0.75rem 1.5rem;
-  border-radius: 1rem;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 48px;
-  box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.2);
-}
-
-.btn-emerald:hover {
-  background-color: #047857;
-}
-
-.btn-emerald:active {
-  transform: scale(0.95);
-}
-
-.btn-outline {
-  background-color: white;
-  border: 1px solid #E5E7EB;
-  color: #374151;
-  font-weight: 700;
-  padding: 0.75rem 1.5rem;
-  border-radius: 1rem;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 48px;
-}
-
-.btn-outline:hover {
-  border-color: #059669;
-  color: #059669;
-}
-
-.btn-outline:active {
-  transform: scale(0.95);
-}
-
-/* Table Styling - Responsive */
-.table-container {
-  overflow-x: auto;
-  border-radius: 1.5rem;
-  border: 1px solid #F3F4F6;
-  background-color: white;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  -webkit-overflow-scrolling: touch;
-}
-
-@media (min-width: 768px) {
-  .table-container {
-    border-radius: 2rem;
-  }
-}
-
-.table-container table {
-  width: 100%;
-}
-
-.table-header {
-  background-color: rgba(249, 250, 251, 0.5);
-  border-bottom: 1px solid #F3F4F6;
-  color: #9CA3AF;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  white-space: nowrap;
-}
-
-.table-row {
-  border-bottom: 1px solid #F9FAFB;
-  transition: background-color 0.2s;
-}
-
-.table-row:hover {
-  background-color: rgba(209, 250, 229, 0.3);
-}
-
-/* Animations */
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-slide-up {
-  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Mobile List View Card */
-.mobile-list-card {
-  padding: 1rem;
-  border-bottom: 1px solid #F9FAFB;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.mobile-list-card:last-child {
-  border-bottom: 0;
 }
