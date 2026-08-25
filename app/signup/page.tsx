@@ -94,7 +94,7 @@ export default function SignupPage() {
 
           <form onSubmit={handleSignup} className="space-y-5 sm:space-y-6">
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">পূর্ণ নাম</label>
+              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">পূর্ণ নাম (বাংলায়)</label>
               <div className="relative group">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
                 <input 
@@ -103,7 +103,7 @@ export default function SignupPage() {
                   value={name} 
                   onChange={e => setName(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-bold text-gray-900"
-                  placeholder="আপনার পূর্ণ নাম লিখুন"
+	                  placeholder="আপনার পূর্ণ নাম বাংলায় লিখুন"
                 />
               </div>
             </div>
