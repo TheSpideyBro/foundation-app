@@ -76,16 +76,9 @@ export default function AuditLogsPage() {
                     </div>
                     <div>
                       <p className="text-[15px] font-bold text-gray-900 leading-snug">
-                        {(() => {
-                          try {
-                            if (typeof log.details === 'object' && log.details !== null) {
-                              return `${log.action}: ${log.target_table || 'Unknown'} (${log.target_id || 'N/A'})`;
-                            }
-                            return String(log.details || log.action || 'No Details');
-                          } catch (e) {
-                            return String(log.action || 'Error rendering log');
-                          }
-                        })()}
+                        {typeof log.details === 'object' && log.details !== null 
+                          ? `${log.action}: ${log.target_table || 'Unknown'} (${log.target_id || 'N/A'})` 
+                          : String(log.details || log.action || 'No Details')}
                       </p>
                       <div className="flex items-center gap-3 mt-1.5">
                         <span className="flex items-center gap-1 text-[11px] text-gray-400 font-bold uppercase tracking-widest">
