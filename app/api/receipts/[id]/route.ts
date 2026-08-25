@@ -182,7 +182,7 @@ export async function GET(
     const cardMargin = 70;
     const cardWidth = width - (cardMargin * 2);
     const cardY = 530;
-    const cardHeight = 720;
+    const cardHeight = 750;
     const rowHeight = 100;
 
     ctx.fillStyle = '#FDFDFD';
@@ -286,7 +286,7 @@ export async function GET(
     // 7. QR Code Section
     const qrSize = 120;
     const qrX = cardMargin + 40;
-    const qrY = height - 220;
+    const qrY = height - 180;
     
     const qrData = `https://daulkharfoundation.vercel.app/verify/${donation.receipt_no}`;
     const qrBuffer = await QRCode.toBuffer(qrData, {
@@ -299,7 +299,7 @@ export async function GET(
 
     // 8. Signature Section
     const sigX = width - cardMargin - 280;
-    const sigY = height - 130;
+    const sigY = height - 90;
     
     ctx.strokeStyle = '#C9A227';
     ctx.lineWidth = 3;
@@ -328,11 +328,11 @@ export async function GET(
     ctx.beginPath();
     ctx.arc(width/2 - 220, footerY - 10, 15, 0, Math.PI*2);
     ctx.fill();
-    ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2 + 20, height - 190);
+    ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2 + 20, height - 240);
     
     ctx.fillStyle = '#6B7280';
     ctx.font = '22px Bengali';
-    ctx.fillText("আল্লাহ আপনার দান কবুল করুন", width / 2, height - 150);
+    ctx.fillText("আল্লাহ আপনার দান কবুল করুন", width / 2, height - 200);
 
     // Gold Stars
     ctx.fillStyle = '#C9A227';
@@ -343,8 +343,8 @@ export async function GET(
       ctx.lineTo(x-10, y); ctx.lineTo(x-3, y-3); ctx.closePath();
       ctx.fill();
     };
-    drawStar(width/2 - 150, height - 150);
-    drawStar(width/2 + 150, height - 150);
+    drawStar(width/2 - 150, height - 200);
+    drawStar(width/2 + 150, height - 200);
 
     const buffer = canvas.toBuffer('image/jpeg', { quality: 0.95 });
 
