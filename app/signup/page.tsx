@@ -29,7 +29,8 @@ export default function SignupPage() {
       options: {
         data: {
           phone: phone,
-          role: 'member'
+          role: 'member',
+          is_approved: false
         }
       }
     });

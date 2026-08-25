@@ -11,19 +11,46 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchUsers = async () => {
+    try {
+      const { data } = await supabase().from("users").select("*").order("created_at", { ascending: false });
+      setUsers(data || []);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const { data } = await supabase().from("users").select("*").order("created_at", { ascending: false });
-        setUsers(data || []);
-      } catch (err) {
-        console.error("Error fetching users:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchUsers();
   }, []);
+
+  const handleToggleApproval = async (userId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase()
+        .from("users")
+        .update({ is_approved: !currentStatus })
+        .eq("id", userId);
+      if (error) throw error;
+      fetchUsers();
+    } catch (err) {
+      alert("অ্যাপ্রুভ করতে সমস্যা হয়েছে।");
+    }
+  };
+
+  const handleChangeRole = async (userId: string, newRole: string) => {
+    try {
+      const { error } = await supabase()
+        .from("users")
+        .update({ role: newRole })
+        .eq("id", userId);
+      if (error) throw error;
+      fetchUsers();
+    } catch (err) {
+      alert("রোল পরিবর্তন করতে সমস্যা হয়েছে।");
+    }
+  };
 
   if (loading) return (
     <div className="min-h-[400px] flex items-center justify-center">
@@ -73,6 +100,25 @@ export default function AdminUsersPage() {
                       )}
                     </div>
                   </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <select 
+                    value={user.role} 
+                    onChange={(e) => handleChangeRole(user.id, e.target.value)}
+                    className="px-3 py-1.5 bg-gray-50 border-none rounded-lg text-[12px] font-bold outline-none"
+                  >
+                    <option value="member">সদস্য</option>
+                    <option value="treasurer">কোষাধ্যক্ষ</option>
+                    <option value="admin">অ্যাডমিন</option>
+                  </select>
+                  <button 
+                    onClick={() => handleToggleApproval(user.id, user.is_approved)}
+                    className={`px-4 py-1.5 rounded-lg text-[12px] font-bold transition-all ${
+                      user.is_approved ? 'bg-rose-50 text-rose-600 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {user.is_approved ? 'বাতিল' : 'অনুমোদন'}
+                  </button>
                 </div>
               </div>
             </div>

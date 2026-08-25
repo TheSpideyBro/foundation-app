@@ -75,7 +75,18 @@ export default function AuditLogsPage() {
                       <Activity size={20} />
                     </div>
                     <div>
-                      <p className="text-[15px] font-bold text-gray-900 leading-snug">{log.details || log.action}</p>
+                      <p className="text-[15px] font-bold text-gray-900 leading-snug">
+                        {(() => {
+                          try {
+                            if (typeof log.details === 'object' && log.details !== null) {
+                              return `${log.action}: ${log.target_table || 'Unknown'} (${log.target_id || 'N/A'})`;
+                            }
+                            return String(log.details || log.action || 'No Details');
+                          } catch (e) {
+                            return String(log.action || 'Error rendering log');
+                          }
+                        })()}
+                      </p>
                       <div className="flex items-center gap-3 mt-1.5">
                         <span className="flex items-center gap-1 text-[11px] text-gray-400 font-bold uppercase tracking-widest">
                           <User size={12} /> {log.actor_email || 'System'}
@@ -88,7 +99,7 @@ export default function AuditLogsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 bg-gray-100 text-gray-500 text-[10px] font-bold uppercase rounded-lg tracking-wider">
-                      {log.table_name}
+                      {log.target_table || log.table_name}
                     </span>
                   </div>
                 </div>

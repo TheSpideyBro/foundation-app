@@ -15,7 +15,6 @@ node_modules/
 # Testing
 coverage/
 .nyc_output/
-.playwright-metainfo.json
 
 # IDE
 .vscode/
@@ -23,37 +22,17 @@ coverage/
 *.swp
 *.swo
 *~
-*.sublime-project
-*.sublime-workspace
 
 # OS
 .DS_Store
 Thumbs.db
-Desktop.ini
 
 # Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-
-# TypeScript
-*.tsbuildinfo
-.next/types/
-
-# Vercel
-.vercel
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
 
 # Misc
+*.tsbuildinfo
 .cache/
-*.tmp
-*.temp
-
-# Production artifacts (keep for reference, exclude build output)
-# .next/standalone/

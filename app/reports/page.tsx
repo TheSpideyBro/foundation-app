@@ -7,8 +7,6 @@ import {
   Filter, Search, ChevronRight, LayoutGrid
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-import AppLayout from "@/components/layout";
-
 export default function ReportsPage() {
   const [stats, setStats] = useState<any>({
     totalDonations: 0,
@@ -69,7 +67,7 @@ export default function ReportsPage() {
           { label: "মোট অনুদান", value: `৳ ${stats.totalDonations.toLocaleString()}`, icon: <TrendingUp className="text-emerald-600" />, trend: "+১২%", color: "emerald" },
           { label: "মোট ব্যয়", value: `৳ ${stats.totalExpenses.toLocaleString()}`, icon: <ArrowDownRight className="text-rose-600" />, trend: "+৫%", color: "rose" },
           { label: "বর্তমান তহবিল", value: `৳ ${(stats.balance || 0).toLocaleString()}`, icon: <BarChart3 className="text-blue-600" />, trend: "সুস্থ", color: "blue" },
-          { label: "সক্রিয় সদস্য", value: stats.activeMembers, icon: <Users className="text-amber-600" />, trend: "+২", color: "amber" }
+          { label: "সক্রিয় সদস্য", value: String(stats.activeMembers), icon: <Users className="text-amber-600" />, trend: "+২", color: "amber" }
         ].map((item, i) => (
           <div key={i} className="card-premium p-6 relative overflow-hidden group">
             <div className={`absolute top-0 right-0 w-24 h-24 bg-${item.color}-50 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-110`}></div>

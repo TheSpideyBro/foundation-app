@@ -39,7 +39,7 @@ export async function GET(
 
   const isAdmin = (member as any)?.role === 'admin' || (member as any)?.role === 'treasurer';
   if (!isAdmin && donation.member_id !== (member as any)?.id) {
-    // Permission check
+    return new NextResponse('Forbidden', { status: 403 });
   }
 
   // Prepare temporary path for PDF

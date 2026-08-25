@@ -97,7 +97,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data } = await supabase().from("users").select("id").eq("id", u.id).single();
       if (!data) {
-        await supabase().from("users").insert({ id: u.id, email: u.email, role: 'member' });
+        const phone = u.user_metadata?.phone || null;
+        const role = u.user_metadata?.role || 'member';
+        const is_approved = u.user_metadata?.is_approved || false;
+        
+        await supabase().from("users").insert({ 
+          id: u.id, 
+          email: u.email, 
+          role: role,
+          phone: phone,
+          is_approved: is_approved
+        });
       }
     } catch (err) {
       console.warn("[AuthProvider] profile bootstrap skipped:", err);
