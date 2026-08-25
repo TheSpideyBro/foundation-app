@@ -5,7 +5,7 @@ import {
   Plus, Search, Calendar, Download, 
   Trash2, Edit2, Wallet, User,
   Filter, MoreHorizontal, X, Save,
-  AlertCircle, CheckCircle2
+  AlertCircle, CheckCircle2, Eye, Share2
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
@@ -21,6 +21,7 @@ export default function DonationsPage() {
   const [editingDonation, setEditingDonation] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     member_id: "",
@@ -133,6 +134,26 @@ export default function DonationsPage() {
     }
   };
 
+  const handleShare = async (donation: any) => {
+    const receiptUrl = `${window.location.origin}/api/receipts/${donation.id}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'অনুদান রসিদ',
+          text: `${donation.members?.name} এর অনুদান রসিদ (নং: ${donation.receipt_no})`,
+          url: receiptUrl,
+        });
+      } catch (err) {
+        console.error("Error sharing:", err);
+      }
+    } else {
+      // Fallback: Copy to clipboard
+      navigator.clipboard.writeText(receiptUrl);
+      alert("রসিদ লিঙ্ক কপি করা হয়েছে। আপনি এখন এটি WhatsApp বা অন্য কোথাও শেয়ার করতে পারেন।");
+    }
+  };
+
   const filteredDonations = donations.filter(d => 
     d.members?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     d.receipt_no?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -213,9 +234,23 @@ export default function DonationsPage() {
                     
                     <div className="flex items-center gap-2">
                       <button 
+                        onClick={() => setPreviewUrl(`/api/receipts/${d.id}`)}
+                        className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:text-blue-600 hover:bg-blue-50 transition-all active:scale-90"
+                        title="প্রিভিউ"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleShare(d)}
+                        className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90"
+                        title="শেয়ার"
+                      >
+                        <Share2 size={18} />
+                      </button>
+                      <button 
                         onClick={() => window.open(`/api/receipts/${d.id}`, "_blank")}
                         className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:text-emerald-600 hover:bg-emerald-50 transition-all active:scale-90"
-                        title="রসিদ ডাউনলোড"
+                        title="ডাউনলোড"
                       >
                         <Download size={18} />
                       </button>
@@ -246,6 +281,39 @@ export default function DonationsPage() {
           )}
         </div>
       </div>
+
+      {/* Preview Modal */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setPreviewUrl(null)}></div>
+          <div className="relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-emerald-600 text-white">
+              <h2 className="text-lg font-bold font-tiro">রসিদ প্রিভিউ</h2>
+              <button onClick={() => setPreviewUrl(null)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 bg-gray-100 flex items-center justify-center">
+              <img src={previewUrl} alt="Receipt Preview" className="max-w-full shadow-lg rounded-lg" />
+            </div>
+            <div className="p-4 border-t border-gray-100 flex justify-center gap-4 bg-white">
+              <button 
+                onClick={() => window.open(previewUrl, "_blank")}
+                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all"
+              >
+                <Download size={18} />
+                <span>ডাউনলোড করুন</span>
+              </button>
+              <button 
+                onClick={() => setPreviewUrl(null)}
+                className="px-6 py-2.5 border border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50 transition-all"
+              >
+                বন্ধ করুন
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {isModalOpen && (
