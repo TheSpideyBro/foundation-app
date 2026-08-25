@@ -4,6 +4,16 @@ import { createCanvas, loadImage, registerFont } from 'canvas';
 import fs from 'fs';
 import path from 'path';
 
+// Register Bengali font
+const fontPathBold = path.join(process.cwd(), 'public', 'fonts', 'HindSiliguri-Bold.ttf');
+const fontPathRegular = path.join(process.cwd(), 'public', 'fonts', 'HindSiliguri-Regular.ttf');
+if (fs.existsSync(fontPathBold)) {
+  registerFont(fontPathBold, { family: 'Bengali', weight: 'bold' });
+}
+if (fs.existsSync(fontPathRegular)) {
+  registerFont(fontPathRegular, { family: 'Bengali', weight: 'normal' });
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -79,18 +89,18 @@ export async function GET(
 
     // Title & Branding
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 32px sans-serif';
-    const title = "Doulkhand East Hilful Fuzul Foundation";
+    ctx.font = 'bold 32px Bengali';
+    const title = "দৌলখার পূর্বপাড়া হিলফুল ফুজুল ফাউন্ডেশন";
     ctx.fillText(title.substring(0, 25) + (title.length > 25 ? '...' : ''), 170, 85);
     
-    ctx.font = '20px sans-serif';
-    ctx.fillText("Charity & Community Development", 170, 125);
+    ctx.font = '20px Bengali';
+    ctx.fillText("মানবতার কল্যাণে আমাদের পথচলা", 170, 125);
 
     // Receipt Label
     ctx.fillStyle = '#1C1B17';
-    ctx.font = 'bold 28px sans-serif';
+    ctx.font = 'bold 28px Bengali';
     ctx.textAlign = 'center';
-    ctx.fillText("DONATION RECEIPT", width / 2, 250);
+    ctx.fillText("অনুদান রসিদ", width / 2, 250);
 
     // Content
     ctx.textAlign = 'left';
@@ -98,21 +108,21 @@ export async function GET(
     const lineHeight = 70;
     
     const details = [
-      ["Receipt No:", donation.receipt_no || 'N/A'],
-      ["Date:", donation.date],
-      ["Member Name:", donation.members?.name || 'Guest'],
-      ["Amount:", `BDT ${donation.amount}/-`],
-      ["Method:", donation.method || 'cash'],
-      ["Received By:", donation.received_by || 'Foundation']
+      ["রসিদ নং:", donation.receipt_no || 'N/A'],
+      ["তারিখ:", donation.date],
+      ["সদস্যের নাম:", donation.members?.name || 'Guest'],
+      ["টাকার পরিমাণ:", `৳ ${donation.amount}/-`],
+      ["পেমেন্ট মেথড:", donation.method === 'cash' ? 'নগদ' : donation.method],
+      ["গ্রহীতা:", donation.received_by || 'ফাউন্ডেশন']
     ];
 
     details.forEach(([label, value]) => {
       ctx.fillStyle = '#0F3D33';
-      ctx.font = 'bold 22px sans-serif';
+      ctx.font = 'bold 22px Bengali';
       ctx.fillText(label, 100, y);
       
       ctx.fillStyle = '#1C1B17';
-      ctx.font = '22px sans-serif';
+      ctx.font = '22px Bengali';
       ctx.fillText(String(value), 350, y);
       
       ctx.strokeStyle = '#E6E1D4';
@@ -133,19 +143,19 @@ export async function GET(
     ctx.moveTo(100, height - 200);
     ctx.lineTo(300, height - 200);
     ctx.stroke();
-    ctx.font = '18px sans-serif';
-    ctx.fillText("Authorized Sign", 120, height - 170);
+    ctx.font = '18px Bengali';
+    ctx.fillText("কর্তৃপক্ষের স্বাক্ষর", 120, height - 170);
     
     ctx.beginPath();
     ctx.moveTo(width - 300, height - 200);
     ctx.lineTo(width - 100, height - 200);
     ctx.stroke();
-    ctx.fillText("Member Sign", width - 260, height - 170);
+    ctx.fillText("সদস্যের স্বাক্ষর", width - 260, height - 170);
 
     // Footer
     ctx.textAlign = 'center';
-    ctx.font = 'italic 20px sans-serif';
-    ctx.fillText("Thank you for your generous contribution!", width / 2, height - 80);
+    ctx.font = 'italic 20px Bengali';
+    ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2, height - 80);
 
     const buffer = canvas.toBuffer('image/jpeg', { quality: 0.95 });
 
