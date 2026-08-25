@@ -28,6 +28,7 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন",
   },
+  authors: [{ name: "Saddam Hossain Akash" }],
 };
 
 export const viewport: Viewport = {

@@ -138,6 +138,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <LogOut size={18} />
             লগআউট
           </button>
+          <div className="mt-4 text-center">
+            <p className="text-[9px] font-bold text-gray-300 uppercase tracking-tighter">Developed by Saddam Hossain Akash</p>
+          </div>
         </div>
       </aside>
 

@@ -85,7 +85,10 @@ export default function LandingPage() {
             </div>
             <span className="text-sm font-bold text-gray-900 font-tiro">দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন</span>
           </div>
-          <p className="text-sm text-gray-400 font-medium">© ২০২৬ দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন। সর্বস্বত্ব সংরক্ষিত।</p>
+          <div>
+            <p className="text-sm text-gray-400 font-medium">© ২০২৬ দৌলখাঁড় হিলফুল ফুযুল ফাউন্ডেশন। সর্বস্বত্ব সংরক্ষিত।</p>
+            <p className="text-[10px] text-gray-300 font-medium mt-1">Developed by Saddam Hossain Akash</p>
+          </div>
           <div className="flex items-center gap-6">
             <Link href="#" className="text-gray-400 hover:text-emerald-600 transition-colors"><Phone size={20} /></Link>
             <Link href="#" className="text-gray-400 hover:text-emerald-600 transition-colors"><Globe size={20} /></Link>

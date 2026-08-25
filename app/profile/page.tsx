@@ -106,6 +106,14 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      <div className="mt-12 pt-8 border-t border-gray-100 text-center">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-full border border-gray-100">
+          <ShieldCheck size={14} className="text-emerald-600" />
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            Developed by Saddam Hossain Akash
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
