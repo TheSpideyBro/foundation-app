@@ -139,7 +139,7 @@ export async function GET(
     // Title & Branding
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'left';
-    ctx.font = 'bold 38px Bengali';
+    ctx.font = 'bold 32px Bengali'; // Reduced font size to fit within border
     ctx.fillText("দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন", 190, 85);
     
     ctx.font = '16px Bengali';
@@ -185,11 +185,22 @@ export async function GET(
     let y = 380;
     const lineHeight = 85;
     
+    const getBengaliMonthName = (monthStr: string) => {
+      if (!monthStr || !monthStr.includes('-')) return monthStr || 'N/A';
+      const [year, month] = monthStr.split('-');
+      const months = [
+        'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+        'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
+      ];
+      const monthIdx = parseInt(month) - 1;
+      return `${months[monthIdx]} ${year}`;
+    };
+
     const details = [
       ["রসিদ নং:", donation.receipt_no || 'N/A'],
       ["তারিখ:", donation.date],
       ["জনাব/জনাবা:", donation.members?.name || 'Guest'],
-      ["মাসের নাম:", donation.donation_month || 'N/A'],
+      ["মাসের নাম:", getBengaliMonthName(donation.donation_month)],
       ["টাকার পরিমাণ কথায়:", numberToBengaliWords(donation.amount) + ' টাকা মাত্র'],
       ["টাকার পরিমাণ:", `৳ ${donation.amount}/-`]
     ];

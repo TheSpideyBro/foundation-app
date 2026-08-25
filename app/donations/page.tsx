@@ -156,10 +156,11 @@ export default function DonationsPage() {
       const file = new File([blob], `receipt_${donation.receipt_no}.jpg`, { type: 'image/jpeg' });
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        const shareText = `আসসালামু আলাইকুম, ${donation.members?.name}।\n\nদৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশনে আপনার অনুদানটি সফলভাবে গ্রহণ করা হয়েছে।\n\nরসিদ নং: ${donation.receipt_no}\nপরিমাণ: ৳${donation.amount}/-\nতারিখ: ${donation.date}\n\nআপনার মহানুভবতার জন্য ধন্যবাদ!`;
         await navigator.share({
           files: [file],
           title: 'অনুদান রসিদ',
-          text: `${donation.members?.name} এর অনুদান রসিদ (নং: ${donation.receipt_no})`,
+          text: shareText,
         });
       } else {
         // Fallback: Download and alert
