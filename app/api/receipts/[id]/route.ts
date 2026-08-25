@@ -110,8 +110,8 @@ export async function GET(
 
     // 2. Header Section
     const grad = ctx.createLinearGradient(0, 0, 0, 350);
-    grad.addColorStop(0, '#064E3B');
-    grad.addColorStop(1, '#065F46');
+    grad.addColorStop(0, '#022C22'); // Deep Royal Green
+    grad.addColorStop(1, '#064E3B');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, 320);
     
@@ -188,16 +188,22 @@ export async function GET(
     const cardHeight = 720;
     const rowHeight = 100;
 
-    ctx.fillStyle = '#FDFDFD';
-    ctx.shadowColor = 'rgba(0,0,0,0.05)';
-    ctx.shadowBlur = 20;
+    ctx.fillStyle = '#FFFEF7'; // Ivory/Cream Background
+    ctx.shadowColor = 'rgba(0,0,0,0.08)';
+    ctx.shadowBlur = 30;
     ctx.beginPath();
     ctx.roundRect(cardMargin, cardY, cardWidth, cardHeight, 25);
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    ctx.strokeStyle = '#E8E8E8';
-    ctx.lineWidth = 1.5;
+    // Golden Double Border
+    ctx.strokeStyle = '#D4AF37'; // Metallic Gold
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.strokeStyle = '#F3E5AB'; // Light Gold
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(cardMargin + 5, cardY + 5, cardWidth - 10, cardHeight - 10, 20);
     ctx.stroke();
 
     // 6.5 Watermark
@@ -313,18 +319,31 @@ export async function GET(
     const qrImage = await loadImage(qrBuffer);
     ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
     
-    // Verified Badge
-    ctx.fillStyle = '#059669';
+    // Embossed Gold Seal
+    const sealX = qrX + qrSize - 10;
+    const sealY = qrY + qrSize - 10;
+    const sealGrad = ctx.createRadialGradient(sealX, sealY, 0, sealX, sealY, 25);
+    sealGrad.addColorStop(0, '#F3E5AB');
+    sealGrad.addColorStop(1, '#D4AF37');
+    ctx.fillStyle = sealGrad;
     ctx.beginPath();
-    ctx.arc(qrX + qrSize - 10, qrY + qrSize - 10, 18, 0, Math.PI*2);
+    for (let i = 0; i < 24; i++) {
+      const angle = (i * Math.PI * 2) / 24;
+      const r = i % 2 === 0 ? 25 : 20;
+      ctx.lineTo(sealX + Math.cos(angle) * r, sealY + Math.sin(angle) * r);
+    }
+    ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#B8860B';
+    ctx.lineWidth = 1;
     ctx.stroke();
+    
+    ctx.strokeStyle = '#B8860B';
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(qrX + qrSize - 18, qrY + qrSize - 10);
-    ctx.lineTo(qrX + qrSize - 12, qrY + qrSize - 4);
-    ctx.lineTo(qrX + qrSize - 4, qrY + qrSize - 16);
+    ctx.moveTo(sealX - 10, sealY);
+    ctx.lineTo(sealX - 3, sealY + 7);
+    ctx.lineTo(sealX + 10, sealY - 7);
     ctx.stroke();
 
     // 8. Signature Section
