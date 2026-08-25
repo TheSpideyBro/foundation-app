@@ -27,7 +27,7 @@ export default function DonationsPage() {
     amount: "",
     date: new Date().toISOString().split('T')[0],
     donation_month: new Date().toISOString().slice(0, 7), // YYYY-MM
-    method: "Cash",
+    method: "cash",
     receipt_no: `R-${Date.now().toString().slice(-6)}`
   });
 
@@ -66,7 +66,7 @@ export default function DonationsPage() {
         amount: donation.amount.toString(),
         date: donation.date,
         donation_month: donation.donation_month || "",
-        method: donation.method || "Cash",
+        method: donation.method || "cash",
         receipt_no: donation.receipt_no
       });
     } else {
@@ -76,7 +76,7 @@ export default function DonationsPage() {
         amount: "",
         date: new Date().toISOString().split('T')[0],
         donation_month: new Date().toISOString().slice(0, 7),
-        method: "Cash",
+        method: "cash",
         receipt_no: `R-${Date.now().toString().slice(-6)}`
       });
     }
@@ -323,10 +323,10 @@ export default function DonationsPage() {
                     onChange={(e) => setFormData({...formData, method: e.target.value})}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   >
-                    <option value="Cash">Cash</option>
-                    <option value="Bkash">Bkash</option>
-                    <option value="Nagad">Nagad</option>
-                    <option value="Bank">Bank</option>
+                    <option value="cash">নগদ (Cash)</option>
+                    <option value="bkash">বিকাশ (bKash)</option>
+                    <option value="nagad">নগদ (Nagad)</option>
+                    <option value="bank">ব্যাংক (Bank)</option>
                   </select>
                 </div>
               </div>
