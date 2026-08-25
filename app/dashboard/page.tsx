@@ -127,22 +127,24 @@ export default function Dashboard() {
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-1 font-tiro">আসসালামু আলাইকুম!</h1>
           <p className="text-sm text-gray-500 font-medium">আজকের ফাউন্ডেশন কার্যক্রমের চিত্র।</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={handleSync}
-            disabled={syncing}
-            className="flex-1 sm:flex-none btn-outline h-12 px-5"
-          >
-            <RefreshCw size={18} className={syncing ? "animate-spin" : ""} />
-            <span className="hidden sm:inline">শিট সিঙ্ক</span>
-            <span className="sm:hidden">সিঙ্ক</span>
-          </button>
-          <Link href="/donations" className="flex-1 sm:flex-none btn-emerald h-12 px-5">
-            <Plus size={18} />
-            <span className="hidden sm:inline">নতুন ডোনেশন</span>
-            <span className="sm:hidden">নতুন দান</span>
-          </Link>
-        </div>
+        {role !== 'member' && (
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex-1 sm:flex-none btn-outline h-12 px-5"
+            >
+              <RefreshCw size={18} className={syncing ? "animate-spin" : ""} />
+              <span className="hidden sm:inline">শিট সিঙ্ক</span>
+              <span className="sm:hidden">সিঙ্ক</span>
+            </button>
+            <Link href="/donations" className="flex-1 sm:flex-none btn-emerald h-12 px-5">
+              <Plus size={18} />
+              <span className="hidden sm:inline">নতুন ডোনেশন</span>
+              <span className="sm:hidden">নতুন দান</span>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Stats Grid */}
