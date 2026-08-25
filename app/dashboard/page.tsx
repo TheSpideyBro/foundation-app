@@ -13,8 +13,10 @@ import {
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from "recharts";
 import Link from "next/link";
+import { useAuth } from "@/components/providers";
 
 export default function Dashboard() {
+  const { role } = useAuth();
   const [stats, setStats] = useState({
     totalMembers: 0,
     totalDonations: 0,
@@ -64,17 +66,16 @@ export default function Dashboard() {
         netBalance: totalDonations - totalExpenses,
       });
 
-  const { role } = useAuth();
-  if (role !== 'member') {
-    const { data: recent } = await supabase()
-      .from("donations")
-      .select("*, members(name)")
-      .order("date", { ascending: false })
-      .limit(5);
-    setRecentDonations(recent || []);
-  } else {
-    setRecentDonations([]);
-  }
+      if (role !== 'member') {
+        const { data: recent } = await supabase()
+          .from("donations")
+          .select("*, members(name)")
+          .order("date", { ascending: false })
+          .limit(5);
+        setRecentDonations(recent || []);
+      } else {
+        setRecentDonations([]);
+      }
 
       setChartData([
         { name: "জানু", donation: 4000, expense: 2400 },
