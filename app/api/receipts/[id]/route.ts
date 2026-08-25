@@ -81,7 +81,7 @@ export async function GET(
 
   const { data: donation, error } = await supabase
     .from('donations')
-    .select('*, members!member_id(name), collector:users!collected_by(name)')
+    .select('*, members!member_id(name), collector:users!collected_by(name, members:member_id(name))')
     .eq('id', id)
     .single();
 
@@ -246,7 +246,7 @@ export async function GET(
       { label: "মাসের নাম", value: getBengaliMonthName(donation.donation_month), icon: 'month' },
       { label: "টাকার পরিমাণ কথায়", value: `${amountInWords} টাকা`, icon: 'text' },
       { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-`, icon: 'cash' },
-      { label: "আদায়কারী", value: donation.collector?.name || "অ্যাডমিন", icon: 'pen' }
+      { label: "আদায়কারী", value: donation.collector?.members?.name || donation.collector?.name || "অ্যাডমিন", icon: 'pen' }
     ];
 
     rows.forEach((row, i) => {
@@ -360,7 +360,7 @@ export async function GET(
     // Signature text (Black Ink Look with new font)
     ctx.font = '44px SignatureFont';
     ctx.fillStyle = '#000000';
-    ctx.fillText(donation.collector?.name || "অ্যাডমিন", sigX + 120, sigY - 20);
+    ctx.fillText(donation.collector?.members?.name || donation.collector?.name || "অ্যাডমিন", sigX + 120, sigY - 20);
 
     // 9. Footer Message
     ctx.fillStyle = '#064E3B';

@@ -10,7 +10,10 @@ const donation = {
   date: '2026-08-25',
   donation_month: '2026-08',
   members: { name: 'সাদ্দাম হোসেন আকাশ' },
-  collector: { name: 'মিজানুর রহমান' }
+  collector: { 
+    name: 'Mijanur Rahman',
+    members: { name: 'মিজানুর রহমান' }
+  }
 };
 
 // Functions from route.ts
@@ -164,7 +167,7 @@ async function run() {
       { label: "মাসের নাম", value: getBengaliMonthName(donation.donation_month), icon: 'month' },
       { label: "টাকার পরিমাণ কথায়", value: `${amountInWords} টাকা`, icon: 'text' },
       { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-`, icon: 'cash' },
-      { label: "আদায়কারী", value: donation.collector.name, icon: 'pen' }
+      { label: "আদায়কারী", value: donation.collector.members?.name || donation.collector.name, icon: 'pen' }
     ];
 
     rows.forEach((row, i) => {
@@ -201,7 +204,7 @@ async function run() {
 
     ctx.font = '44px SignatureFont';
     ctx.fillStyle = '#000000';
-    ctx.fillText(donation.collector.name, sigX + 120, sigY - 20);
+    ctx.fillText(donation.collector.members?.name || donation.collector.name, sigX + 120, sigY - 20);
 
     const buffer = canvas.toBuffer('image/jpeg');
     fs.writeFileSync('test-receipt-final.jpg', buffer);
