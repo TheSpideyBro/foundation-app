@@ -85,6 +85,19 @@ export default function AdminUsersPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      // Validation
+      if (!formData.name.trim()) {
+        alert("নাম অবশ্যই দিতে হবে।");
+        setSubmitting(false);
+        return;
+      }
+      
+      if (formData.phone && !/^\d{11}$/.test(formData.phone)) {
+        alert("সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন।");
+        setSubmitting(false);
+        return;
+      }
+
       // 1. Create member record
       const { data: memberData, error: memberError } = await supabase()
         .from("members")

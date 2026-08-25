@@ -55,6 +55,19 @@ export default function ProfilePage() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      // Basic validation
+      if (!editForm.name.trim()) {
+        alert("নাম অবশ্যই দিতে হবে।");
+        setSubmitting(false);
+        return;
+      }
+      
+      if (editForm.phone && !/^\d{11}$/.test(editForm.phone)) {
+        alert("সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন।");
+        setSubmitting(false);
+        return;
+      }
+
       // Update member record
       const { error: memberError } = await supabase()
         .from("members")
