@@ -14,3 +14,4 @@ npm install
 cp .env.local.example .env.local   # then fill in your Supabase URL + anon key
 npm run dev
 ```
+-- Triggering Vercel deployment for develop branch --
