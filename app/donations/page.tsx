@@ -10,7 +10,6 @@ import {
   Eye, 
   FileText, 
   Calendar, 
-  User, 
   Trash2, 
   Edit2, 
   X,
@@ -34,9 +33,6 @@ interface Donation {
   members: {
     name: string;
     phone: string;
-  };
-  collector?: {
-    name: string;
   };
 }
 
@@ -66,12 +62,21 @@ export default function DonationsPage() {
     is_batch: false,
     method: "cash",
     collected_by: "",
-    receipt_no: `R-${Math.floor(100000 + Math.random() * 900000)}`
+    receipt_no: ""
   });
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (showModal && !formData.receipt_no) {
+      setFormData(prev => ({
+        ...prev,
+        receipt_no: `R-${Math.floor(100000 + Math.random() * 900000)}`
+      }));
+    }
+  }, [showModal]);
 
   async function fetchData() {
     try {
@@ -95,14 +100,17 @@ export default function DonationsPage() {
       if (membersError) throw membersError;
       setMembers(membersData || []);
 
-      // Fetch treasurers/admins for the "collected_by" dropdown
       const { data: usersData, error: usersError } = await supabase
         .from("users")
         .select("id, name, phone, role")
         .in("role", ["admin", "treasurer"]);
 
       if (usersError) throw usersError;
-      setTreasurers(usersData.map(u => ({ id: u.id, name: u.name || "Unknown", phone: u.phone || "" })));
+      setTreasurers(usersData.map(u => ({ 
+        id: u.id, 
+        name: u.name || "Unknown", 
+        phone: u.phone || "" 
+      })));
 
     } catch (err: any) {
       console.error("Error fetching data:", err);
@@ -119,7 +127,6 @@ export default function DonationsPage() {
 
     try {
       if (formData.is_batch) {
-        // Multi-month logic
         const start = new Date(formData.donation_month + "-01");
         const end = new Date(formData.end_month + "-01");
         
@@ -155,7 +162,6 @@ export default function DonationsPage() {
 
         if (insertError) throw insertError;
       } else {
-        // Single month logic
         const { error: insertError } = await supabase
           .from("donations")
           .insert([{
@@ -177,11 +183,15 @@ export default function DonationsPage() {
         setSuccess(false);
         fetchData();
         setFormData({
-          ...formData,
           member_id: "",
           amount: "",
+          donation_date: format(new Date(), "yyyy-MM-dd"),
+          donation_month: format(new Date(), "yyyy-MM"),
+          end_month: format(new Date(), "yyyy-MM"),
           is_batch: false,
-          receipt_no: `R-${Math.floor(100000 + Math.random() * 900000)}`
+          method: "cash",
+          collected_by: "",
+          receipt_no: ""
         });
       }, 1500);
 
@@ -215,13 +225,12 @@ export default function DonationsPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20 md:pb-8">
-      {/* Header */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 h-16 md:h-20 flex items-center justify-between">
           <div>
             <h1 className="text-xl md:text-2xl font-black text-gray-900 flex items-center gap-2">
               <FileText className="w-6 h-6 text-emerald-600" />
-              अनुদান ও জমা
+              অনুদান ও জমা
             </h1>
             <p className="text-[10px] md:text-xs text-gray-500 font-medium mt-0.5">ফাউন্ডেশনের সকল জমার হিসাব</p>
           </div>
@@ -237,7 +246,6 @@ export default function DonationsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Search */}
         <div className="relative mb-6">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input 
@@ -346,7 +354,6 @@ export default function DonationsPage() {
         )}
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -441,7 +448,7 @@ export default function DonationsPage() {
                     required
                   />
                 </div>
-                {formData.is_batch ? (
+                {formData.is_batch && (
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-700">শেষ মাস</label>
                     <input 
@@ -452,38 +459,22 @@ export default function DonationsPage() {
                       required
                     />
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700">পেমেন্ট মেথড</label>
-                    <select 
-                      value={formData.method}
-                      onChange={(e) => setFormData({...formData, method: e.target.value})}
-                      className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                    >
-                      <option value="cash">নগদ (Cash)</option>
-                      <option value="bkash">বিকাশ (bKash)</option>
-                      <option value="nagad">নগদ (Nagad)</option>
-                      <option value="bank">ব্যাংক (Bank)</option>
-                    </select>
-                  </div>
                 )}
               </div>
 
-              {formData.is_batch && (
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">পেমেন্ট মেথড</label>
-                  <select 
-                    value={formData.method}
-                    onChange={(e) => setFormData({...formData, method: e.target.value})}
-                    className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                  >
-                    <option value="cash">নগদ (Cash)</option>
-                    <option value="bkash">বিকাশ (bKash)</option>
-                    <option value="nagad">নগদ (Nagad)</option>
-                    <option value="bank">ব্যাংক (Bank)</option>
-                  </select>
-                </div>
-              )}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700">পেমেন্ট মেথড</label>
+                <select 
+                  value={formData.method}
+                  onChange={(e) => setFormData({...formData, method: e.target.value})}
+                  className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                >
+                  <option value="cash">নগদ (Cash)</option>
+                  <option value="bkash">বিকাশ (bKash)</option>
+                  <option value="nagad">নগদ (Nagad)</option>
+                  <option value="bank">ব্যাংক (Bank)</option>
+                </select>
+              </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-bold text-gray-700">আদায়কারী (টাকা গ্রহণ করেছেন) *</label>
