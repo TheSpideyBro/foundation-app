@@ -1,6 +1,6 @@
--- Foundation Fund App - Supabase Schema V3 (Latest State)
+-- Foundation Fund App - Supabase Schema V3 (Stabilized)
 -- Generated on: Aug 25, 2026
--- Includes: Profile Linking, Manual Linking, Audit Logs, and RLS Policies
+-- Optimized for: Profile Linking, Manual Linking, and PostgREST Ambiguity Fix
 
 -- 1. Enable Required Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     phone TEXT,
     role TEXT NOT NULL DEFAULT 'member',
     is_approved BOOLEAN DEFAULT false,
-    member_id UUID,
+    member_id UUID, -- Link to the member profile
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -28,11 +28,12 @@ CREATE TABLE IF NOT EXISTS public.members (
     join_date DATE NOT NULL DEFAULT CURRENT_DATE,
     status TEXT NOT NULL DEFAULT 'active',
     monthly_pledge NUMERIC DEFAULT 0,
-    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    -- user_id is removed here to prevent PostgREST ambiguity. 
+    -- The link is managed via users.member_id.
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Add Foreign Key from users to members (Crucial for Admin Panel name display)
+-- Add Foreign Key from users to members
 ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_member_id_fkey;
 ALTER TABLE public.users ADD CONSTRAINT users_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL;
 
@@ -111,7 +112,6 @@ DECLARE
     v_actor_id UUID;
     v_actor_email TEXT;
 BEGIN
-    -- Fallback for direct SQL updates where auth.uid() is null
     v_actor_id := coalesce(auth.uid(), (SELECT id FROM public.users WHERE role = 'admin' LIMIT 1));
     v_actor_email := coalesce(auth.jwt() ->> 'email', 'system@foundation.app');
 
@@ -203,7 +203,7 @@ FOR EACH ROW EXECUTE FUNCTION public.log_audit_event();
 
 -- 4. RLS Policies
 
--- Enable RLS on all tables
+-- Enable RLS
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.donations ENABLE ROW LEVEL SECURITY;
@@ -213,100 +213,44 @@ ALTER TABLE public.notices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Users Policies
-DROP POLICY IF EXISTS "users_read_all" ON public.users;
 CREATE POLICY "users_read_all" ON public.users FOR SELECT USING (auth.uid() IS NOT NULL);
-
-DROP POLICY IF EXISTS "users_read_own" ON public.users;
-CREATE POLICY "users_read_own" ON public.users FOR SELECT USING (auth.uid() = id);
-
-DROP POLICY IF EXISTS "users_read_staff" ON public.users;
-CREATE POLICY "users_read_staff" ON public.users FOR SELECT USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
-
-DROP POLICY IF EXISTS "users_insert_self" ON public.users;
 CREATE POLICY "users_insert_self" ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
-
-DROP POLICY IF EXISTS "users_update_self" ON public.users;
 CREATE POLICY "users_update_self" ON public.users FOR UPDATE USING (auth.uid() = id);
-
-DROP POLICY IF EXISTS "users_admin_all" ON public.users;
 CREATE POLICY "users_admin_all" ON public.users FOR ALL USING (get_my_role() = 'admin');
 
 -- Members Policies
-DROP POLICY IF EXISTS "members_select_all" ON public.members;
 CREATE POLICY "members_select_all" ON public.members FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "members_insert_staff" ON public.members;
 CREATE POLICY "members_insert_staff" ON public.members FOR INSERT WITH CHECK (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
-
-DROP POLICY IF EXISTS "members_update_staff" ON public.members;
 CREATE POLICY "members_update_staff" ON public.members FOR UPDATE USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
-
-DROP POLICY IF EXISTS "members_update_own" ON public.members;
-CREATE POLICY "members_update_own" ON public.members FOR UPDATE USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "members_delete_admin" ON public.members;
 CREATE POLICY "members_delete_admin" ON public.members FOR DELETE USING (get_my_role() = 'admin');
 
 -- Donations Policies
-DROP POLICY IF EXISTS "donations_select_own" ON public.donations;
 CREATE POLICY "donations_select_own" ON public.donations FOR SELECT USING (
-  EXISTS (SELECT 1 FROM members WHERE members.id = donations.member_id AND members.user_id = auth.uid())
+  EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.member_id = donations.member_id)
 );
-
-DROP POLICY IF EXISTS "donations_select_staff" ON public.donations;
 CREATE POLICY "donations_select_staff" ON public.donations FOR SELECT USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
-
-DROP POLICY IF EXISTS "donations_insert_staff" ON public.donations;
 CREATE POLICY "donations_insert_staff" ON public.donations FOR INSERT WITH CHECK (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
-
-DROP POLICY IF EXISTS "donations_update_staff" ON public.donations;
 CREATE POLICY "donations_update_staff" ON public.donations FOR UPDATE USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
-
-DROP POLICY IF EXISTS "donations_delete_admin" ON public.donations;
 CREATE POLICY "donations_delete_admin" ON public.donations FOR DELETE USING (get_my_role() = 'admin');
 
 -- Expenses Policies
-DROP POLICY IF EXISTS "expenses_select_all" ON public.expenses;
 CREATE POLICY "expenses_select_all" ON public.expenses FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "expenses_insert_staff" ON public.expenses;
 CREATE POLICY "expenses_insert_staff" ON public.expenses FOR INSERT WITH CHECK (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
-
-DROP POLICY IF EXISTS "expenses_update_staff" ON public.expenses;
 CREATE POLICY "expenses_update_staff" ON public.expenses FOR UPDATE USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
-
-DROP POLICY IF EXISTS "expenses_delete_admin" ON public.expenses;
 CREATE POLICY "expenses_delete_admin" ON public.expenses FOR DELETE USING (get_my_role() = 'admin');
 
 -- Expense Categories Policies
-DROP POLICY IF EXISTS "expense_categories_select_staff" ON public.expense_categories;
 CREATE POLICY "expense_categories_select_staff" ON public.expense_categories FOR SELECT USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
-
-DROP POLICY IF EXISTS "expense_categories_insert_admin" ON public.expense_categories;
 CREATE POLICY "expense_categories_insert_admin" ON public.expense_categories FOR INSERT WITH CHECK (get_my_role() = 'admin');
-
-DROP POLICY IF EXISTS "expense_categories_update_admin" ON public.expense_categories;
 CREATE POLICY "expense_categories_update_admin" ON public.expense_categories FOR UPDATE USING (get_my_role() = 'admin');
-
-DROP POLICY IF EXISTS "expense_categories_delete_admin" ON public.expense_categories;
 CREATE POLICY "expense_categories_delete_admin" ON public.expense_categories FOR DELETE USING (get_my_role() = 'admin');
 
 -- Notices Policies
-DROP POLICY IF EXISTS "notices_select_all" ON public.notices;
 CREATE POLICY "notices_select_all" ON public.notices FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "notices_insert_admin" ON public.notices;
 CREATE POLICY "notices_insert_admin" ON public.notices FOR INSERT WITH CHECK (get_my_role() = 'admin');
-
-DROP POLICY IF EXISTS "notices_update_admin" ON public.notices;
 CREATE POLICY "notices_update_admin" ON public.notices FOR UPDATE USING (get_my_role() = 'admin');
-
-DROP POLICY IF EXISTS "notices_delete_admin" ON public.notices;
 CREATE POLICY "notices_delete_admin" ON public.notices FOR DELETE USING (get_my_role() = 'admin');
 
 -- Audit Log Policies
-DROP POLICY IF EXISTS "audit_log_select_admin" ON public.audit_log;
 CREATE POLICY "audit_log_select_admin" ON public.audit_log FOR SELECT USING (get_my_role() = 'admin');
-
-DROP POLICY IF EXISTS "audit_log_insert_system" ON public.audit_log;
 CREATE POLICY "audit_log_insert_system" ON public.audit_log FOR INSERT WITH CHECK (true);
