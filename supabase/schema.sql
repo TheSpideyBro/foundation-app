@@ -254,3 +254,25 @@ CREATE POLICY "notices_delete_admin" ON public.notices FOR DELETE USING (get_my_
 -- Audit Log Policies
 CREATE POLICY "audit_log_select_admin" ON public.audit_log FOR SELECT USING (get_my_role() = 'admin');
 CREATE POLICY "audit_log_insert_system" ON public.audit_log FOR INSERT WITH CHECK (true);
+
+-- 5. Sync Auth Users to Public Users Table
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.users (id, email, name, phone, role, is_approved)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    NEW.raw_user_meta_data->>'name',
+    NEW.raw_user_meta_data->>'phone',
+    COALESCE(NEW.raw_user_meta_data->>'role', 'member'),
+    COALESCE((NEW.raw_user_meta_data->>'is_approved')::boolean, false)
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
