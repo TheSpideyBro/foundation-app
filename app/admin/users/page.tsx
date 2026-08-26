@@ -120,7 +120,6 @@ export default function AdminUsersPage() {
           address: formData.address,
           join_date: formData.join_date,
           monthly_pledge: parseFloat(formData.monthly_pledge),
-          user_id: selectedUser.id,
           status: 'active'
         }])
         .select()
@@ -151,17 +150,7 @@ export default function AdminUsersPage() {
     if (!confirm("আপনি কি নিশ্চিতভাবে এই প্রোফাইলটি আনলিঙ্ক করতে চান?")) return;
     
     try {
-      const memberId = user.member_id;
-      
-      // 1. Clear user_id in members table
-      const { error: memberError } = await supabase()
-        .from("members")
-        .update({ user_id: null })
-        .eq("id", memberId);
-      
-      if (memberError) throw memberError;
-      
-      // 2. Clear member_id in users table
+      // Clear member_id in users table
       const { error: userError } = await supabase()
         .from("users")
         .update({ member_id: null })
@@ -181,10 +170,18 @@ export default function AdminUsersPage() {
     setSelectedUser(user);
     try {
       // Fetch members who are not linked to any user
+      // We check users table to see which members are already taken
+      const { data: linkedMemberIds } = await supabase()
+        .from("users")
+        .select("member_id")
+        .not("member_id", "is", null);
+      
+      const excludedIds = linkedMemberIds?.map(u => u.member_id) || [];
+
       const { data } = await supabase()
         .from("members")
         .select("id, name, phone")
-        .is("user_id", null)
+        .not("id", "in", `(${excludedIds.join(',') || '00000000-0000-0000-0000-000000000000'})`)
         .order("name");
       setAvailableMembers(data || []);
       setIsLinkModalOpen(true);
@@ -201,15 +198,7 @@ export default function AdminUsersPage() {
     }
     setSubmitting(true);
     try {
-      // 1. Link member to user
-      const { error: memberError } = await supabase()
-        .from("members")
-        .update({ user_id: selectedUser.id })
-        .eq("id", selectedMemberId);
-      
-      if (memberError) throw memberError;
-      
-      // 2. Link user to member
+      // Link user to member
       const { error: userError } = await supabase()
         .from("users")
         .update({ member_id: selectedMemberId })

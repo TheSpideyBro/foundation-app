@@ -83,8 +83,7 @@ export default function MembersPage() {
     try {
       const payload = {
         ...formData,
-        monthly_pledge: parseFloat(formData.monthly_pledge),
-        user_id: editingMember?.user_id || null
+        monthly_pledge: parseFloat(formData.monthly_pledge)
       };
 
       if (editingMember) {
