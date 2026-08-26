@@ -79,7 +79,7 @@ export async function GET(
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const { data: donation, error } = await supabase
+  let { data: donation, error } = await supabase
     .from('donations')
     .select('*, members!member_id(name), collector:users!collected_by(name, members(name))')
     .eq('id', id)
@@ -87,6 +87,27 @@ export async function GET(
 
   if (error || !donation) {
     return new NextResponse('Donation not found', { status: 404 });
+  }
+
+  // Check if it's part of a batch
+  let displayMonth = getBengaliMonthName(donation.donation_month);
+  let displayAmount = donation.amount;
+  let displayReceiptNo = donation.receipt_no;
+
+  if (donation.batch_id) {
+    const { data: batchDonations } = await supabase
+      .from('donations')
+      .select('amount, donation_month, receipt_no')
+      .eq('batch_id', donation.batch_id)
+      .order('donation_month', { ascending: true });
+
+    if (batchDonations && batchDonations.length > 1) {
+      const startMonth = getBengaliMonthName(batchDonations[0].donation_month);
+      const endMonth = getBengaliMonthName(batchDonations[batchDonations.length - 1].donation_month);
+      displayMonth = `${startMonth} - ${endMonth} (${batchDonations.length.toString().padStart(2, '০')} মাস)`;
+      displayAmount = batchDonations.reduce((sum: number, d: any) => sum + d.amount, 0);
+      displayReceiptNo = `${donation.receipt_no.split('-')[0]} (Batch)`;
+    }
   }
 
   const { data: userData } = await supabase
@@ -237,15 +258,15 @@ export async function GET(
       }
     } catch (e) {}
 
-    // 7. QR Code Section
-    const amountInWords = numberToBengaliWords(donation.amount || 0);
+    // 7. Content Rows
+    const amountInWords = numberToBengaliWords(displayAmount || 0);
     const rows = [
-      { label: "রসিদ নং", value: donation.receipt_no || 'N/A', icon: 'doc' },
+      { label: "রসিদ নং", value: displayReceiptNo || 'N/A', icon: 'doc' },
       { label: "তারিখ", value: donation.date, icon: 'cal' },
       { label: "জনাব/জনাবা", value: donation.members?.name || 'অজ্ঞাত', icon: 'user' },
-      { label: "মাসের নাম", value: getBengaliMonthName(donation.donation_month), icon: 'month' },
+      { label: "মাসের নাম", value: displayMonth, icon: 'month' },
       { label: "টাকার পরিমাণ কথায়", value: `${amountInWords} টাকা`, icon: 'text' },
-      { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-`, icon: 'cash' },
+      { label: "টাকার পরিমাণ", value: `৳ ${displayAmount}/-`, icon: 'cash' },
       { label: "আদায়কারী", value: donation.collector?.members?.name || donation.collector?.name || "অ্যাডমিন", icon: 'pen' }
     ];
 

@@ -30,6 +30,8 @@ export default function DonationsPage() {
     amount: "",
     date: new Date().toISOString().split('T')[0],
     donation_month: new Date().toISOString().slice(0, 7), // YYYY-MM
+    is_batch: false,
+    end_month: new Date().toISOString().slice(0, 7),
     method: "cash",
     receipt_no: `R-${Date.now().toString().slice(-6)}`,
     collected_by: ""
@@ -139,24 +141,67 @@ export default function DonationsPage() {
 
     setSubmitting(true);
     try {
-      const payload: any = {
-        member_id: formData.member_id,
-        amount: parseFloat(formData.amount),
-        date: formData.date,
-        donation_month: formData.donation_month,
-        method: formData.method.toLowerCase(),
-        receipt_no: formData.receipt_no,
-        collected_by: formData.collected_by,
-        created_by: user?.id
-      };
-
       if (editingDonation) {
+        const payload = {
+          member_id: formData.member_id,
+          amount: parseFloat(formData.amount),
+          date: formData.date,
+          donation_month: formData.donation_month,
+          method: formData.method.toLowerCase(),
+          receipt_no: formData.receipt_no,
+          collected_by: formData.collected_by,
+          created_by: user?.id
+        };
         const { error } = await supabase()
           .from("donations")
           .update(payload)
           .eq("id", editingDonation.id);
         if (error) throw error;
+      } else if (formData.is_batch) {
+        // Handle Batch Insertion
+        const start = new Date(formData.donation_month + "-01");
+        const end = new Date(formData.end_month + "-01");
+        const months = [];
+        let current = new Date(start);
+        
+        while (current <= end) {
+          months.push(current.toISOString().slice(0, 7));
+          current.setMonth(current.getMonth() + 1);
+        }
+
+        if (months.length === 0) throw new Error("সঠিক মাসের পরিসীমা নির্বাচন করুন।");
+        
+        const totalAmount = parseFloat(formData.amount);
+        const perMonthAmount = totalAmount / months.length;
+        const batchId = crypto.randomUUID();
+
+        const batchPayloads = months.map((month, index) => ({
+          member_id: formData.member_id,
+          amount: perMonthAmount,
+          date: formData.date,
+          donation_month: month,
+          method: formData.method.toLowerCase(),
+          receipt_no: `${formData.receipt_no}-${index + 1}`,
+          collected_by: formData.collected_by,
+          created_by: user?.id,
+          batch_id: batchId
+        }));
+
+        const { error } = await supabase()
+          .from("donations")
+          .insert(batchPayloads);
+        if (error) throw error;
       } else {
+        const payload = {
+          member_id: formData.member_id,
+          amount: parseFloat(formData.amount),
+          date: formData.date,
+          donation_month: formData.donation_month,
+          method: formData.method.toLowerCase(),
+          receipt_no: formData.receipt_no,
+          collected_by: formData.collected_by,
+          created_by: user?.id
+        };
         const { error } = await supabase()
           .from("donations")
           .insert([payload]);
@@ -454,9 +499,21 @@ export default function DonationsPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    checked={formData.is_batch}
+                    onChange={(e) => setFormData({...formData, is_batch: e.target.checked})}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="text-sm font-bold text-gray-700">অগ্রিম/একাধিক মাসের চাঁদা</span>
+                </label>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">মাসের নাম</label>
+                  <label className="text-sm font-bold text-gray-700">{formData.is_batch ? 'শুরু মাস' : 'মাসের নাম'}</label>
                   <input 
                     type="month" 
                     value={formData.donation_month}
@@ -464,7 +521,48 @@ export default function DonationsPage() {
                     className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all" 
                   />
                 </div>
+                {formData.is_batch ? (
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-gray-700">শেষ মাস</label>
+                    <input 
+                      type="month" 
+                      value={formData.end_month}
+                      onChange={(e) => setFormData({...formData, end_month: e.target.value})}
+                      className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all" 
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-gray-700">পেমেন্ট মেথড</label>
+                    <select 
+                      value={formData.method}
+                      onChange={(e) => setFormData({...formData, method: e.target.value})}
+                      className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    >
+                      <option value="cash">নগদ (Cash)</option>
+                      <option value="bkash">বিকাশ (bKash)</option>
+                      <option value="nagad">নগদ (Nagad)</option>
+                      <option value="bank">ব্যাংক (Bank)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {formData.is_batch && (
                 <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700">পেমেন্ট মেথড</label>
+                  <select 
+                    value={formData.method}
+                    onChange={(e) => setFormData({...formData, method: e.target.value})}
+                    className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  >
+                    <option value="cash">নগদ (Cash)</option>
+                    <option value="bkash">বিকাশ (bKash)</option>
+                    <option value="nagad">নগদ (Nagad)</option>
+                    <option value="bank">ব্যাংক (Bank)</option>
+                  </select>
+                </div>
+              )}
                   <label className="text-sm font-bold text-gray-700">পেমেন্ট মেথড</label>
                   <select 
                     value={formData.method}
