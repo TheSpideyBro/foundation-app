@@ -1,5 +1,6 @@
 -- Foundation Fund App - Supabase Schema V3 (Latest State)
 -- Generated on: Aug 25, 2026
+-- Includes: Profile Linking, Manual Linking, Audit Logs, and RLS Policies
 
 -- 1. Enable Required Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -30,6 +31,10 @@ CREATE TABLE IF NOT EXISTS public.members (
     user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Add Foreign Key from users to members (Crucial for Admin Panel name display)
+ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_member_id_fkey;
+ALTER TABLE public.users ADD CONSTRAINT users_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL;
 
 -- Donations table
 CREATE TABLE IF NOT EXISTS public.donations (
