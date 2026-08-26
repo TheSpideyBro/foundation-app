@@ -276,3 +276,7 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 6. Support for Multi-Month (Batch) Donations
+ALTER TABLE public.donations ADD COLUMN IF NOT EXISTS batch_id UUID;
+CREATE INDEX IF NOT EXISTS idx_donations_batch_id ON public.donations(batch_id);
