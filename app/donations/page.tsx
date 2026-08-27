@@ -25,7 +25,7 @@ interface Donation {
   id: string;
   member_id: string;
   amount: number;
-  donation_date: string;
+  date: string;
   donation_month: string;
   receipt_no: string;
   method: string;
@@ -57,7 +57,7 @@ export default function DonationsPage() {
   const [formData, setFormData] = useState({
     member_id: "",
     amount: "",
-    donation_date: format(new Date(), "yyyy-MM-dd"),
+    date: format(new Date(), "yyyy-MM-dd"),
     donation_month: format(new Date(), "yyyy-MM"),
     end_month: format(new Date(), "yyyy-MM"),
     is_batch: false,
@@ -88,7 +88,7 @@ export default function DonationsPage() {
           *,
           members (name, phone)
         `)
-        .order("donation_date", { ascending: false });
+        .order("date", { ascending: false });
 
       if (donationsError) throw donationsError;
       setDonations(donationsData || []);
@@ -149,7 +149,7 @@ export default function DonationsPage() {
         const newDonations = months.map((month, index) => ({
           member_id: formData.member_id,
           amount: amountPerMonth,
-          donation_date: formData.donation_date,
+          date: formData.date,
           donation_month: month,
           method: formData.method,
           collected_by: formData.collected_by,
@@ -168,7 +168,7 @@ export default function DonationsPage() {
           .insert([{
             member_id: formData.member_id,
             amount: parseFloat(formData.amount),
-            donation_date: formData.donation_date,
+            date: formData.date,
             donation_month: formData.donation_month,
             method: formData.method,
             collected_by: formData.collected_by,
@@ -186,7 +186,7 @@ export default function DonationsPage() {
         setFormData({
           member_id: "",
           amount: "",
-          donation_date: format(new Date(), "yyyy-MM-dd"),
+          date: format(new Date(), "yyyy-MM-dd"),
           donation_month: format(new Date(), "yyyy-MM"),
           end_month: format(new Date(), "yyyy-MM"),
           is_batch: false,
@@ -290,7 +290,7 @@ export default function DonationsPage() {
                     <div className="flex items-center gap-2 mt-1">
                       <Calendar className="w-3 h-3 text-gray-400" />
                       <span className="text-[11px] text-gray-500 font-medium">
-                        {format(new Date(donation.donation_date), "dd MMM, yyyy", { locale: bn })}
+                        {format(new Date(donation.date), "dd MMM, yyyy", { locale: bn })}
                       </span>
                     </div>
                   </div>
@@ -418,8 +418,8 @@ export default function DonationsPage() {
                   <label className="text-sm font-bold text-gray-700">তারিখ *</label>
                   <input 
                     type="date" 
-                    value={formData.donation_date}
-                    onChange={(e) => setFormData({...formData, donation_date: e.target.value})}
+                    value={formData.date}
+                    onChange={(e) => setFormData({...formData, date: e.target.value})}
                     className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     required
                   />
