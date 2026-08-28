@@ -331,7 +331,7 @@ export default function DonationsPage() {
                   <button 
                     onClick={() => {
                       const link = document.createElement('a');
-                      link.href = `/api/receipts/${donation.id}`;
+                      link.href = `/api/receipts/${donation.id}?download=1`;
                       link.download = `Receipt-${donation.receipt_no}.jpg`;
                       link.click();
                     }}

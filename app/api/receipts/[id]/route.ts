@@ -72,6 +72,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
+  const wantsDownload = new URL(request.url).searchParams.get('download') === '1';
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -450,7 +451,7 @@ export async function GET(
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'image/jpeg',
-        'Content-Disposition': `attachment; filename="receipt_${donation.receipt_no || id}.jpg"`,
+        'Content-Disposition': `${wantsDownload ? 'attachment' : 'inline'}; filename="receipt_${donation.receipt_no || id}.jpg"`,
         'Content-Length': buffer.length.toString(),
         'Cache-Control': 'no-cache',
       },
