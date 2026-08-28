@@ -193,8 +193,37 @@ export async function GET(
     ctx.fillText("প্রতিষ্ঠিত: ০১/০১/২০০৯ইং", textLeftX, 175);
     
     ctx.font = '24px Bengali';
-    ctx.fillText("📍 দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", textLeftX, 230);
-    ctx.fillText("📞 ০১৮৪০-৮২৮০১০ | ০১৮১৪-৯৪৮২২৪", textLeftX, 275);
+    // Draw vector icons instead of unsupported emoji glyphs.
+    ctx.save();
+    ctx.strokeStyle = '#C9A227';
+    ctx.fillStyle = '#C9A227';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(textLeftX + 12, 220, 10, Math.PI, Math.PI * 2);
+    ctx.lineTo(textLeftX + 2, 220);
+    ctx.lineTo(textLeftX + 12, 242);
+    ctx.lineTo(textLeftX + 22, 220);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#064E3B';
+    ctx.beginPath();
+    ctx.arc(textLeftX + 12, 220, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#C9A227';
+    ctx.beginPath();
+    ctx.arc(textLeftX + 12, 267, 9, Math.PI * 0.2, Math.PI * 1.8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(textLeftX + 5, 260, 5, Math.PI * 0.5, Math.PI * 1.5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(textLeftX + 4, 274);
+    ctx.lineTo(textLeftX + 20, 274);
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText("দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", textLeftX + 38, 230);
+    ctx.fillText("০১৮৪০-৮২৮০১০ | ০১৮১৪-৯৪৮২২৪", textLeftX + 38, 275);
     
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
@@ -266,8 +295,8 @@ export async function GET(
       { label: "জনাব/জনাবা", value: donation.members?.name || 'অজ্ঞাত', icon: 'user' },
       { label: "মাসের নাম", value: displayMonth, icon: 'month' },
       { label: "টাকার পরিমাণ কথায়", value: `${amountInWords} টাকা`, icon: 'text' },
-      { label: "টাকার পরিমাণ", value: `৳ ${displayAmount}/-`, icon: 'cash' },
-      { label: "আদায়কারী", value: donation.collector?.members?.name || donation.collector?.name || "অ্যাডমিন", icon: 'pen' }
+      { label: "টাকার পরিমাণ", value: `৳ ${displayAmount}/-`, icon: 'money' },
+      { label: "আদায়কারী", value: donation.collector?.members?.name || donation.collector?.name || "অ্যাডমিন", icon: 'edit' }
     ];
 
     rows.forEach((row, i) => {
@@ -390,8 +419,13 @@ export async function GET(
     
     // Heart Icon and Thank You
     const footerY = height - 80;
+    const heartX = width / 2 - 220;
+    const heartY = footerY - 10;
     ctx.beginPath();
-    ctx.arc(width/2 - 220, footerY - 10, 15, 0, Math.PI*2);
+    ctx.moveTo(heartX, heartY + 18);
+    ctx.bezierCurveTo(heartX - 34, heartY - 4, heartX - 20, heartY - 28, heartX, heartY - 10);
+    ctx.bezierCurveTo(heartX + 20, heartY - 28, heartX + 34, heartY - 4, heartX, heartY + 18);
+    ctx.closePath();
     ctx.fill();
     ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2 + 20, footerY);
     
