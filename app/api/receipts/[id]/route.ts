@@ -79,7 +79,7 @@ export async function GET(
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const { data: donation, error } = await supabase
+  let { data: donation, error } = await supabase
     .from('donations')
     .select('*, members!member_id(name), collector:users!collected_by(name, members(name))')
     .eq('id', id)
@@ -87,6 +87,27 @@ export async function GET(
 
   if (error || !donation) {
     return new NextResponse('Donation not found', { status: 404 });
+  }
+
+  // Check if it's part of a batch
+  let displayMonth = getBengaliMonthName(donation.donation_month);
+  let displayAmount = donation.amount;
+  let displayReceiptNo = donation.receipt_no;
+
+  if (donation.batch_id) {
+    const { data: batchDonations } = await supabase
+      .from('donations')
+      .select('amount, donation_month, receipt_no')
+      .eq('batch_id', donation.batch_id)
+      .order('donation_month', { ascending: true });
+
+    if (batchDonations && batchDonations.length > 1) {
+      const startMonth = getBengaliMonthName(batchDonations[0].donation_month);
+      const endMonth = getBengaliMonthName(batchDonations[batchDonations.length - 1].donation_month);
+      displayMonth = `${startMonth} - ${endMonth} (${batchDonations.length.toString().padStart(2, '০')} মাস)`;
+      displayAmount = batchDonations.reduce((sum: number, d: any) => sum + d.amount, 0);
+      displayReceiptNo = `${donation.receipt_no.split('-')[0]} (Batch)`;
+    }
   }
 
   const { data: userData } = await supabase
@@ -172,8 +193,37 @@ export async function GET(
     ctx.fillText("প্রতিষ্ঠিত: ০১/০১/২০০৯ইং", textLeftX, 175);
     
     ctx.font = '24px Bengali';
-    ctx.fillText("📍 দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", textLeftX, 230);
-    ctx.fillText("📞 ০১৮৪০-৮২৮০১০ | ০১৮১৪-৯৪৮২২৪", textLeftX, 275);
+    // Draw vector icons instead of unsupported emoji glyphs.
+    ctx.save();
+    ctx.strokeStyle = '#C9A227';
+    ctx.fillStyle = '#C9A227';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(textLeftX + 12, 220, 10, Math.PI, Math.PI * 2);
+    ctx.lineTo(textLeftX + 2, 220);
+    ctx.lineTo(textLeftX + 12, 242);
+    ctx.lineTo(textLeftX + 22, 220);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#064E3B';
+    ctx.beginPath();
+    ctx.arc(textLeftX + 12, 220, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#C9A227';
+    ctx.beginPath();
+    ctx.arc(textLeftX + 12, 267, 9, Math.PI * 0.2, Math.PI * 1.8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(textLeftX + 5, 260, 5, Math.PI * 0.5, Math.PI * 1.5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(textLeftX + 4, 274);
+    ctx.lineTo(textLeftX + 20, 274);
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText("দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা।", textLeftX + 38, 230);
+    ctx.fillText("০১৮৪০-৮২৮০১০ | ০১৮১৪-৯৪৮২২৪", textLeftX + 38, 275);
     
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
@@ -237,16 +287,16 @@ export async function GET(
       }
     } catch (e) {}
 
-    // 7. QR Code Section
-    const amountInWords = numberToBengaliWords(donation.amount || 0);
+    // 7. Content Rows
+    const amountInWords = numberToBengaliWords(displayAmount || 0);
     const rows = [
-      { label: "রসিদ নং", value: donation.receipt_no || 'N/A', icon: 'doc' },
+      { label: "রসিদ নং", value: displayReceiptNo || 'N/A', icon: 'doc' },
       { label: "তারিখ", value: donation.date, icon: 'cal' },
       { label: "জনাব/জনাবা", value: donation.members?.name || 'অজ্ঞাত', icon: 'user' },
-      { label: "মাসের নাম", value: getBengaliMonthName(donation.donation_month), icon: 'month' },
+      { label: "মাসের নাম", value: displayMonth, icon: 'month' },
       { label: "টাকার পরিমাণ কথায়", value: `${amountInWords} টাকা`, icon: 'text' },
-      { label: "টাকার পরিমাণ", value: `৳ ${donation.amount}/-`, icon: 'cash' },
-      { label: "আদায়কারী", value: donation.collector?.members?.name || donation.collector?.name || "অ্যাডমিন", icon: 'pen' }
+      { label: "টাকার পরিমাণ", value: `৳ ${displayAmount}/-`, icon: 'money' },
+      { label: "আদায়কারী", value: donation.collector?.members?.name || donation.collector?.name || "অ্যাডমিন", icon: 'edit' }
     ];
 
     rows.forEach((row, i) => {
@@ -369,8 +419,13 @@ export async function GET(
     
     // Heart Icon and Thank You
     const footerY = height - 80;
+    const heartX = width / 2 - 220;
+    const heartY = footerY - 10;
     ctx.beginPath();
-    ctx.arc(width/2 - 220, footerY - 10, 15, 0, Math.PI*2);
+    ctx.moveTo(heartX, heartY + 18);
+    ctx.bezierCurveTo(heartX - 34, heartY - 4, heartX - 20, heartY - 28, heartX, heartY - 10);
+    ctx.bezierCurveTo(heartX + 20, heartY - 28, heartX + 34, heartY - 4, heartX, heartY + 18);
+    ctx.closePath();
     ctx.fill();
     ctx.fillText("আপনার মহানুভবতার জন্য ধন্যবাদ!", width / 2 + 20, footerY);
     
