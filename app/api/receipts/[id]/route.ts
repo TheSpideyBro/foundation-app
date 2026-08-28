@@ -447,7 +447,7 @@ export async function GET(
 
     const buffer = canvas.toBuffer('image/jpeg', { quality: 0.95 });
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'image/jpeg',
         'Content-Disposition': `attachment; filename="receipt_${donation.receipt_no || id}.jpg"`,

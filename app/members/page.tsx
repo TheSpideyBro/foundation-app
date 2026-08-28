@@ -33,12 +33,15 @@ export default function MembersPage() {
 
   useEffect(() => {
     fetchMembers();
-  }, []);
+  }, [isStaff]);
 
   const fetchMembers = async () => {
     setLoading(true);
     try {
-      const { data } = await supabase().from("members").select("*").order("name");
+      const query = isStaff
+        ? supabase().from("members").select("*")
+        : supabase().from("member_directory").select("*");
+      const { data } = await query.order("name");
       setMembers(data || []);
     } catch (err) {
       console.error("Error fetching members:", err);
