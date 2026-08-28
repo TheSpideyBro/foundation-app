@@ -41,7 +41,7 @@ ALTER TABLE public.users ADD CONSTRAINT users_member_id_fkey FOREIGN KEY (member
 CREATE TABLE IF NOT EXISTS public.donations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     member_id UUID NOT NULL REFERENCES public.members(id) ON DELETE CASCADE,
-    amount NUMERIC NOT NULL,
+    amount NUMERIC NOT NULL CHECK (amount > 0),
     date DATE NOT NULL DEFAULT CURRENT_DATE,
     method TEXT NOT NULL CHECK (method IN ('cash', 'bkash', 'nagad', 'bank')),
     receipt_no TEXT NOT NULL UNIQUE,
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.donations (
 CREATE TABLE IF NOT EXISTS public.expenses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     category TEXT NOT NULL,
-    amount NUMERIC NOT NULL,
+    amount NUMERIC NOT NULL CHECK (amount > 0),
     date DATE NOT NULL DEFAULT CURRENT_DATE,
     description TEXT,
     proof_url TEXT,
@@ -103,7 +103,21 @@ RETURNS TEXT AS $$
 BEGIN
   RETURN (SELECT coalesce(role, 'member') FROM public.users WHERE id = auth.uid() LIMIT 1);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.get_my_is_approved()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN COALESCE((SELECT is_approved FROM public.users WHERE id = auth.uid() LIMIT 1), false);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.get_my_member_id()
+RETURNS UUID AS $$
+BEGIN
+  RETURN (SELECT member_id FROM public.users WHERE id = auth.uid() LIMIT 1);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Function to log audit events
 CREATE OR REPLACE FUNCTION public.log_audit_event()
@@ -139,7 +153,7 @@ BEGIN
     );
     RETURN NULL;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Function to generate receipt number
 CREATE OR REPLACE FUNCTION public.generate_receipt_no()
@@ -213,13 +227,30 @@ ALTER TABLE public.notices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Users Policies
-CREATE POLICY "users_read_all" ON public.users FOR SELECT USING (auth.uid() IS NOT NULL);
-CREATE POLICY "users_insert_self" ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "users_update_self" ON public.users FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "users_admin_all" ON public.users FOR ALL USING (get_my_role() = 'admin');
+DROP POLICY IF EXISTS "users_read_all" ON public.users;
+DROP POLICY IF EXISTS "users_insert_self" ON public.users;
+DROP POLICY IF EXISTS "users_update_self" ON public.users;
+DROP POLICY IF EXISTS "users_admin_all" ON public.users;
+DROP POLICY IF EXISTS "users_read_all" ON public.users;
+DROP POLICY IF EXISTS "users_read_authenticated" ON public.users;
+CREATE POLICY "users_read_self" ON public.users FOR SELECT USING (auth.uid() = id OR get_my_role() = 'admin');
+CREATE POLICY "users_insert_self" ON public.users FOR INSERT WITH CHECK (auth.uid() = id AND role = 'member' AND is_approved = false AND member_id IS NULL);
+CREATE POLICY "users_update_self_profile" ON public.users FOR UPDATE
+  USING (auth.uid() = id OR get_my_role() = 'admin')
+  WITH CHECK (
+    get_my_role() = 'admin'
+    OR (
+      auth.uid() = id
+      AND role = get_my_role()
+      AND is_approved = get_my_is_approved()
+      AND member_id IS NOT DISTINCT FROM get_my_member_id()
+    )
+  );
+CREATE POLICY "users_admin_all" ON public.users FOR ALL USING (get_my_role() = 'admin') WITH CHECK (get_my_role() = 'admin');
 
 -- Members Policies
-CREATE POLICY "members_select_all" ON public.members FOR SELECT USING (true);
+DROP POLICY IF EXISTS "members_select_all" ON public.members;
+CREATE POLICY "members_select_staff" ON public.members FOR SELECT USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
 CREATE POLICY "members_insert_staff" ON public.members FOR INSERT WITH CHECK (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
 CREATE POLICY "members_update_staff" ON public.members FOR UPDATE USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
 CREATE POLICY "members_delete_admin" ON public.members FOR DELETE USING (get_my_role() = 'admin');
@@ -234,7 +265,8 @@ CREATE POLICY "donations_update_staff" ON public.donations FOR UPDATE USING (get
 CREATE POLICY "donations_delete_admin" ON public.donations FOR DELETE USING (get_my_role() = 'admin');
 
 -- Expenses Policies
-CREATE POLICY "expenses_select_all" ON public.expenses FOR SELECT USING (true);
+DROP POLICY IF EXISTS "expenses_select_all" ON public.expenses;
+CREATE POLICY "expenses_select_staff" ON public.expenses FOR SELECT USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
 CREATE POLICY "expenses_insert_staff" ON public.expenses FOR INSERT WITH CHECK (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
 CREATE POLICY "expenses_update_staff" ON public.expenses FOR UPDATE USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
 CREATE POLICY "expenses_delete_admin" ON public.expenses FOR DELETE USING (get_my_role() = 'admin');
@@ -252,8 +284,9 @@ CREATE POLICY "notices_update_admin" ON public.notices FOR UPDATE USING (get_my_
 CREATE POLICY "notices_delete_admin" ON public.notices FOR DELETE USING (get_my_role() = 'admin');
 
 -- Audit Log Policies
+DROP POLICY IF EXISTS "audit_log_select_admin" ON public.audit_log;
+DROP POLICY IF EXISTS "audit_log_insert_system" ON public.audit_log;
 CREATE POLICY "audit_log_select_admin" ON public.audit_log FOR SELECT USING (get_my_role() = 'admin');
-CREATE POLICY "audit_log_insert_system" ON public.audit_log FOR INSERT WITH CHECK (true);
 
 -- 5. Sync Auth Users to Public Users Table
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -270,12 +303,30 @@ BEGIN
   );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Safe member directory for non-staff users (never exposes phone/address)
+DROP VIEW IF EXISTS public.member_directory;
+CREATE VIEW public.member_directory AS
+SELECT id, name, join_date, status, monthly_pledge, created_at
+FROM public.members;
+GRANT SELECT ON public.member_directory TO authenticated;
+
+-- Safe expense summary for non-staff users (never exposes row details/proof URLs)
+DROP VIEW IF EXISTS public.expense_summary;
+CREATE VIEW public.expense_summary AS
+SELECT COALESCE(SUM(amount), 0)::numeric AS total_amount, COUNT(*)::bigint AS expense_count
+FROM public.expenses;
+GRANT SELECT ON public.expense_summary TO authenticated;
+
+-- Base-table reads are limited by RLS; views expose only approved public fields.
+REVOKE SELECT ON public.members FROM anon;
+REVOKE SELECT ON public.expenses FROM anon;
 
 -- 6. Support for Multi-Month (Batch) Donations
 ALTER TABLE public.donations ADD COLUMN IF NOT EXISTS batch_id UUID;

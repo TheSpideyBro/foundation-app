@@ -23,17 +23,19 @@ export default function ReportsPage() {
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const { data: donations } = await supabase().from("donations").select("amount");
-      const { data: expenses } = await supabase().from("expenses").select("amount");
-      const { data: members } = await supabase().from("members").select("id").eq("status", "active");
+      const [{ data: donations }, { data: expenses }, { data: members }] = await Promise.all([
+        supabase().from("donation_summary").select("total_amount").single(),
+        supabase().from("expense_summary").select("total_amount").single(),
+        supabase().from("member_summary").select("active_members").single()
+      ]);
 
-      const totalD = donations?.reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
-      const totalE = expenses?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+      const totalD = Number(donations?.total_amount) || 0;
+      const totalE = Number(expenses?.total_amount) || 0;
 
       setStats({
         totalDonations: totalD,
         totalExpenses: totalE,
-        activeMembers: members?.length || 0,
+        activeMembers: Number(members?.active_members) || 0,
         balance: totalD - totalE
       });
     } catch (error) {

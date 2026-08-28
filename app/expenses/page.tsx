@@ -31,13 +31,18 @@ export default function ExpensesPage() {
 
   useEffect(() => {
     fetchExpenses();
-  }, []);
+  }, [isStaff]);
 
   const fetchExpenses = async () => {
     setLoading(true);
     try {
-      const { data } = await supabase().from("expenses").select("*").order("date", { ascending: false });
-      setExpenses(data || []);
+      if (!isStaff) {
+        const { data } = await supabase().from("expense_summary").select("total_amount, expense_count").single();
+        setExpenses(data ? [{ id: "summary", amount: data.total_amount, description: "সকল খরচের মোট", category: "সারাংশ", date: "" }] : []);
+      } else {
+        const { data } = await supabase().from("expenses").select("*").order("date", { ascending: false });
+        setExpenses(data || []);
+      }
     } catch (err) {
       console.error("Error fetching expenses:", err);
     } finally {
@@ -118,10 +123,10 @@ export default function ExpensesPage() {
     }
   };
 
-  const filteredExpenses = expenses.filter(e => 
+  const filteredExpenses = isStaff ? expenses.filter(e =>
     e.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     e.category?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ) : expenses;
 
   if (loading) return (
     <div className="min-h-[400px] flex items-center justify-center">

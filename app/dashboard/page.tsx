@@ -32,7 +32,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [role]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -40,22 +40,22 @@ export default function Dashboard() {
       // Parallel data fetching for better performance
       const [
         { data: noticeData },
-        { count: membersCount },
+        { data: memberSummary },
         { data: donations },
         { data: expenses }
       ] = await Promise.all([
         supabase().from("notices").select("*").eq("is_active", true).order("created_at", { ascending: false }).limit(3),
-        supabase().from("members").select("*", { count: "exact", head: true }),
-        supabase().from("donations").select("amount, date"),
-        supabase().from("expenses").select("amount, category")
+        supabase().from("member_summary").select("total_members").single(),
+        supabase().from("donation_summary").select("total_amount").single(),
+        supabase().from("expense_summary").select("total_amount").single()
       ]);
 
       setNotices(noticeData || []);
-      const totalDonations = donations?.reduce((sum, d) => sum + (Number(d.amount) || 0), 0) || 0;
-      const totalExpenses = expenses?.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 0;
+      const totalDonations = Number(donations?.total_amount) || 0;
+      const totalExpenses = Number(expenses?.total_amount) || 0;
 
       setStats({
-        totalMembers: membersCount || 0,
+        totalMembers: Number(memberSummary?.total_members) || 0,
         totalDonations,
         totalExpenses,
         netBalance: totalDonations - totalExpenses,
@@ -81,13 +81,18 @@ export default function Dashboard() {
         { name: "জুন", donation: 2390, expense: 3800 },
       ]);
 
-      const categories = expenses?.reduce((acc: any, curr) => {
+      let expenseRows: Array<{ amount: number; category: string | null }> = [];
+      if (role !== 'member') {
+        const { data } = await supabase().from("expenses").select("amount, category");
+        expenseRows = (data || []) as Array<{ amount: number; category: string | null }>;
+      }
+      const categories = expenseRows.reduce<Record<string, number>>((acc, curr) => {
         const cat = curr.category || 'অন্যান্য';
         acc[cat] = (acc[cat] || 0) + (Number(curr.amount) || 0);
         return acc;
       }, {});
-      
-      const formattedExpenseData = Object.keys(categories || {}).map(cat => ({
+
+      const formattedExpenseData = Object.keys(categories).map(cat => ({
         name: cat,
         value: categories[cat]
       }));
