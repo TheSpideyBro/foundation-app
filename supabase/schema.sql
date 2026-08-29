@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS public.donations (
     method TEXT NOT NULL CHECK (method IN ('cash', 'bkash', 'nagad', 'bank')),
     receipt_no TEXT NOT NULL UNIQUE,
     donation_month TEXT,
+    donation_end_month TEXT,
     received_by TEXT,
     collected_by UUID REFERENCES public.users(id),
     created_by UUID REFERENCES auth.users(id),
@@ -330,4 +331,5 @@ REVOKE SELECT ON public.expenses FROM anon;
 
 -- 6. Support for Multi-Month (Batch) Donations
 ALTER TABLE public.donations ADD COLUMN IF NOT EXISTS batch_id UUID;
+ALTER TABLE public.donations ADD COLUMN IF NOT EXISTS donation_end_month TEXT;
 CREATE INDEX IF NOT EXISTS idx_donations_batch_id ON public.donations(batch_id);
