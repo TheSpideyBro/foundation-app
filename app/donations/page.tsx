@@ -307,10 +307,11 @@ export default function DonationsPage() {
                 <div className="flex items-center justify-between mb-5 px-1">
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                    <span className="text-xs font-bold text-gray-700">                        {donation.donation_end_month && donation.donation_end_month !== donation.donation_month
-                          ? `${donation.donation_month} – ${donation.donation_end_month}`
-                          : donation.donation_month}
-</span>
+                    <span className="text-xs font-bold text-gray-700">
+                      {donation.donation_end_month && donation.donation_end_month !== donation.donation_month
+                        ? `${donation.donation_month} – ${donation.donation_end_month}`
+                        : donation.donation_month}
+                    </span>
                   </div>
                   <span className="text-[10px] font-bold text-gray-400 uppercase bg-white px-2 py-0.5 rounded-full border border-gray-100">
                     {donation.method === 'cash' ? 'নগদ' : donation.method.toUpperCase()}
