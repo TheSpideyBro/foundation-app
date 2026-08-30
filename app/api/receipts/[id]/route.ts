@@ -56,6 +56,12 @@ const numberToBengaliWords = (n: number): string => {
   return result.trim();
 };
 
+const getMonthCount = (startMonth: string, endMonth: string) => {
+  const [startYear, startValue] = startMonth.split('-').map(Number);
+  const [endYear, endValue] = endMonth.split('-').map(Number);
+  return Math.max(1, (endYear - startYear) * 12 + endValue - startValue + 1);
+};
+
 const getBengaliMonthName = (monthStr: string) => {
   if (!monthStr || !monthStr.includes('-')) return monthStr || 'N/A';
   const [year, month] = monthStr.split('-');
@@ -66,6 +72,8 @@ const getBengaliMonthName = (monthStr: string) => {
   const monthIdx = parseInt(month) - 1;
   return `${months[monthIdx]} ${year}`;
 };
+
+export const runtime = 'nodejs';
 
 export async function GET(
   request: NextRequest,
@@ -94,6 +102,10 @@ export async function GET(
   let displayMonth = getBengaliMonthName(donation.donation_month);
   let displayAmount = donation.amount;
   let displayReceiptNo = donation.receipt_no;
+
+  if (donation.donation_end_month && donation.donation_end_month !== donation.donation_month) {
+    displayMonth = `${getBengaliMonthName(donation.donation_month)} - ${getBengaliMonthName(donation.donation_end_month)} (${getMonthCount(donation.donation_month, donation.donation_end_month).toString().padStart(2, '০')} মাস)`;
+  }
 
   if (donation.batch_id) {
     const { data: batchDonations } = await supabase

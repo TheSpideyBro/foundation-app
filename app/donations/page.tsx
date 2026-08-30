@@ -27,6 +27,7 @@ interface Donation {
   amount: number;
   date: string;
   donation_month: string;
+  donation_end_month?: string | null;
   receipt_no: string;
   method: string;
   collected_by: string;
@@ -143,23 +144,19 @@ export default function DonationsPage() {
         }
 
         const totalAmount = parseFloat(formData.amount);
-        const amountPerMonth = totalAmount / months.length;
-        const batchId = crypto.randomUUID();
-
-        const newDonations = months.map((month, index) => ({
-          member_id: formData.member_id,
-          amount: amountPerMonth,
-          date: formData.date,
-          donation_month: month,
-          method: formData.method,
-          collected_by: formData.collected_by,
-          batch_id: batchId,
-          receipt_no: `${formData.receipt_no}${months.length > 1 ? `-${index + 1}` : ''}`
-        }));
-
         const { error: insertError } = await supabase
           .from("donations")
-          .insert(newDonations);
+          .insert([{
+            member_id: formData.member_id,
+            amount: totalAmount,
+            date: formData.date,
+            donation_month: formData.donation_month,
+            donation_end_month: formData.end_month,
+            method: formData.method,
+            collected_by: formData.collected_by,
+            batch_id: crypto.randomUUID(),
+            receipt_no: formData.receipt_no
+          }]);
 
         if (insertError) throw insertError;
       } else {
@@ -310,7 +307,11 @@ export default function DonationsPage() {
                 <div className="flex items-center justify-between mb-5 px-1">
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                    <span className="text-xs font-bold text-gray-700">{donation.donation_month}</span>
+                    <span className="text-xs font-bold text-gray-700">
+                      {donation.donation_end_month && donation.donation_end_month !== donation.donation_month
+                        ? `${donation.donation_month} – ${donation.donation_end_month}`
+                        : donation.donation_month}
+                    </span>
                   </div>
                   <span className="text-[10px] font-bold text-gray-400 uppercase bg-white px-2 py-0.5 rounded-full border border-gray-100">
                     {donation.method === 'cash' ? 'নগদ' : donation.method.toUpperCase()}

@@ -49,16 +49,22 @@ export async function GET(request: Request) {
     // 2. Get all donations for this month
     const { data: donations, error: dError } = await supabase
       .from("donations")
-      .select("member_id, amount")
-      .eq("donation_month", month);
+      .select("member_id, amount, donation_month, donation_end_month")
+      .lte("donation_month", month);
 
     if (dError) throw dError;
 
     // 3. Calculate pending
     const donationMap = new Map();
     donations?.forEach(d => {
+      const coversMonth = d.donation_month === month ||
+        (d.donation_end_month && d.donation_end_month >= month);
+      if (!coversMonth) return;
       const current = donationMap.get(d.member_id) || 0;
-      donationMap.set(d.member_id, current + Number(d.amount));
+      const monthCount = d.donation_end_month
+        ? Math.max(1, (Number(d.donation_end_month.slice(0, 4)) - Number(d.donation_month.slice(0, 4))) * 12 + Number(d.donation_end_month.slice(5, 7)) - Number(d.donation_month.slice(5, 7)) + 1)
+        : 1;
+      donationMap.set(d.member_id, current + Number(d.amount) / monthCount);
     });
 
     const pending = members?.map(m => {
