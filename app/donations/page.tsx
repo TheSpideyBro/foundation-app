@@ -137,7 +137,7 @@ export default function DonationsPage() {
         }
 
         const months = [];
-        let current = new Date(start);
+        const current = new Date(start);
         while (current <= end) {
           months.push(format(current, "yyyy-MM"));
           current.setMonth(current.getMonth() + 1);

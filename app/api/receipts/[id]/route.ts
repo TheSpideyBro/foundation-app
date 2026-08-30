@@ -88,7 +88,7 @@ export async function GET(
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  let { data: donation, error } = await supabase
+  const { data: donation, error } = await supabase
     .from('donations')
     .select('*, members!member_id(name), collector:users!collected_by(name, members(name))')
     .eq('id', id)

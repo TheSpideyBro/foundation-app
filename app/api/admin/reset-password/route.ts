@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
     const cookieStore = await cookies();
     const tokenCookie = cookieStore.getAll().find((c) => /^sb-.*-auth-token$/.test(c.name));
-    let rawToken = tokenCookie?.value || "";
+    const rawToken = tokenCookie?.value || "";
     let accessToken = rawToken;
     if (rawToken.startsWith("base64-")) {
       try {
