@@ -23,11 +23,6 @@ export async function DELETE(request: Request) {
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const serviceRoleKey = process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!serviceRoleKey) {
-      return NextResponse.json({ error: 'Service role key is not configured' }, { status: 500 });
-    }
-
     const cookieStore = await cookies();
     const tokenCookie = cookieStore.getAll().find((cookie) => /^sb-.*-auth-token$/.test(cookie.name));
     const accessToken = getAccessToken(tokenCookie?.value || '');
@@ -55,15 +50,12 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'নিজের অ্যাকাউন্ট মুছে ফেলা যাবে না' }, { status: 400 });
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: targetUser, error: targetError } = await adminClient.auth.admin.getUserById(userId);
-    if (targetError || !targetUser.user) {
-      return NextResponse.json({ error: 'ইউজার পাওয়া যায়নি' }, { status: 404 });
-    }
-
-    const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
+    const { error: deleteError } = await authClient.rpc('admin_delete_user', {
+      target_user_id: userId,
+    });
     if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 409 });
+      const status = deleteError.message.includes('not found') ? 404 : 409;
+      return NextResponse.json({ error: deleteError.message }, { status });
     }
 
     return NextResponse.json({ success: true, deletedUserId: userId });
