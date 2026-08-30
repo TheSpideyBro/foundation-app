@@ -21,6 +21,7 @@ export default function AdminUsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -79,6 +80,30 @@ export default function AdminUsersPage() {
       fetchUsers();
     } catch (err) {
       alert("রোল পরিবর্তন করতে সমস্যা হয়েছে।");
+    }
+  };
+
+  const handleDeleteUser = async (user: any) => {
+    const label = user.email || user.name || "এই ইউজার";
+    if (!confirm(`আপনি কি নিশ্চিতভাবে ${label}-কে মুছে ফেলতে চান? এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।`)) return;
+
+    setDeletingUserId(user.id);
+    try {
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'ইউজার মুছে ফেলা যায়নি।');
+
+      setUsers((currentUsers) => currentUsers.filter((currentUser) => currentUser.id !== user.id));
+      alert('ইউজার সফলভাবে মুছে ফেলা হয়েছে।');
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      alert(err instanceof Error ? err.message : 'ইউজার মুছতে সমস্যা হয়েছে।');
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -349,6 +374,15 @@ export default function AdminUsersPage() {
                     }`}
                   >
                     {user.is_approved ? 'বাতিল' : 'অনুমোদন'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteUser(user)}
+                    disabled={deletingUserId === user.id}
+                    title="ইউজার মুছে ফেলুন"
+                    className="px-4 py-1.5 bg-red-50 text-red-600 rounded-lg text-[12px] font-bold hover:bg-red-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  >
+                    <Trash2 size={13} />
+                    {deletingUserId === user.id ? 'মুছছে...' : 'ডিলিট'}
                   </button>
                 </div>
               </div>
