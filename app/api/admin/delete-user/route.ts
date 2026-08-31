@@ -1,18 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-
-function getAccessToken(rawToken: string): string {
-  if (!rawToken.startsWith('base64-')) return rawToken;
-
-  try {
-    const json = Buffer.from(rawToken.slice(7), 'base64url').toString('utf8');
-    const parsed = JSON.parse(json) as { access_token?: unknown };
-    return typeof parsed.access_token === 'string' ? parsed.access_token : '';
-  } catch {
-    return '';
-  }
-}
 
 export async function DELETE(request: Request) {
   try {
@@ -21,13 +9,26 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json({ error: 'Supabase configuration is missing' }, { status: 500 });
+    }
+
     const cookieStore = await cookies();
-    const tokenCookie = cookieStore.getAll().find((cookie) => /^sb-.*-auth-token$/.test(cookie.name));
-    const accessToken = getAccessToken(tokenCookie?.value || '');
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    const authClient = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+          } catch {
+            // Cookie writes can be unavailable after a read-only server operation.
+          }
+        },
+      },
     });
 
     const { data: { user: currentUser } } = await authClient.auth.getUser();
