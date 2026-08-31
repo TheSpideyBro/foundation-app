@@ -39,7 +39,12 @@ export function donationMonths(donation: LedgerDonation): string[] {
 }
 
 export function buildMemberLedger(donations: LedgerDonation[], monthlyPledge: number, startMonth: string, endMonth: string): LedgerMonth[] {
-  const months = monthRange(startMonth, endMonth);
+  const requestedMonths = monthRange(startMonth, endMonth);
+  if (!requestedMonths.length) return [];
+  const allDonationMonths = donations.flatMap(donationMonths);
+  const calculationStart = allDonationMonths.length ? ([startMonth, ...allDonationMonths].sort()[0]) : startMonth;
+  const calculationEnd = allDonationMonths.length ? ([endMonth, ...allDonationMonths].sort().at(-1) || endMonth) : endMonth;
+  const months = monthRange(calculationStart, calculationEnd);
   const ledger = months.map((month) => ({ month, expected: Math.max(0, monthlyPledge), paid: 0, remaining: Math.max(0, monthlyPledge), status: "due" as const, donations: [] as LedgerDonation[] }));
   const byMonth = new Map(ledger.map((row) => [row.month, row]));
   [...donations].sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach((donation) => {
@@ -53,7 +58,8 @@ export function buildMemberLedger(donations: LedgerDonation[], monthlyPledge: nu
       if (allocation > 0) { row.paid += allocation; row.donations.push(donation); remaining -= allocation; }
     });
   });
-  return ledger.map((row) => ({ ...row, remaining: Math.max(0, row.expected - row.paid), status: row.paid > row.expected ? "overpaid" : row.paid === row.expected && row.expected > 0 ? "paid" : row.paid > 0 ? "partial" : "due" }));
+  const requested = new Set(requestedMonths);
+  return ledger.filter((row) => requested.has(row.month)).map((row) => ({ ...row, remaining: Math.max(0, row.expected - row.paid), status: row.paid > row.expected ? "overpaid" : row.paid === row.expected && row.expected > 0 ? "paid" : row.paid > 0 ? "partial" : "due" }));
 }
 
 export function formatMonth(month: string): string {
