@@ -46,38 +46,37 @@ export default function Dashboard() {
       // Parallel data fetching for better performance
       const [
         { data: noticeData },
-        { data: members },
-        { data: donations },
-        { data: expenses }
+        { data: memberSummary },
+        { data: donationSummary },
+        { data: expenseSummary },
+        { data: monthlySummary },
+        { data: categorySummary }
       ] = await Promise.all([
         supabase().from("notices").select("*").eq("is_active", true).order("created_at", { ascending: false }).limit(3),
-        supabase().from("members").select("id, monthly_pledge, status, join_date"),
-        supabase().from("donations").select("id, member_id, amount, date, donation_month, donation_end_month"),
-        supabase().from("expenses").select("amount, date, category")
+        supabase().from("member_summary").select("total_members").single(),
+        supabase().from("donation_summary").select("total_amount").single(),
+        supabase().from("expense_summary").select("total_amount").single(),
+        supabase().from("monthly_collection_summary").select("month, target_amount, collected_amount, due_amount, collection_rate, active_members, expense_amount, net_balance").order("month", { ascending: true }),
+        supabase().from("expense_category_summary").select("category, total_amount").order("total_amount", { ascending: false })
       ]);
 
       setNotices(noticeData || []);
-      const memberRows = (members || []) as Array<{ id: string; monthly_pledge?: number; status?: string; join_date?: string }>;
-      const donationRows = (donations || []) as Array<{ id: string; member_id: string; amount: number; date: string; donation_month?: string; donation_end_month?: string }>;
-      const expenseRowsForStats = (expenses || []) as Array<{ amount: number; date: string; category: string | null }>;
-      const totalDonations = donationRows.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-      const totalExpenses = expenseRowsForStats.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-      const activeMembers = memberRows.filter((item) => item.status === "active" && (!item.join_date || item.join_date.slice(0, 7) <= selectedMonth));
-      const donationsByMember = new Map<string, typeof donationRows>();
-      donationRows.forEach((item) => donationsByMember.set(item.member_id, [...(donationsByMember.get(item.member_id) || []), item]));
-      const monthlyTarget = activeMembers.reduce((sum, item) => sum + (Number(item.monthly_pledge) || 0), 0);
-      const currentCollection = activeMembers.reduce((sum, item) => sum + buildMemberLedger(donationsByMember.get(item.id) || [], Number(item.monthly_pledge) || 0, selectedMonth, selectedMonth)[0]?.paid || 0, 0);
-      const currentDue = Math.max(0, monthlyTarget - currentCollection);
-
+      const monthlyRows = (monthlySummary || []) as Array<{ month: string; target_amount: number; collected_amount: number; due_amount: number; collection_rate: number; active_members: number; expense_amount: number; net_balance: number }>;
+      const selectedSummary = monthlyRows.find((row) => row.month.slice(0, 7) === selectedMonth);
+      const totalDonations = Number(donationSummary?.total_amount) || 0;
+      const totalExpenses = Number(expenseSummary?.total_amount) || 0;
+      const monthlyTarget = Number(selectedSummary?.target_amount) || 0;
+      const currentCollection = Number(selectedSummary?.collected_amount) || 0;
+      const currentDue = Number(selectedSummary?.due_amount) || 0;
       setStats({
-        totalMembers: activeMembers.length,
+        totalMembers: Number(memberSummary?.total_members) || Number(selectedSummary?.active_members) || 0,
         totalDonations,
         totalExpenses,
         netBalance: totalDonations - totalExpenses,
         currentCollection,
         monthlyTarget,
         currentDue,
-        collectionRate: monthlyTarget ? Math.round((currentCollection / monthlyTarget) * 100) : 0,
+        collectionRate: Number(selectedSummary?.collection_rate) || 0,
       });
 
       if (role !== 'member') {
@@ -91,22 +90,11 @@ export default function Dashboard() {
         setRecentDonations([]);
       }
 
-      const trend = Array.from({ length: 6 }, (_, index) => {
-        const date = new Date(`${selectedMonth}-01T00:00:00`);
-        date.setMonth(date.getMonth() - (5 - index));
-        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-        const monthMembers = memberRows.filter((item) => item.status === "active" && (!item.join_date || item.join_date.slice(0, 7) <= month));
-        const target = monthMembers.reduce((sum, item) => sum + (Number(item.monthly_pledge) || 0), 0);
-        const collected = monthMembers.reduce((sum, item) => sum + (buildMemberLedger(donationsByMember.get(item.id) || [], Number(item.monthly_pledge) || 0, month, month)[0]?.paid || 0), 0);
-        return { name: formatMonth(month).replace(/ \d+$/, ""), month, collected, target };
-      });
-      setChartData(trend);
+      setChartData(monthlyRows.slice(-6).map((row) => ({ name: formatMonth(row.month.slice(0, 7)).replace(/ \d+$/, ""), month: row.month, collected: Number(row.collected_amount) || 0, target: Number(row.target_amount) || 0 })));
 
-      let expenseRows: Array<{ amount: number; category: string | null }> = [];
-      if (role !== 'member') expenseRows = expenseRowsForStats;
-      const categories = expenseRows.reduce<Record<string, number>>((acc, curr) => {
+      const categories = (categorySummary || []).reduce<Record<string, number>>((acc, curr: { category: string | null; total_amount: number }) => {
         const cat = curr.category || 'অন্যান্য';
-        acc[cat] = (acc[cat] || 0) + (Number(curr.amount) || 0);
+        acc[cat] = (acc[cat] || 0) + (Number(curr.total_amount) || 0);
         return acc;
       }, {});
 
