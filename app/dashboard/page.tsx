@@ -10,10 +10,11 @@ import {
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend
 } from "recharts";
 import Link from "next/link";
 import { useAuth } from "@/components/providers";
+import { buildMemberLedger, formatMonth } from "@/lib/payment-ledger";
 
 export default function Dashboard() {
   const { role } = useAuth();
@@ -22,17 +23,22 @@ export default function Dashboard() {
     totalDonations: 0,
     totalExpenses: 0,
     netBalance: 0,
+    currentCollection: 0,
+    monthlyTarget: 0,
+    currentDue: 0,
+    collectionRate: 0,
   });
   const [recentDonations, setRecentDonations] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [expenseData, setExpenseData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [syncing, setSyncing] = useState(false);
   const [notices, setNotices] = useState<any[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [role]);
+  }, [role, selectedMonth]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -40,25 +46,38 @@ export default function Dashboard() {
       // Parallel data fetching for better performance
       const [
         { data: noticeData },
-        { data: memberSummary },
+        { data: members },
         { data: donations },
         { data: expenses }
       ] = await Promise.all([
         supabase().from("notices").select("*").eq("is_active", true).order("created_at", { ascending: false }).limit(3),
-        supabase().from("member_summary").select("total_members").single(),
-        supabase().from("donation_summary").select("total_amount").single(),
-        supabase().from("expense_summary").select("total_amount").single()
+        supabase().from("members").select("id, monthly_pledge, status"),
+        supabase().from("donations").select("id, member_id, amount, date, donation_month, donation_end_month"),
+        supabase().from("expenses").select("amount, date, category")
       ]);
 
       setNotices(noticeData || []);
-      const totalDonations = Number(donations?.total_amount) || 0;
-      const totalExpenses = Number(expenses?.total_amount) || 0;
+      const memberRows = (members || []) as Array<{ id: string; monthly_pledge?: number; status?: string }>;
+      const donationRows = (donations || []) as Array<{ id: string; member_id: string; amount: number; date: string; donation_month?: string; donation_end_month?: string }>;
+      const expenseRowsForStats = (expenses || []) as Array<{ amount: number; date: string; category: string | null }>;
+      const totalDonations = donationRows.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const totalExpenses = expenseRowsForStats.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const activeMembers = memberRows.filter((item) => item.status === "active");
+      const donationsByMember = new Map<string, typeof donationRows>();
+      donationRows.forEach((item) => donationsByMember.set(item.member_id, [...(donationsByMember.get(item.member_id) || []), item]));
+      const monthlyTarget = activeMembers.reduce((sum, item) => sum + (Number(item.monthly_pledge) || 0), 0);
+      const currentCollection = activeMembers.reduce((sum, item) => sum + buildMemberLedger(donationsByMember.get(item.id) || [], Number(item.monthly_pledge) || 0, selectedMonth, selectedMonth)[0]?.paid || 0, 0);
+      const currentDue = Math.max(0, monthlyTarget - currentCollection);
 
       setStats({
-        totalMembers: Number(memberSummary?.total_members) || 0,
+        totalMembers: activeMembers.length,
         totalDonations,
         totalExpenses,
         netBalance: totalDonations - totalExpenses,
+        currentCollection,
+        monthlyTarget,
+        currentDue,
+        collectionRate: monthlyTarget ? Math.round((currentCollection / monthlyTarget) * 100) : 0,
       });
 
       if (role !== 'member') {
@@ -72,20 +91,17 @@ export default function Dashboard() {
         setRecentDonations([]);
       }
 
-      setChartData([
-        { name: "জানু", donation: 4000, expense: 2400 },
-        { name: "ফেব্রু", donation: 3000, expense: 1398 },
-        { name: "মার্চ", donation: 2000, expense: 9800 },
-        { name: "এপ্রিল", donation: 2780, expense: 3908 },
-        { name: "মে", donation: 1890, expense: 4800 },
-        { name: "জুন", donation: 2390, expense: 3800 },
-      ]);
+      const trend = Array.from({ length: 6 }, (_, index) => {
+        const date = new Date(`${selectedMonth}-01T00:00:00`);
+        date.setMonth(date.getMonth() - (5 - index));
+        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        const collected = activeMembers.reduce((sum, item) => sum + (buildMemberLedger(donationsByMember.get(item.id) || [], Number(item.monthly_pledge) || 0, month, month)[0]?.paid || 0), 0);
+        return { name: formatMonth(month).replace(/ \d+$/, ""), month, collected, target: monthlyTarget };
+      });
+      setChartData(trend);
 
       let expenseRows: Array<{ amount: number; category: string | null }> = [];
-      if (role !== 'member') {
-        const { data } = await supabase().from("expenses").select("amount, category");
-        expenseRows = (data || []) as Array<{ amount: number; category: string | null }>;
-      }
+      if (role !== 'member') expenseRows = expenseRowsForStats;
       const categories = expenseRows.reduce<Record<string, number>>((acc, curr) => {
         const cat = curr.category || 'অন্যান্য';
         acc[cat] = (acc[cat] || 0) + (Number(curr.amount) || 0);
@@ -152,37 +168,18 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {[
-          { label: "মোট সদস্য", value: stats.totalMembers, icon: Users, color: "bg-blue-600", trend: "+12%" },
-          { label: "মোট সংগ্রহ", value: stats.totalDonations, icon: CreditCard, color: "bg-emerald-600", trend: "+8%" },
-          { label: "মোট ব্যয়", value: stats.totalExpenses, icon: Wallet, color: "bg-rose-600", trend: "-5%" },
-          { label: "তহবিল", value: stats.netBalance, icon: TrendingUp, color: "bg-amber-600", trend: "+15%" },
-        ].map((stat, i) => (
-          <div key={i} className="card-premium p-6 sm:p-8 group border border-emerald-50/50">
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
-              <div className={`w-12 h-12 sm:w-14 sm:h-14 ${stat.color} rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-current/20`}>
-                <stat.icon size={24} className="sm:hidden" />
-                <stat.icon size={28} className="hidden sm:block" />
-              </div>
-              <div className={`flex items-center gap-0.5 text-xs sm:text-sm font-bold ${stat.trend.startsWith('+') ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {stat.trend.startsWith('+') ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                {stat.trend}
-              </div>
-            </div>
-            <h3 className="text-gray-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest mb-1">{stat.label}</h3>
-            <p className="text-2xl sm:text-3xl font-bold text-gray-900 font-tiro truncate">৳{stat.value.toLocaleString()}</p>
-          </div>
-        ))}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-6 mb-4"><div><h2 className="text-xl sm:text-2xl font-bold font-tiro text-gray-900">মাসিক সংগ্রহের সারাংশ</h2><p className="text-xs sm:text-sm text-gray-400">নির্বাচিত মাসের collection performance</p></div><input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="rounded-xl border border-gray-200 px-4 py-2 font-bold text-sm" /></div>
+      {/* KPI Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+        {[{ label: "এই মাসে সংগ্রহ", value: stats.currentCollection, icon: CreditCard, color: "bg-emerald-600" }, { label: "মাসিক লক্ষ্য", value: stats.monthlyTarget, icon: Wallet, color: "bg-blue-600" }, { label: "এই মাসে বকেয়া", value: stats.currentDue, icon: ArrowDownRight, color: "bg-rose-600" }, { label: "সংগ্রহের হার", value: stats.collectionRate, icon: TrendingUp, color: "bg-amber-600", percent: true }].map((stat) => <div key={stat.label} className="card-premium p-4 sm:p-6 group border border-emerald-50/50"><div className="flex items-center justify-between mb-3"><div className={`w-10 h-10 sm:w-12 sm:h-12 ${stat.color} rounded-xl flex items-center justify-center text-white`}><stat.icon size={21} /></div><span className="text-[10px] font-bold text-gray-400">{selectedMonth}</span></div><h3 className="text-gray-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest mb-1">{stat.label}</h3><p className="text-xl sm:text-2xl font-bold text-gray-900 font-tiro truncate">{stat.percent ? `${stat.value}%` : `৳${stat.value.toLocaleString("bn-BD")}`}</p></div>)}
       </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
         <div className="lg:col-span-2 card-premium p-4 sm:p-8">
           <div className="mb-4 sm:mb-8">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro">আর্থিক প্রবৃদ্ধি</h3>
-            <p className="text-[10px] sm:text-sm text-gray-400 font-medium">বিগত ৬ মাসের দান ও ব্যয়</p>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro">মাসিক সংগ্রহের প্রবণতা</h3>
+            <p className="text-[10px] sm:text-sm text-gray-400 font-medium">সংগৃহীত অর্থ বনাম মাসিক লক্ষ্য</p>
           </div>
           <div className="h-[200px] sm:h-[350px] w-full -ml-4 sm:ml-0">
             <ResponsiveContainer width="100%" height="100%">
@@ -211,12 +208,14 @@ export default function Dashboard() {
                 />
                 <Area 
                   type="monotone" 
-                  dataKey="donation" 
+                  dataKey="collected"
+                  name="সংগ্রহ"
                   stroke="#059669" 
                   strokeWidth={3}
                   fillOpacity={1} 
                   fill="url(#colorDonation)" 
                 />
+                <Area type="monotone" dataKey="target" name="লক্ষ্য" stroke="#2563EB" strokeWidth={2} strokeDasharray="5 5" fill="none" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
