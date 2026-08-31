@@ -51,18 +51,18 @@ export default function Dashboard() {
         { data: expenses }
       ] = await Promise.all([
         supabase().from("notices").select("*").eq("is_active", true).order("created_at", { ascending: false }).limit(3),
-        supabase().from("members").select("id, monthly_pledge, status"),
+        supabase().from("members").select("id, monthly_pledge, status, join_date"),
         supabase().from("donations").select("id, member_id, amount, date, donation_month, donation_end_month"),
         supabase().from("expenses").select("amount, date, category")
       ]);
 
       setNotices(noticeData || []);
-      const memberRows = (members || []) as Array<{ id: string; monthly_pledge?: number; status?: string }>;
+      const memberRows = (members || []) as Array<{ id: string; monthly_pledge?: number; status?: string; join_date?: string }>;
       const donationRows = (donations || []) as Array<{ id: string; member_id: string; amount: number; date: string; donation_month?: string; donation_end_month?: string }>;
       const expenseRowsForStats = (expenses || []) as Array<{ amount: number; date: string; category: string | null }>;
       const totalDonations = donationRows.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
       const totalExpenses = expenseRowsForStats.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-      const activeMembers = memberRows.filter((item) => item.status === "active");
+      const activeMembers = memberRows.filter((item) => item.status === "active" && (!item.join_date || item.join_date.slice(0, 7) <= selectedMonth));
       const donationsByMember = new Map<string, typeof donationRows>();
       donationRows.forEach((item) => donationsByMember.set(item.member_id, [...(donationsByMember.get(item.member_id) || []), item]));
       const monthlyTarget = activeMembers.reduce((sum, item) => sum + (Number(item.monthly_pledge) || 0), 0);
@@ -95,8 +95,10 @@ export default function Dashboard() {
         const date = new Date(`${selectedMonth}-01T00:00:00`);
         date.setMonth(date.getMonth() - (5 - index));
         const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-        const collected = activeMembers.reduce((sum, item) => sum + (buildMemberLedger(donationsByMember.get(item.id) || [], Number(item.monthly_pledge) || 0, month, month)[0]?.paid || 0), 0);
-        return { name: formatMonth(month).replace(/ \d+$/, ""), month, collected, target: monthlyTarget };
+        const monthMembers = memberRows.filter((item) => item.status === "active" && (!item.join_date || item.join_date.slice(0, 7) <= month));
+        const target = monthMembers.reduce((sum, item) => sum + (Number(item.monthly_pledge) || 0), 0);
+        const collected = monthMembers.reduce((sum, item) => sum + (buildMemberLedger(donationsByMember.get(item.id) || [], Number(item.monthly_pledge) || 0, month, month)[0]?.paid || 0), 0);
+        return { name: formatMonth(month).replace(/ \d+$/, ""), month, collected, target };
       });
       setChartData(trend);
 

@@ -44,10 +44,12 @@ export function buildMemberLedger(donations: LedgerDonation[], monthlyPledge: nu
   const byMonth = new Map(ledger.map((row) => [row.month, row]));
   [...donations].sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach((donation) => {
     let remaining = Number(donation.amount) || 0;
-    donationMonths(donation).forEach((month) => {
+    const coveredMonths = donationMonths(donation).filter((month) => byMonth.has(month));
+    coveredMonths.forEach((month, index) => {
       const row = byMonth.get(month);
       if (!row || remaining <= 0) return;
-      const allocation = Math.min(remaining, Math.max(0, row.expected - row.paid));
+      const isLastCoveredMonth = index === coveredMonths.length - 1;
+      const allocation = isLastCoveredMonth ? remaining : Math.min(remaining, Math.max(0, row.expected - row.paid));
       if (allocation > 0) { row.paid += allocation; row.donations.push(donation); remaining -= allocation; }
     });
   });

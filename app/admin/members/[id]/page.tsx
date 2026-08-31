@@ -6,7 +6,7 @@ import { getSupabase as supabase } from "@/lib/supabase-client";
 import { Phone, MapPin, ArrowLeft, Download, Calendar, ExternalLink } from "lucide-react";
 import { buildMemberLedger, formatMonth } from "@/lib/payment-ledger";
 
-type Member = { id: string; name: string; phone?: string; address?: string; monthly_pledge?: number; status?: string };
+type Member = { id: string; name: string; phone?: string; address?: string; monthly_pledge?: number; status?: string; join_date?: string };
 type Donation = { id: string; amount: number; date: string; method?: string; receipt_no?: string; donation_month?: string; donation_end_month?: string };
 const statusLabel: Record<string, string> = { paid: "পরিশোধিত", partial: "আংশিক", due: "বকেয়া", overpaid: "অতিরিক্ত" };
 const statusClass: Record<string, string> = { paid: "bg-emerald-100 text-emerald-700", partial: "bg-amber-100 text-amber-700", due: "bg-rose-100 text-rose-700", overpaid: "bg-blue-100 text-blue-700" };
@@ -43,7 +43,12 @@ export default function AdminMemberDetailPage() {
 
   if (!member) return <div className="p-20 text-center">সদস্য পাওয়া যায়নি</div>;
 
-  const ledger = buildMemberLedger(donations, Number(member.monthly_pledge) || 0, `${year}-01`, `${year}-12`);
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const selectedStart = `${year}-01`;
+  const selectedEnd = `${year}-12`;
+  const ledgerStart = member.join_date && member.join_date.slice(0, 7) > selectedStart ? member.join_date.slice(0, 7) : selectedStart;
+  const ledgerEnd = selectedEnd < currentMonth ? selectedEnd : currentMonth;
+  const ledger = ledgerStart <= ledgerEnd ? buildMemberLedger(donations, Number(member.monthly_pledge) || 0, ledgerStart, ledgerEnd) : [];
   const totalExpected = ledger.reduce((sum, row) => sum + row.expected, 0);
   const totalPaid = ledger.reduce((sum, row) => sum + row.paid, 0);
   const totalDue = ledger.reduce((sum, row) => sum + row.remaining, 0);
