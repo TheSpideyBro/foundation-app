@@ -91,7 +91,10 @@ export default function ReportsPage() {
   const paidMemberRows = useMemo<PaidMemberRow[]>(() => {
     const covered = donations.filter((donation) => {
       const months = donationMonths(donation as LedgerDonation);
-      return period === "monthly" ? months.includes(paidMemberMonth) : period === "yearly" ? months.some((month) => month.startsWith(selectedYear)) : months.length > 0;
+      const receivedMonth = String(donation.date || "").slice(0, 7);
+      const receivedInPeriod = period === "monthly" ? receivedMonth === paidMemberMonth : period === "yearly" ? receivedMonth.startsWith(selectedYear) : Boolean(receivedMonth);
+      const coveredInPeriod = period === "monthly" ? months.includes(paidMemberMonth) : period === "yearly" ? months.some((month) => month.startsWith(selectedYear)) : months.length > 0;
+      return receivedInPeriod || coveredInPeriod;
     });
     const unique = new Map<string, Row>();
     covered.forEach((donation) => {
@@ -104,8 +107,11 @@ export default function ReportsPage() {
     return Array.from(unique.values()).map((member) => {
       const payments = member.payments as Row[];
       const receivedAmount = payments.reduce((sum, donation) => sum + Number(donation.amount || 0), 0);
-      const countedAmount = payments.filter((donation) => period === "total" || inPeriod(donation.date)).reduce((sum, donation) => sum + Number(donation.amount || 0), 0);
-      const isAdvance = payments.some((donation) => period === "monthly" && String(donation.date || "").slice(0, 7) < paidMemberMonth);
+      const countedAmount = payments.filter((donation) => {
+        const receivedMonth = String(donation.date || "").slice(0, 7);
+        return period === "total" || (period === "monthly" ? receivedMonth === paidMemberMonth : receivedMonth.startsWith(selectedYear));
+      }).reduce((sum, donation) => sum + Number(donation.amount || 0), 0);
+      const isAdvance = payments.some((donation) => period === "monthly" && donationMonths(donation as LedgerDonation).includes(paidMemberMonth) && String(donation.date || "").slice(0, 7) < paidMemberMonth);
       return { id: String(member.id), name: String(member.name || "অজ্ঞাত সদস্য"), payments, receivedAmount, countedAmount, status: isAdvance ? "Advance Paid" : "Paid" };
     }).filter((member) => !search || String(member.name || "").toLowerCase().includes(search.toLowerCase())).sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "bn"));
   }, [donations, period, paidMemberMonth, selectedYear, search, periodStart, periodEnd]);
