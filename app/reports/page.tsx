@@ -1,237 +1,93 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { 
-  BarChart3, PieChart, TrendingUp, Download, 
-  Calendar, FileText, ArrowUpRight, ArrowDownRight,
-  Filter, Search, ChevronRight, LayoutGrid
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BarChart3, Calendar, Download, FileText, Filter, RefreshCw, Search, Wallet } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
+
+type Period = "monthly" | "yearly" | "total";
+type Row = Record<string, any>;
+type ReportStats = { target: number; collected: number; due: number; expense: number; members: number; balance: number; rate: number };
+type CollectorRow = Row & { id: string; name: string; role: string; count: number; amount: number };
+
+const money = (value: number) => `৳${Math.round(value || 0).toLocaleString("bn-BD")}`;
+const monthLabel = (value: string) => new Date(`${value}-01T00:00:00`).toLocaleDateString("bn-BD", { month: "short", year: "numeric" });
+
 export default function ReportsPage() {
-  const [stats, setStats] = useState<any>({
-    totalDonations: 0,
-    totalExpenses: 0,
-    activeMembers: 0,
-    monthlyTrend: []
-  });
+  const [period, setPeriod] = useState<Period>("monthly");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
+  const [activeTab, setActiveTab] = useState("donations");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [monthlyRows, setMonthlyRows] = useState<Row[]>([]);
+  const [donations, setDonations] = useState<Row[]>([]);
+  const [expenses, setExpenses] = useState<Row[]>([]);
+  const [members, setMembers] = useState<Row[]>([]);
+  const [collectors, setCollectors] = useState<Row[]>([]);
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
+  useEffect(() => { fetchReportData(); }, []);
 
-  const fetchStats = async () => {
-    setLoading(true);
+  async function fetchReportData() {
+    setLoading(true); setError(null);
     try {
-      const [{ data: donations }, { data: expenses }, { data: members }] = await Promise.all([
-        supabase().from("donation_summary").select("total_amount").single(),
-        supabase().from("expense_summary").select("total_amount").single(),
-        supabase().from("member_summary").select("active_members").single()
+      const [{ data: summary, error: summaryError }, { data: donationData, error: donationError }, { data: expenseData, error: expenseError }, { data: memberData, error: memberError }, { data: collectorData }] = await Promise.all([
+        supabase().from("monthly_collection_summary").select("month, target_amount, collected_amount, due_amount, collection_rate, active_members, expense_amount, net_balance").order("month", { ascending: true }),
+        supabase().from("donations").select("id, member_id, amount, date, donation_month, donation_end_month, receipt_no, method, collected_by, members(name, phone)").order("date", { ascending: false }),
+        supabase().from("expenses").select("id, amount, date, category, description").order("date", { ascending: false }),
+        supabase().from("members").select("id, name, phone, status, monthly_pledge, join_date").order("name"),
+        supabase().from("users").select("id, name, role").in("role", ["admin", "treasurer"]),
       ]);
+      if (summaryError || donationError || expenseError || memberError) throw summaryError || donationError || expenseError || memberError;
+      setMonthlyRows(summary || []); setDonations(donationData || []); setExpenses(expenseData || []); setMembers(memberData || []); setCollectors(collectorData || []);
+    } catch (err) { setError(err instanceof Error ? err.message : "রিপোর্ট লোড করা যায়নি"); }
+    finally { setLoading(false); }
+  }
 
-      const totalD = Number(donations?.total_amount) || 0;
-      const totalE = Number(expenses?.total_amount) || 0;
+  const periodRows = useMemo(() => {
+    if (period === "monthly") return monthlyRows.filter((r) => r.month.slice(0, 7) === selectedMonth);
+    if (period === "yearly") return monthlyRows.filter((r) => r.month.slice(0, 4) === selectedYear);
+    return monthlyRows;
+  }, [monthlyRows, period, selectedMonth, selectedYear]);
 
-      setStats({
-        totalDonations: totalD,
-        totalExpenses: totalE,
-        activeMembers: Number(members?.active_members) || 0,
-        balance: totalD - totalE
-      });
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-    } finally {
-      setLoading(false);
+  const periodStart = period === "monthly" ? `${selectedMonth}-01` : period === "yearly" ? `${selectedYear}-01-01` : "0000-01-01";
+  const periodEnd = period === "monthly" ? `${selectedMonth}-31` : period === "yearly" ? `${selectedYear}-12-31` : "9999-12-31";
+  const inPeriod = (date?: string) => !date || (date >= periodStart && date <= periodEnd);
+  const stats = useMemo<ReportStats>(() => {
+    const summary = periodRows.reduce((a, r) => ({ target: a.target + Number(r.target_amount || 0), collected: a.collected + Number(r.collected_amount || 0), due: a.due + Number(r.due_amount || 0), expense: a.expense + Number(r.expense_amount || 0), members: Math.max(a.members, Number(r.active_members || 0)) }), { target: 0, collected: 0, due: 0, expense: 0, members: 0 });
+    const filteredExpenses = expenses.filter((e) => inPeriod(e.date));
+    const filteredDonations = donations.filter((d) => inPeriod(d.date));
+    if (period === "total") {
+      summary.collected = donations.reduce((a, d) => a + Number(d.amount || 0), 0);
+      summary.expense = expenses.reduce((a, e) => a + Number(e.amount || 0), 0);
+    } else {
+      summary.expense = filteredExpenses.reduce((a, e) => a + Number(e.amount || 0), 0);
+      summary.collected = periodRows.length ? summary.collected : filteredDonations.reduce((a, d) => a + Number(d.amount || 0), 0);
     }
-  };
+    summary.due = Math.max(0, summary.target - summary.collected);
+    return { target: summary.target, collected: summary.collected, due: summary.due, expense: summary.expense, members: summary.members, balance: summary.collected - summary.expense, rate: summary.target ? Math.round((summary.collected / summary.target) * 100) : 0 };
+  }, [periodRows, donations, expenses, period, periodStart, periodEnd]);
 
-  return (
-    <div className="space-y-8 pb-12">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-tiro tracking-tight">আর্থিক প্রতিবেদন</h1>
-          <p className="text-gray-500 font-medium mt-1">ফাউন্ডেশনের আয়, ব্যয় এবং আর্থিক প্রবৃদ্ধির বিস্তারিত রিপোর্ট।</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="btn-outline">
-            <Calendar size={18} /> সময়কাল নির্বাচন
-          </button>
-          <button className="btn-emerald shadow-lg shadow-emerald-600/20">
-            <Download size={18} /> পিডিএফ ডাউনলোড
-          </button>
-        </div>
-      </div>
+  const filteredDonations = donations.filter((d) => inPeriod(d.date) && `${d.members?.name || ""} ${d.receipt_no || ""} ${d.method || ""}`.toLowerCase().includes(search.toLowerCase()));
+  const filteredExpenses = expenses.filter((e) => inPeriod(e.date) && `${e.category || ""} ${e.description || ""}`.toLowerCase().includes(search.toLowerCase()));
+  const filteredMembers = members.filter((m) => `${m.name} ${m.phone}`.toLowerCase().includes(search.toLowerCase()));
+  const collectorRows: CollectorRow[] = collectors.map((c) => ({ ...c, id: String(c.id), name: String(c.name || "অজানা"), role: String(c.role || ""), count: donations.filter((d) => d.collected_by === c.id && inPeriod(d.date)).length, amount: donations.filter((d) => d.collected_by === c.id && inPeriod(d.date)).reduce((a, d) => a + Number(d.amount || 0), 0) })).filter((r) => !search || r.name.toLowerCase().includes(search.toLowerCase()));
+  const chartRows = period === "yearly" || period === "total" ? periodRows : periodRows.length ? periodRows : monthlyRows.slice(-1);
 
-      {/* Main Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {[
-          { label: "মোট অনুদান", value: `৳ ${stats.totalDonations.toLocaleString()}`, icon: <TrendingUp className="text-emerald-600" />, trend: "+১২%", color: "emerald" },
-          { label: "মোট ব্যয়", value: `৳ ${stats.totalExpenses.toLocaleString()}`, icon: <ArrowDownRight className="text-rose-600" />, trend: "+৫%", color: "rose" },
-          { label: "বর্তমান তহবিল", value: `৳ ${(stats.balance || 0).toLocaleString()}`, icon: <BarChart3 className="text-blue-600" />, trend: "সুস্থ", color: "blue" },
-          { label: "সক্রিয় সদস্য", value: String(stats.activeMembers), icon: <Users className="text-amber-600" />, trend: "+২", color: "amber" }
-        ].map((item, i) => (
-          <div key={i} className="card-premium p-6 relative overflow-hidden group">
-            <div className={`absolute top-0 right-0 w-24 h-24 bg-${item.color}-50 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-110`}></div>
-            <div className="relative z-10">
-              <div className={`w-12 h-12 bg-${item.color}-50 rounded-2xl flex items-center justify-center mb-4`}>
-                {item.icon}
-              </div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{item.label}</p>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">{item.value}</h3>
-              <div className="flex items-center gap-1.5">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-${item.color}-100 text-${item.color}-700`}>
-                  {item.trend}
-                </span>
-                <span className="text-[10px] text-gray-400 font-medium">এই মাসে</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+  function exportCsv() {
+    const rows = activeTab === "donations" ? filteredDonations.map((d) => [d.receipt_no, d.members?.name, d.amount, d.date, d.donation_month, d.method]) : activeTab === "expenses" ? filteredExpenses.map((e) => [e.date, e.category, e.description, e.amount]) : activeTab === "members" ? filteredMembers.map((m) => [m.name, m.phone, m.status, m.monthly_pledge]) : collectorRows.map((r) => [r.name, r.role, r.count, r.amount]);
+    const csv = rows.map((row) => row.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `foundation-report-${period}-${activeTab}.csv`; link.click(); URL.revokeObjectURL(url);
+  }
 
-      <div className="grid md:grid-cols-3 gap-8">
-        {/* Analytics Summary */}
-        <div className="md:col-span-2 space-y-8">
-          <div className="card-premium p-8">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-bold text-gray-900 font-tiro">আয়-ব্যয় বিশ্লেষণ</h3>
-              <div className="flex bg-gray-50 p-1 rounded-xl">
-                <button className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest bg-white text-emerald-600 rounded-lg shadow-sm">মাসিক</button>
-                <button className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-400">বাৎসরিক</button>
-              </div>
-            </div>
-            
-            <div className="h-[300px] flex items-end justify-between gap-4 px-4">
-              {[60, 45, 80, 55, 90, 75].map((h, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-3 group">
-                  <div className="w-full relative">
-                    <div 
-                      className="w-full bg-emerald-100 rounded-t-xl transition-all duration-700 group-hover:bg-emerald-200" 
-                      style={{ height: `${h}%` }}
-                    ></div>
-                    <div 
-                      className="absolute bottom-0 w-full bg-emerald-600 rounded-t-xl transition-all duration-700 shadow-lg shadow-emerald-600/20" 
-                      style={{ height: `${h * 0.7}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">মাস {i+1}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="card-premium p-6">
-              <h4 className="text-lg font-bold text-gray-900 font-tiro mb-6">শীর্ষ অনুদানকারী</h4>
-              <div className="space-y-4">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-2xl transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold">
-                        {i}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">সদস্য {i}</p>
-                        <p className="text-[10px] text-gray-400 font-medium tracking-wide">১০টি অনুদান</p>
-                      </div>
-                    </div>
-                    <p className="text-sm font-bold text-emerald-600">৳ ৫,০০০</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="card-premium p-6">
-              <h4 className="text-lg font-bold text-gray-900 font-tiro mb-6">ব্যয়ের খাতসমূহ</h4>
-              <div className="space-y-4">
-                {[
-                  { label: "অফিস খরচ", val: "৪০%", color: "bg-emerald-500" },
-                  { label: "সাহায্য", val: "৩৫%", color: "bg-blue-500" },
-                  { label: "অন্যান্য", val: "২৫%", color: "bg-amber-500" }
-                ].map((item, i) => (
-                  <div key={i} className="space-y-2">
-                    <div className="flex justify-between text-[11px] font-bold uppercase tracking-widest">
-                      <span className="text-gray-500">{item.label}</span>
-                      <span className="text-gray-900">{item.val}</span>
-                    </div>
-                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div className={`h-full ${item.color}`} style={{ width: item.val }}></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Reports Sidebar */}
-        <div className="space-y-6">
-          <div className="card-premium p-6">
-            <h3 className="text-lg font-bold text-gray-900 font-tiro mb-6">সাম্প্রতিক রিপোর্ট</h3>
-            <div className="space-y-3">
-              {[
-                { title: "জুলাই ২০২৬ - মাসিক রিপোর্ট", date: "২ আগস্ট, ২০২৬", type: "PDF" },
-                { title: "জুন ২০২৬ - আর্থিক বিবরণী", date: "৫ জুলাই, ২০২৬", type: "XLS" },
-                { title: "বাৎসরিক অডিট রিপোর্ট ২০২৫", date: "১৫ জানুয়ারি, ২০২৬", type: "PDF" }
-              ].map((report, i) => (
-                <div key={i} className="p-4 border border-gray-50 rounded-2xl hover:border-emerald-100 hover:bg-emerald-50/30 transition-all cursor-pointer group">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-white border border-gray-100 text-rose-500 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                      <FileText size={20} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-gray-900 leading-tight mb-1">{report.title}</p>
-                      <p className="text-[10px] text-gray-400 font-medium">{report.date} • {report.type}</p>
-                    </div>
-                    <Download size={16} className="text-gray-300 group-hover:text-emerald-600 transition-colors" />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button className="w-full mt-6 py-3 text-[11px] font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors">
-              সব রিপোর্ট দেখুন
-            </button>
-          </div>
-
-          <div className="card-premium p-6 bg-emerald-600 text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-            <div className="relative z-10">
-              <h4 className="text-lg font-bold font-tiro mb-2">সদস্যদের সক্রিয়তা</h4>
-              <p className="text-emerald-100 text-[13px] font-medium leading-relaxed mb-6">
-                আপনার ফাউন্ডেশনের ৯৫% সদস্য নিয়মিত চাঁদা প্রদান করছেন।
-              </p>
-              <div className="flex items-center gap-4">
-                <div className="flex-1 h-2 bg-white/20 rounded-full overflow-hidden">
-                  <div className="h-full bg-white w-[95%]"></div>
-                </div>
-                <span className="text-sm font-bold">৯৫%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Users(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
+  if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><RefreshCw className="animate-spin text-emerald-600" /></div>;
+  return <div className="space-y-6 pb-12">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4"><div><h1 className="text-3xl font-bold text-gray-900 font-tiro">আর্থিক প্রতিবেদন</h1><p className="text-gray-500 mt-1">সময়কাল নির্বাচন করে বিস্তারিত হিসাব দেখুন।</p></div><div className="flex gap-2"><button onClick={fetchReportData} className="btn-outline"><RefreshCw size={17} /> রিফ্রেশ</button><button onClick={exportCsv} className="btn-emerald"><Download size={17} /> CSV ডাউনলোড</button></div></div>
+    {error && <div className="p-4 rounded-2xl bg-rose-50 text-rose-700">{error}</div>}
+    <div className="card-premium p-4 flex flex-wrap items-center gap-2"><div className="flex bg-gray-100 p-1 rounded-xl">{([['monthly','মাসিক'],['yearly','বাৎসরিক'],['total','সর্বমোট']] as const).map(([key, label]) => <button key={key} onClick={() => setPeriod(key)} className={`px-4 py-2 rounded-lg text-sm font-bold ${period === key ? "bg-white text-emerald-600 shadow-sm" : "text-gray-500"}`}>{label}</button>)}</div>{period === "monthly" ? <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold" /> : period === "yearly" ? <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold">{Array.from({ length: 8 }, (_, i) => String(new Date().getFullYear() - i)).map((year) => <option key={year}>{year}</option>)}</select> : <span className="text-sm font-bold text-gray-500">Foundation শুরু থেকে বর্তমান</span>}</div>
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">{[["সংগ্রহ", stats.collected, "text-emerald-600"],["ব্যয়", stats.expense, "text-rose-600"],["নেট ব্যালেন্স", stats.balance, "text-blue-600"],["বকেয়া", stats.due, "text-amber-600"],["সংগ্রহের হার", stats.rate, "text-violet-600"]].map(([label, value, color]) => <div key={String(label)} className="card-premium p-5"><p className="text-xs font-bold text-gray-400 mb-2">{label}</p><p className={`text-2xl font-black ${color}`}>{label === "সংগ্রহের হার" ? `${value}%` : money(Number(value))}</p></div>)}</div>
+    <div className="card-premium p-6"><div className="flex items-center gap-2 mb-5"><BarChart3 className="text-emerald-600" /><div><h2 className="font-bold text-gray-900">সংগ্রহ বনাম লক্ষ্য</h2><p className="text-xs text-gray-400">নির্বাচিত সময়কালের month-wise collection</p></div></div><div className="space-y-3">{chartRows.map((row) => <div key={row.month}><div className="flex justify-between text-xs font-bold mb-1"><span>{monthLabel(row.month.slice(0, 7))}</span><span>{money(Number(row.collected_amount))} / {money(Number(row.target_amount))}</span></div><div className="h-3 rounded-full bg-gray-100 overflow-hidden"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Number(row.target_amount) ? Number(row.collected_amount) / Number(row.target_amount) * 100 : 0)}%` }} /></div></div>)}</div></div>
+    <div className="card-premium overflow-hidden"><div className="p-5 flex flex-col md:flex-row gap-3 justify-between"><div className="flex flex-wrap gap-2">{[["donations","জমা"],["expenses","ব্যয়"],["members","সদস্য"],["collectors","আদায়কারী"]].map(([key, label]) => <button key={key} onClick={() => setActiveTab(key)} className={`px-4 py-2 rounded-xl text-sm font-bold ${activeTab === key ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600"}`}>{label}</button>)}</div><div className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm" /></div></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50 text-gray-500"><tr>{activeTab === "donations" ? <><th>রসিদ</th><th>সদস্য</th><th>তারিখ</th><th>মাস</th><th>পদ্ধতি</th><th className="text-right">পরিমাণ</th></> : activeTab === "expenses" ? <><th>তারিখ</th><th>খাত</th><th>বিবরণ</th><th className="text-right">পরিমাণ</th></> : activeTab === "members" ? <><th>সদস্য</th><th>ফোন</th><th>স্ট্যাটাস</th><th className="text-right">মাসিক pledge</th></> : <><th>নাম</th><th>Role</th><th className="text-right">জমা সংখ্যা</th><th className="text-right">মোট সংগ্রহ</th></>}</tr></thead><tbody>{activeTab === "donations" ? filteredDonations.map((d) => <tr key={d.id} className="border-t border-gray-100"><td className="p-3 font-bold">#{d.receipt_no}</td><td className="p-3">{d.members?.name || "—"}</td><td className="p-3">{d.date}</td><td className="p-3">{d.donation_month}{d.donation_end_month && ` – ${d.donation_end_month}`}</td><td className="p-3">{d.method}</td><td className="p-3 text-right font-bold">{money(Number(d.amount))}</td></tr>) : activeTab === "expenses" ? filteredExpenses.map((e) => <tr key={e.id} className="border-t border-gray-100"><td className="p-3">{e.date}</td><td className="p-3">{e.category || "অন্যান্য"}</td><td className="p-3">{e.description || "—"}</td><td className="p-3 text-right font-bold">{money(Number(e.amount))}</td></tr>) : activeTab === "members" ? filteredMembers.map((m) => <tr key={m.id} className="border-t border-gray-100"><td className="p-3 font-bold">{m.name}</td><td className="p-3">{m.phone || "—"}</td><td className="p-3">{m.status}</td><td className="p-3 text-right">{money(Number(m.monthly_pledge))}</td></tr>) : collectorRows.map((r) => <tr key={r.id} className="border-t border-gray-100"><td className="p-3 font-bold">{r.name}</td><td className="p-3">{r.role}</td><td className="p-3 text-right">{r.count}</td><td className="p-3 text-right font-bold">{money(r.amount)}</td></tr>)}</tbody></table>{((activeTab === "donations" && !filteredDonations.length) || (activeTab === "expenses" && !filteredExpenses.length) || (activeTab === "members" && !filteredMembers.length) || (activeTab === "collectors" && !collectorRows.length)) && <div className="p-10 text-center text-gray-400">কোনো তথ্য পাওয়া যায়নি</div>}</div></div>
+  </div>;
 }
