@@ -91,10 +91,9 @@ export default function ReportsPage() {
   const paidMemberRows = useMemo<PaidMemberRow[]>(() => {
     const covered = donations.filter((donation) => {
       const months = donationMonths(donation as LedgerDonation);
-      const receivedMonth = String(donation.date || "").slice(0, 7);
-      const receivedInPeriod = period === "monthly" ? receivedMonth === paidMemberMonth : period === "yearly" ? receivedMonth.startsWith(selectedYear) : Boolean(receivedMonth);
+      // The name list is based on the selected month's covered dues, not when the entry was added or received.
       const coveredInPeriod = period === "monthly" ? months.includes(paidMemberMonth) : period === "yearly" ? months.some((month) => month.startsWith(selectedYear)) : months.length > 0;
-      return receivedInPeriod || coveredInPeriod;
+      return coveredInPeriod;
     });
     const unique = new Map<string, Row>();
     covered.forEach((donation) => {
