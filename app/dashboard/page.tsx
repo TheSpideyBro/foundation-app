@@ -30,6 +30,7 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   const [syncing, setSyncing] = useState(false);
   const [notices, setNotices] = useState<any[]>([]);
+  const [collectionRows, setCollectionRows] = useState<Array<{ month: string; target_amount: number; collected_amount: number }>>([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -57,6 +58,7 @@ export default function Dashboard() {
       const monthlyRows = (monthlySummary || []) as Array<{ month: string; target_amount: number; collected_amount: number; due_amount: number; collection_rate: number; active_members: number; expense_amount: number; net_balance: number }>;
       const selectedRows = period === "monthly" ? monthlyRows.filter((row) => row.month.slice(0, 7) === selectedMonth) : period === "yearly" ? monthlyRows.filter((row) => row.month.slice(0, 4) === selectedYear) : monthlyRows;
       const selectedSummary = selectedRows[selectedRows.length - 1];
+      setCollectionRows(selectedRows.length ? selectedRows.slice(-6) : monthlyRows.slice(-6));
       const totalDonations = period === "total" ? Number(donationSummary?.total_amount) || 0 : selectedRows.reduce((sum, row) => sum + Number(row.collected_amount || 0), 0);
       const totalExpenses = period === "total" ? Number(expenseSummary?.total_amount) || 0 : selectedRows.reduce((sum, row) => sum + Number(row.expense_amount || 0), 0);
       const monthlyTarget = selectedRows.reduce((sum, row) => sum + Number(row.target_amount || 0), 0);
@@ -145,7 +147,7 @@ export default function Dashboard() {
         {[{ label: "এই মাসে সংগ্রহ", value: stats.currentCollection, icon: CreditCard, color: "bg-emerald-600" }, { label: "মাসিক লক্ষ্য", value: stats.monthlyTarget, icon: Wallet, color: "bg-blue-600" }, { label: "এই মাসে বকেয়া", value: stats.currentDue, icon: ArrowDownRight, color: "bg-rose-600" }, { label: "সংগ্রহের হার", value: stats.collectionRate, icon: TrendingUp, color: "bg-amber-600", percent: true }].map((stat) => <div key={stat.label} className="card-premium p-4 sm:p-6 group border border-emerald-50/50"><div className="flex items-center justify-between mb-3"><div className={`w-10 h-10 sm:w-12 sm:h-12 ${stat.color} rounded-xl flex items-center justify-center text-white`}><stat.icon size={21} /></div><span className="text-[10px] font-bold text-gray-400">{selectedMonth}</span></div><h3 className="text-gray-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest mb-1">{stat.label}</h3><p className="text-xl sm:text-2xl font-bold text-gray-900 font-tiro truncate">{stat.percent ? `${stat.value}%` : `৳${stat.value.toLocaleString("bn-BD")}`}</p></div>)}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+      <div className="card-premium p-5 sm:p-8"><div className="flex items-center justify-between mb-5"><div><h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro">সংগ্রহ বনাম লক্ষ্য</h3><p className="text-xs sm:text-sm text-gray-400">নির্বাচিত সময়কালের performance</p></div><Link href="/reports" className="text-xs font-bold text-emerald-600">বিস্তারিত দেখুন</Link></div><div className="space-y-3">{collectionRows.map((row) => <div key={row.month}><div className="flex justify-between text-xs font-bold mb-1"><span>{row.month}</span><span>৳{Number(row.collected_amount).toLocaleString('bn-BD')} / ৳{Number(row.target_amount).toLocaleString('bn-BD')}</span></div><div className="h-3 rounded-full bg-gray-100 overflow-hidden"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Number(row.target_amount) ? Number(row.collected_amount) / Number(row.target_amount) * 100 : 0)}%` }} /></div></div>)}</div></div>\n\n      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
         <div className="card-premium p-5 sm:p-8">
           <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro mb-2">বকেয়া সারাংশ</h3>
           <p className="text-xs sm:text-sm text-gray-400 mb-6">নির্বাচিত সময়কালের collection status</p>
