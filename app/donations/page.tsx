@@ -54,6 +54,7 @@ export default function DonationsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [editingDonation, setEditingDonation] = useState<Donation | null>(null);
 
   const [formData, setFormData] = useState({
     member_id: "",
@@ -122,13 +123,47 @@ export default function DonationsPage() {
     }
   }
 
+  function openEditDonation(donation: Donation) {
+    setEditingDonation(donation);
+    setError(null);
+    setSuccess(false);
+    setFormData({
+      member_id: donation.member_id,
+      amount: String(donation.amount),
+      date: donation.date,
+      donation_month: donation.donation_month,
+      end_month: donation.donation_end_month || donation.donation_month,
+      is_batch: Boolean(donation.donation_end_month && donation.donation_end_month !== donation.donation_month),
+      method: donation.method,
+      collected_by: donation.collected_by || "",
+      receipt_no: donation.receipt_no,
+    });
+    setShowModal(true);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
 
     try {
-      if (formData.is_batch) {
+      const totalAmount = parseFloat(formData.amount);
+      if (!formData.member_id || !Number.isFinite(totalAmount) || totalAmount <= 0) throw new Error("সদস্য এবং সঠিক টাকার পরিমাণ দিন");
+      if (editingDonation) {
+        if (formData.is_batch && formData.end_month < formData.donation_month) throw new Error("শেষ মাস শুরু মাসের আগে হতে পারে না");
+        const { error: updateError } = await supabase.from("donations").update({
+          member_id: formData.member_id,
+          amount: totalAmount,
+          date: formData.date,
+          donation_month: formData.donation_month,
+          donation_end_month: formData.is_batch ? formData.end_month : null,
+          method: formData.method,
+          collected_by: formData.collected_by,
+          receipt_no: formData.receipt_no,
+          batch_id: formData.is_batch ? (editingDonation.batch_id || crypto.randomUUID()) : null,
+        }).eq("id", editingDonation.id);
+        if (updateError) throw updateError;
+      } else if (formData.is_batch) {
         const start = new Date(formData.donation_month + "-01");
         const end = new Date(formData.end_month + "-01");
         
@@ -143,7 +178,6 @@ export default function DonationsPage() {
           current.setMonth(current.getMonth() + 1);
         }
 
-        const totalAmount = parseFloat(formData.amount);
         const { error: insertError } = await supabase
           .from("donations")
           .insert([{
@@ -179,6 +213,7 @@ export default function DonationsPage() {
       setTimeout(() => {
         setShowModal(false);
         setSuccess(false);
+        setEditingDonation(null);
         fetchData();
         setFormData({
           member_id: "",
@@ -233,7 +268,7 @@ export default function DonationsPage() {
             <p className="text-[10px] md:text-xs text-gray-500 font-medium mt-0.5">ফাউন্ডেশনের সকল জমার হিসাব</p>
           </div>
           <button 
-            onClick={() => setShowModal(true)}
+            onClick={() => { setEditingDonation(null); setError(null); setSuccess(false); setShowModal(true); }}
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-200 active:scale-95"
           >
             <Plus className="w-4 h-4" />
@@ -340,7 +375,7 @@ export default function DonationsPage() {
                   >
                     <Download className="w-4 h-4" />
                   </button>
-                  <button className="p-2.5 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all active:scale-95">
+                  <button onClick={() => openEditDonation(donation)} className="p-2.5 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all active:scale-95" title="সম্পাদনা">
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button 
@@ -361,12 +396,12 @@ export default function DonationsPage() {
           <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="bg-emerald-600 p-6 text-white relative">
               <button 
-                onClick={() => setShowModal(false)}
+                onClick={() => { setEditingDonation(null); setShowModal(false); }}
                 className="absolute right-6 top-6 p-2 hover:bg-white/20 rounded-full transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
-              <h2 className="text-xl font-black">নতুন অনুদান যোগ করুন</h2>
+              <h2 className="text-xl font-black">{editingDonation ? "জমার তথ্য সম্পাদনা করুন" : "নতুন অনুদান যোগ করুন"}</h2>
               <p className="text-emerald-100 text-sm mt-1">সঠিক তথ্য প্রদান করে সেভ করুন</p>
             </div>
 
@@ -506,7 +541,7 @@ export default function DonationsPage() {
               <div className="flex gap-3 pt-4">
                 <button 
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => { setEditingDonation(null); setShowModal(false); }}
                   className="flex-1 px-6 py-3.5 bg-gray-100 text-gray-600 rounded-2xl text-sm font-bold hover:bg-gray-200 transition-all"
                 >
                   বাতিল
