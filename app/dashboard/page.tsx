@@ -8,13 +8,8 @@ import {
   Plus
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend
-} from "recharts";
 import Link from "next/link";
 import { useAuth } from "@/components/providers";
-import { buildMemberLedger, formatMonth } from "@/lib/payment-ledger";
 
 export default function Dashboard() {
   const { role } = useAuth();
@@ -29,16 +24,17 @@ export default function Dashboard() {
     collectionRate: 0,
   });
   const [recentDonations, setRecentDonations] = useState<any[]>([]);
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [expenseData, setExpenseData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<"monthly" | "yearly" | "total">("monthly");
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   const [syncing, setSyncing] = useState(false);
   const [notices, setNotices] = useState<any[]>([]);
+  const [collectionRows, setCollectionRows] = useState<Array<{ month: string; target_amount: number; collected_amount: number }>>([]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [role, selectedMonth]);
+  }, [role, period, selectedMonth, selectedYear]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -49,34 +45,34 @@ export default function Dashboard() {
         { data: memberSummary },
         { data: donationSummary },
         { data: expenseSummary },
-        { data: monthlySummary },
-        { data: categorySummary }
+        { data: monthlySummary }
       ] = await Promise.all([
         supabase().from("notices").select("*").eq("is_active", true).order("created_at", { ascending: false }).limit(3),
         supabase().from("member_summary").select("total_members").single(),
         supabase().from("donation_summary").select("total_amount").single(),
         supabase().from("expense_summary").select("total_amount").single(),
-        supabase().from("monthly_collection_summary").select("month, target_amount, collected_amount, due_amount, collection_rate, active_members, expense_amount, net_balance").order("month", { ascending: true }),
-        supabase().from("expense_category_summary").select("category, total_amount").order("total_amount", { ascending: false })
+        supabase().from("monthly_collection_summary").select("month, target_amount, collected_amount, due_amount, collection_rate, active_members, expense_amount, net_balance").order("month", { ascending: true })
       ]);
 
       setNotices(noticeData || []);
       const monthlyRows = (monthlySummary || []) as Array<{ month: string; target_amount: number; collected_amount: number; due_amount: number; collection_rate: number; active_members: number; expense_amount: number; net_balance: number }>;
-      const selectedSummary = monthlyRows.find((row) => row.month.slice(0, 7) === selectedMonth);
-      const totalDonations = Number(donationSummary?.total_amount) || 0;
-      const totalExpenses = Number(expenseSummary?.total_amount) || 0;
-      const monthlyTarget = Number(selectedSummary?.target_amount) || 0;
-      const currentCollection = Number(selectedSummary?.collected_amount) || 0;
-      const currentDue = Number(selectedSummary?.due_amount) || 0;
+      const selectedRows = period === "monthly" ? monthlyRows.filter((row) => row.month.slice(0, 7) === selectedMonth) : period === "yearly" ? monthlyRows.filter((row) => row.month.slice(0, 4) === selectedYear) : monthlyRows;
+      const selectedSummary = selectedRows[selectedRows.length - 1];
+      setCollectionRows(selectedRows.length ? selectedRows.slice(-6) : monthlyRows.slice(-6));
+      const totalDonations = period === "total" ? Number(donationSummary?.total_amount) || 0 : selectedRows.reduce((sum, row) => sum + Number(row.collected_amount || 0), 0);
+      const totalExpenses = period === "total" ? Number(expenseSummary?.total_amount) || 0 : selectedRows.reduce((sum, row) => sum + Number(row.expense_amount || 0), 0);
+      const monthlyTarget = selectedRows.reduce((sum, row) => sum + Number(row.target_amount || 0), 0);
+      const currentCollection = totalDonations;
+      const currentDue = period === "total" ? 0 : Math.max(0, monthlyTarget - currentCollection);
       setStats({
-        totalMembers: Number(memberSummary?.total_members) || Number(selectedSummary?.active_members) || 0,
-        totalDonations,
-        totalExpenses,
+        totalMembers: period === "monthly" ? Number(selectedSummary?.active_members) || Number(memberSummary?.total_members) || 0 : Number(memberSummary?.total_members) || 0,
+        totalDonations: Number(donationSummary?.total_amount) || 0,
+        totalExpenses: Number(expenseSummary?.total_amount) || 0,
         netBalance: totalDonations - totalExpenses,
         currentCollection,
         monthlyTarget,
         currentDue,
-        collectionRate: Number(selectedSummary?.collection_rate) || 0,
+        collectionRate: monthlyTarget ? Math.round((currentCollection / monthlyTarget) * 100) : 0,
       });
 
       if (role !== 'member') {
@@ -90,19 +86,6 @@ export default function Dashboard() {
         setRecentDonations([]);
       }
 
-      setChartData(monthlyRows.slice(-6).map((row) => ({ name: formatMonth(row.month.slice(0, 7)).replace(/ \d+$/, ""), month: row.month, collected: Number(row.collected_amount) || 0, target: Number(row.target_amount) || 0 })));
-
-      const categories = (categorySummary || []).reduce<Record<string, number>>((acc, curr: { category: string | null; total_amount: number }) => {
-        const cat = curr.category || 'অন্যান্য';
-        acc[cat] = (acc[cat] || 0) + (Number(curr.total_amount) || 0);
-        return acc;
-      }, {});
-
-      const formattedExpenseData = Object.keys(categories).map(cat => ({
-        name: cat,
-        value: categories[cat]
-      }));
-      setExpenseData(formattedExpenseData.length > 0 ? formattedExpenseData : [{name: 'তথ্য নেই', value: 1}]);
 
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -158,94 +141,27 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-6 mb-4"><div><h2 className="text-xl sm:text-2xl font-bold font-tiro text-gray-900">মাসিক সংগ্রহের সারাংশ</h2><p className="text-xs sm:text-sm text-gray-400">নির্বাচিত মাসের collection performance</p></div><input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="rounded-xl border border-gray-200 px-4 py-2 font-bold text-sm" /></div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-6 mb-4"><div><h2 className="text-xl sm:text-2xl font-bold font-tiro text-gray-900">সংগ্রহের সারাংশ</h2><p className="text-xs sm:text-sm text-gray-400">নির্বাচিত সময়কালের collection performance</p></div><div className="flex items-center gap-2"><div className="flex bg-gray-100 p-1 rounded-xl">{([["monthly", "মাসিক"], ["yearly", "বাৎসরিক"], ["total", "সর্বমোট"]] as const).map(([key, label]) => <button key={key} onClick={() => setPeriod(key)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${period === key ? "bg-white text-emerald-600 shadow-sm" : "text-gray-500"}`}>{label}</button>)}</div>{period === "monthly" ? <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold text-sm" /> : period === "yearly" ? <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold text-sm">{Array.from({ length: 8 }, (_, i) => String(new Date().getFullYear() - i)).map((year) => <option key={year}>{year}</option>)}</select> : null}</div></div>
       {/* KPI Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {[{ label: "এই মাসে সংগ্রহ", value: stats.currentCollection, icon: CreditCard, color: "bg-emerald-600" }, { label: "মাসিক লক্ষ্য", value: stats.monthlyTarget, icon: Wallet, color: "bg-blue-600" }, { label: "এই মাসে বকেয়া", value: stats.currentDue, icon: ArrowDownRight, color: "bg-rose-600" }, { label: "সংগ্রহের হার", value: stats.collectionRate, icon: TrendingUp, color: "bg-amber-600", percent: true }].map((stat) => <div key={stat.label} className="card-premium p-4 sm:p-6 group border border-emerald-50/50"><div className="flex items-center justify-between mb-3"><div className={`w-10 h-10 sm:w-12 sm:h-12 ${stat.color} rounded-xl flex items-center justify-center text-white`}><stat.icon size={21} /></div><span className="text-[10px] font-bold text-gray-400">{selectedMonth}</span></div><h3 className="text-gray-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest mb-1">{stat.label}</h3><p className="text-xl sm:text-2xl font-bold text-gray-900 font-tiro truncate">{stat.percent ? `${stat.value}%` : `৳${stat.value.toLocaleString("bn-BD")}`}</p></div>)}
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
-        <div className="lg:col-span-2 card-premium p-4 sm:p-8">
-          <div className="mb-4 sm:mb-8">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro">মাসিক সংগ্রহের প্রবণতা</h3>
-            <p className="text-[10px] sm:text-sm text-gray-400 font-medium">সংগৃহীত অর্থ বনাম মাসিক লক্ষ্য</p>
-          </div>
-          <div className="h-[200px] sm:h-[350px] w-full -ml-4 sm:ml-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorDonation" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#059669" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#059669" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fill: '#9CA3AF', fontSize: 10, fontWeight: 600}}
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fill: '#9CA3AF', fontSize: 10, fontWeight: 600}}
-                />
-                <Tooltip 
-                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', padding: '12px'}}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="collected"
-                  name="সংগ্রহ"
-                  stroke="#059669" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorDonation)" 
-                />
-                <Area type="monotone" dataKey="target" name="লক্ষ্য" stroke="#2563EB" strokeWidth={2} strokeDasharray="5 5" fill="none" />
-              </AreaChart>
-            </ResponsiveContainer>
+      <div className="card-premium p-5 sm:p-8"><div className="flex items-center justify-between mb-5"><div><h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro">সংগ্রহ বনাম লক্ষ্য</h3><p className="text-xs sm:text-sm text-gray-400">নির্বাচিত সময়কালের performance</p></div><Link href="/reports" className="text-xs font-bold text-emerald-600">বিস্তারিত দেখুন</Link></div><div className="space-y-3">{collectionRows.map((row) => <div key={row.month}><div className="flex justify-between text-xs font-bold mb-1"><span>{row.month}</span><span>৳{Number(row.collected_amount).toLocaleString('bn-BD')} / ৳{Number(row.target_amount).toLocaleString('bn-BD')}</span></div><div className="h-3 rounded-full bg-gray-100 overflow-hidden"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Number(row.target_amount) ? Number(row.collected_amount) / Number(row.target_amount) * 100 : 0)}%` }} /></div></div>)}</div></div>\n\n      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+        <div className="card-premium p-5 sm:p-8">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro mb-2">বকেয়া সারাংশ</h3>
+          <p className="text-xs sm:text-sm text-gray-400 mb-6">নির্বাচিত সময়কালের collection status</p>
+          <div className="flex items-end justify-between gap-4">
+            <div><p className="text-3xl font-black text-rose-600">৳{stats.currentDue.toLocaleString('bn-BD')}</p><p className="text-xs text-gray-500 mt-1">মোট বকেয়া</p></div>
+            <Link href="/admin/pending" className="btn-outline text-xs">বকেয়া সদস্য দেখুন <ChevronRight size={14} /></Link>
           </div>
         </div>
-
-        <div className="card-premium p-4 sm:p-8">
-          <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro mb-1 sm:mb-2">ব্যয়ের খাত</h3>
-          <p className="text-[10px] sm:text-sm text-gray-400 font-medium mb-4 sm:mb-8">মোট ব্যয়ের বিভাজন</p>
-          <div className="h-[180px] sm:h-[250px] w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={expenseData}
-                  innerRadius={50}
-                  outerRadius={70}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {expenseData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={['#059669', '#10B981', '#34D399', '#6EE7B7'][index % 4]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-sm sm:text-2xl font-bold text-gray-900 font-tiro">৳{stats.totalExpenses.toLocaleString()}</span>
-              <span className="text-[8px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-widest">ব্যয়</span>
-            </div>
-          </div>
-          <div className="mt-4 sm:mt-8 space-y-2">
-            {expenseData.slice(0, 4).map((item, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${['bg-emerald-600', 'bg-emerald-500', 'bg-emerald-400', 'bg-emerald-300'][i % 4]}`}></div>
-                  <span className="text-[10px] sm:text-sm font-bold text-gray-600 truncate max-w-[120px]">{item.name}</span>
-                </div>
-                <span className="text-[10px] sm:text-sm font-bold text-gray-900">৳{item.value.toLocaleString()}</span>
-              </div>
-            ))}
+        <div className="card-premium p-5 sm:p-8">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro mb-2">রিপোর্ট শর্টকাট</h3>
+          <p className="text-xs sm:text-sm text-gray-400 mb-6">বিস্তারিত period-wise হিসাব দেখুন</p>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/reports" className="btn-emerald text-xs">পূর্ণাঙ্গ রিপোর্ট <ArrowUpRight size={14} /></Link>
+            <Link href="/donations" className="btn-outline text-xs">জমার হিসাব <ChevronRight size={14} /></Link>
           </div>
         </div>
       </div>
