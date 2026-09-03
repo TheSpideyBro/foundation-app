@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Calendar, Download, FileText, Filter, RefreshCw, Search, Wallet } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
 
 type Period = "monthly" | "yearly" | "total";
 type Row = Record<string, any>;
@@ -74,6 +76,17 @@ export default function ReportsPage() {
   const collectorRows: CollectorRow[] = collectors.map((c) => ({ ...c, id: String(c.id), name: String(c.name || "অজানা"), role: String(c.role || ""), count: donations.filter((d) => d.collected_by === c.id && inPeriod(d.date)).length, amount: donations.filter((d) => d.collected_by === c.id && inPeriod(d.date)).reduce((a, d) => a + Number(d.amount || 0), 0) })).filter((r) => !search || r.name.toLowerCase().includes(search.toLowerCase()));
   const chartRows = period === "yearly" || period === "total" ? periodRows : periodRows.length ? periodRows : monthlyRows.slice(-1);
 
+  function exportExcel() {
+    const rows = activeTab === "donations" ? filteredDonations.map((d) => ({ receipt: d.receipt_no, member: d.members?.name, amount: d.amount, date: d.date, month: d.donation_month, method: d.method })) : activeTab === "expenses" ? filteredExpenses.map((e) => ({ date: e.date, category: e.category, description: e.description, amount: e.amount })) : activeTab === "members" ? filteredMembers.map((m) => ({ name: m.name, phone: m.phone, status: m.status, monthly_pledge: m.monthly_pledge })) : collectorRows.map((r) => ({ name: r.name, role: r.role, count: r.count, amount: r.amount }));
+    const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), activeTab); XLSX.writeFile(workbook, `foundation-report-${period}-${activeTab}.xlsx`);
+  }
+
+  function exportPdf() {
+    const doc = new jsPDF(); doc.setFontSize(16); doc.text(`Foundation Report - ${period} - ${activeTab}`, 14, 18); doc.setFontSize(11); doc.text(`Collected: ${money(stats.collected)}   Expense: ${money(stats.expense)}   Balance: ${money(stats.balance)}`, 14, 28);
+    const rows = activeTab === "donations" ? filteredDonations : activeTab === "expenses" ? filteredExpenses : activeTab === "members" ? filteredMembers : collectorRows;
+    rows.slice(0, 35).forEach((row, index) => doc.text(`${index + 1}. ${String(row.name || row.description || row.receipt_no || row.date || "")}  ${money(Number(row.amount || row.monthly_pledge || 0))}`, 14, 40 + index * 6)); doc.save(`foundation-report-${period}-${activeTab}.pdf`);
+  }
+
   function exportCsv() {
     const rows = activeTab === "donations" ? filteredDonations.map((d) => [d.receipt_no, d.members?.name, d.amount, d.date, d.donation_month, d.method]) : activeTab === "expenses" ? filteredExpenses.map((e) => [e.date, e.category, e.description, e.amount]) : activeTab === "members" ? filteredMembers.map((m) => [m.name, m.phone, m.status, m.monthly_pledge]) : collectorRows.map((r) => [r.name, r.role, r.count, r.amount]);
     const csv = rows.map((row) => row.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
@@ -83,7 +96,7 @@ export default function ReportsPage() {
 
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><RefreshCw className="animate-spin text-emerald-600" /></div>;
   return <div className="space-y-6 pb-12">
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4"><div><h1 className="text-3xl font-bold text-gray-900 font-tiro">আর্থিক প্রতিবেদন</h1><p className="text-gray-500 mt-1">সময়কাল নির্বাচন করে বিস্তারিত হিসাব দেখুন।</p></div><div className="flex gap-2"><button onClick={fetchReportData} className="btn-outline"><RefreshCw size={17} /> রিফ্রেশ</button><button onClick={exportCsv} className="btn-emerald"><Download size={17} /> CSV ডাউনলোড</button></div></div>
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4"><div><h1 className="text-3xl font-bold text-gray-900 font-tiro">আর্থিক প্রতিবেদন</h1><p className="text-gray-500 mt-1">সময়কাল নির্বাচন করে বিস্তারিত হিসাব দেখুন।</p></div><div className="flex gap-2"><button onClick={fetchReportData} className="btn-outline"><RefreshCw size={17} /> রিফ্রেশ</button><button onClick={exportCsv} className="btn-emerald"><Download size={17} /> CSV</button><button onClick={exportExcel} className="btn-outline">Excel</button><button onClick={exportPdf} className="btn-outline">PDF</button></div></div>
     {error && <div className="p-4 rounded-2xl bg-rose-50 text-rose-700">{error}</div>}
     <div className="card-premium p-4 flex flex-wrap items-center gap-2"><div className="flex bg-gray-100 p-1 rounded-xl">{([['monthly','মাসিক'],['yearly','বাৎসরিক'],['total','সর্বমোট']] as const).map(([key, label]) => <button key={key} onClick={() => setPeriod(key)} className={`px-4 py-2 rounded-lg text-sm font-bold ${period === key ? "bg-white text-emerald-600 shadow-sm" : "text-gray-500"}`}>{label}</button>)}</div>{period === "monthly" ? <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold" /> : period === "yearly" ? <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold">{Array.from({ length: 8 }, (_, i) => String(new Date().getFullYear() - i)).map((year) => <option key={year}>{year}</option>)}</select> : <span className="text-sm font-bold text-gray-500">Foundation শুরু থেকে বর্তমান</span>}</div>
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">{[["সংগ্রহ", stats.collected, "text-emerald-600"],["ব্যয়", stats.expense, "text-rose-600"],["নেট ব্যালেন্স", stats.balance, "text-blue-600"],["বকেয়া", stats.due, "text-amber-600"],["সংগ্রহের হার", stats.rate, "text-violet-600"]].map(([label, value, color]) => <div key={String(label)} className="card-premium p-5"><p className="text-xs font-bold text-gray-400 mb-2">{label}</p><p className={`text-2xl font-black ${color}`}>{label === "সংগ্রহের হার" ? `${value}%` : money(Number(value))}</p></div>)}</div>
