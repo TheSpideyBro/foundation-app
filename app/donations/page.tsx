@@ -235,6 +235,32 @@ export default function DonationsPage() {
     }
   }
 
+  async function handleShare(donation: Donation) {
+    const receiptUrl = `${window.location.origin}/api/receipts/${donation.id}`;
+    const shareText = `রসিদ নং #${donation.receipt_no} — ${donation.members?.name || "সদস্য"}`;
+    try {
+      const response = await fetch(receiptUrl, { credentials: "same-origin" });
+      if (!response.ok) throw new Error("রসিদ তৈরি করা যায়নি");
+      const blob = await response.blob();
+      const file = new File([blob], `Receipt-${donation.receipt_no}.jpg`, { type: blob.type || "image/jpeg" });
+
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: "Foundation Receipt", text: shareText, files: [file] });
+        return;
+      }
+      if (navigator.share) {
+        await navigator.share({ title: "Foundation Receipt", text: shareText, url: receiptUrl });
+        return;
+      }
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${receiptUrl}`)}`;
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      const message = err instanceof Error ? err.message : "শেয়ার করা যায়নি";
+      alert(`${message}। অনুগ্রহ করে আবার চেষ্টা করুন।`);
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm("আপনি কি নিশ্চিতভাবে এই জমাটি ডিলিট করতে চান?")) return;
 
@@ -361,7 +387,7 @@ export default function DonationsPage() {
                     <Eye className="w-3.5 h-3.5" />
                     প্রিভিউ
                   </button>
-                  <button className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all active:scale-95">
+                  <button onClick={() => handleShare(donation)} className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all active:scale-95" title="রসিদ শেয়ার করুন" aria-label="রসিদ শেয়ার করুন">
                     <Share2 className="w-4 h-4" />
                   </button>
                   <button 
