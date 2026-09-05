@@ -42,11 +42,19 @@ interface Member {
   id: string;
   name: string;
   phone: string;
+  monthly_pledge?: number | string;
+}
+
+interface PledgeHistory {
+  member_id: string;
+  monthly_amount: number | string;
+  effective_from_month: string;
 }
 
 export default function DonationsPage() {
   const [donations, setDonations] = useState<Donation[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  const [pledgeHistory, setPledgeHistory] = useState<PledgeHistory[]>([]);
   const [treasurers, setTreasurers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -98,11 +106,23 @@ export default function DonationsPage() {
 
       const { data: membersData, error: membersError } = await supabase
         .from("members")
-        .select("id, name, phone")
+        .select("id, name, phone, monthly_pledge")
         .order("name");
 
       if (membersError) throw membersError;
       setMembers(membersData || []);
+
+      const { data: pledgeHistoryData, error: pledgeHistoryError } = await supabase
+        .from("member_pledge_history")
+        .select("member_id, monthly_amount, effective_from_month")
+        .order("effective_from_month", { ascending: true });
+
+      if (pledgeHistoryError) {
+        console.warn("Pledge history unavailable for this role:", pledgeHistoryError.message);
+        setPledgeHistory([]);
+      } else {
+        setPledgeHistory(pledgeHistoryData || []);
+      }
 
       const { data: usersData, error: usersError } = await supabase
         .from("users")
@@ -123,6 +143,33 @@ export default function DonationsPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (editingDonation || !formData.member_id) return;
+
+    const selectedMember = members.find(member => member.id === formData.member_id);
+    if (!selectedMember) return;
+
+    const start = new Date(`${formData.donation_month}-01`);
+    const end = formData.is_batch ? new Date(`${formData.end_month}-01`) : start;
+    if (end < start) return;
+
+    const getPledgeForMonth = (month: string) => {
+      const history = pledgeHistory
+        .filter(item => item.member_id === selectedMember.id && item.effective_from_month <= month)
+        .sort((a, b) => b.effective_from_month.localeCompare(a.effective_from_month))[0];
+      return Number(history?.monthly_amount ?? selectedMember.monthly_pledge ?? 0);
+    };
+
+    let total = 0;
+    const current = new Date(start);
+    while (current <= end) {
+      total += getPledgeForMonth(format(current, "yyyy-MM"));
+      current.setMonth(current.getMonth() + 1);
+    }
+
+    setFormData(prev => ({ ...prev, amount: String(total) }));
+  }, [editingDonation, formData.member_id, formData.donation_month, formData.end_month, formData.is_batch, members, pledgeHistory]);
 
   function openEditDonation(donation: Donation) {
     setEditingDonation(donation);
@@ -498,8 +545,8 @@ export default function DonationsPage() {
                       type="number" 
                       placeholder="0.00"
                       value={formData.amount}
-                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                      className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      readOnly
+                      className="w-full pl-8 pr-4 py-3 bg-gray-100 border border-gray-100 rounded-xl text-sm outline-none cursor-not-allowed"
                       required
                     />
                   </div>
