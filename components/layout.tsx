@@ -35,6 +35,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: "অ্যাডমিন প্যানেল", icon: Settings, path: "/admin", roles: ["admin"] },
     { name: "ইউজার কন্ট্রোল", icon: ShieldCheck, path: "/admin/users", roles: ["admin"] },
     { name: "অডিট লগ", icon: History, path: "/admin/audit", roles: ["admin"] },
+    { name: "অঙ্গীকার ইতিহাস", icon: History, path: "/admin/pledge-history", roles: ["admin", "treasurer"] },
   ];
 
   const isActive = (path: string) => pathname === path;

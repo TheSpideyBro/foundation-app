@@ -78,6 +78,14 @@ test.describe("Reports authenticated flows", () => {
     expect(labels.some((label) => /^\d{4}-[A-Z][a-z]{2}$/.test(label))).toBeTruthy();
   });
 
+  test("admin control exposes pledge history page", async ({ page }) => {
+    await page.goto("/admin");
+    await expect(page.getByText("অঙ্গীকার পরিবর্তনের ইতিহাস")).toBeVisible();
+    await page.getByText("অঙ্গীকার পরিবর্তনের ইতিহাস").first().click();
+    await expect(page).toHaveURL(/\/admin\/pledge-history/);
+    await expect(page.getByRole("heading", { name: "মাসিক অঙ্গীকার পরিবর্তনের ইতিহাস" })).toBeVisible();
+  });
+
   test("paid-member name rows can expand to show allocation details", async ({ page }) => {
     await page.goto("/reports");
     await page.locator("select").last().selectOption("paid-members");

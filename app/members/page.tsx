@@ -5,7 +5,7 @@ import {
   Users, UserPlus, Search, Filter, 
   Phone, MapPin, ChevronRight, MoreHorizontal,
   Shield, CheckCircle, XCircle, Trash2, Edit2,
-  Plus, X, Save, Calendar, TrendingUp, TrendingDown, Minus
+  Plus, X, Save, Calendar
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
@@ -16,7 +16,6 @@ export default function MembersPage() {
   const isStaff = isAdmin || role === 'treasurer';
   
   const [members, setMembers] = useState<any[]>([]);
-  const [pledgeHistory, setPledgeHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
@@ -47,16 +46,6 @@ export default function MembersPage() {
       const { data } = await query.order("name");
       setMembers(data || []);
 
-      if (isStaff) {
-        const { data: historyData, error: historyError } = await supabase()
-          .from("member_pledge_history")
-          .select("id, member_id, monthly_amount, effective_from_month, note, created_at, members(name)")
-          .order("effective_from_month", { ascending: false });
-        if (historyError) throw historyError;
-        setPledgeHistory(historyData || []);
-      } else {
-        setPledgeHistory([]);
-      }
     } catch (err) {
       console.error("Error fetching members:", err);
     } finally {
@@ -278,50 +267,7 @@ export default function MembersPage() {
         </div>
       </div>
 
-      {isStaff && (
-        <section className="card-premium overflow-hidden border border-emerald-50 shadow-sm">
-          <div className="p-5 sm:p-6 border-b border-gray-100 bg-white/60">
-            <h2 className="text-xl font-bold font-tiro text-gray-900">মাসিক অঙ্গীকার পরিবর্তনের ইতিহাস</h2>
-            <p className="text-sm text-gray-500 mt-1">কোন মাস থেকে pledge amount পরিবর্তন হয়েছে এবং পরিবর্তনের কারণ দেখুন</p>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {pledgeHistory.length === 0 ? (
-              <p className="p-6 text-center text-sm text-gray-400">এখনও কোনো pledge history নেই</p>
-            ) : pledgeHistory.map((entry) => {
-              const previous = pledgeHistory
-                .filter(item => item.member_id === entry.member_id && item.effective_from_month < entry.effective_from_month)
-                .sort((a, b) => b.effective_from_month.localeCompare(a.effective_from_month))[0];
-              const previousAmount = previous ? Number(previous.monthly_amount) : null;
-              const currentAmount = Number(entry.monthly_amount);
-              const change = previousAmount === null ? null : currentAmount - previousAmount;
-              const ChangeIcon = change === null ? Minus : change > 0 ? TrendingUp : change < 0 ? TrendingDown : Minus;
-              const memberName = Array.isArray(entry.members) ? entry.members[0]?.name : entry.members?.name;
 
-              return (
-                <div key={entry.id} className="p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-gray-900 truncate">{memberName || 'অজানা সদস্য'}</h3>
-                      {change !== null && (
-                        <span className={`inline-flex items-center gap-1 text-xs font-bold ${change > 0 ? 'text-emerald-600' : change < 0 ? 'text-rose-600' : 'text-gray-500'}`}>
-                          <ChangeIcon size={14} />
-                          {change > 0 ? 'বৃদ্ধি' : change < 0 ? 'হ্রাস' : 'অপরিবর্তিত'}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500">কার্যকর মাস: <span className="font-bold text-gray-700">{entry.effective_from_month}</span></p>
-                    <p className="text-sm text-gray-600 mt-2">নোট: {entry.note || 'নোট দেওয়া হয়নি'}</p>
-                  </div>
-                  <div className="flex items-center gap-4 shrink-0">
-                    {previousAmount !== null && <span className="text-sm text-gray-400">৳{previousAmount.toLocaleString()} থেকে</span>}
-                    <span className="text-lg font-black text-emerald-600">৳{currentAmount.toLocaleString()}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
 
       {/* Modal */}
       {isModalOpen && (
