@@ -55,6 +55,7 @@ export default function DonationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [editingDonation, setEditingDonation] = useState<Donation | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     member_id: "",
@@ -157,6 +158,8 @@ export default function DonationsPage() {
           date: formData.date,
           donation_month: formData.donation_month,
           donation_end_month: formData.is_batch ? formData.end_month : null,
+          coverage_start_month: formData.is_batch ? formData.donation_month : null,
+          coverage_end_month: formData.is_batch ? formData.end_month : null,
           method: formData.method,
           collected_by: formData.collected_by,
           receipt_no: formData.receipt_no,
@@ -186,6 +189,8 @@ export default function DonationsPage() {
             date: formData.date,
             donation_month: formData.donation_month,
             donation_end_month: formData.end_month,
+            coverage_start_month: formData.donation_month,
+            coverage_end_month: formData.end_month,
             method: formData.method,
             collected_by: formData.collected_by,
             batch_id: crypto.randomUUID(),
@@ -381,7 +386,7 @@ export default function DonationsPage() {
 
                 <div className="flex items-center gap-2 pt-4 border-t border-dashed border-gray-100">
                   <button 
-                    onClick={() => window.open(`/api/receipts/${donation.id}`, '_blank')}
+                    onClick={() => setPreviewUrl(`/api/receipts/${donation.id}`)}
                     className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-gray-800 transition-all active:scale-95"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -416,6 +421,29 @@ export default function DonationsPage() {
           </div>
         )}
       </div>
+
+      {previewUrl && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-3xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h2 className="font-black text-gray-900">রসিদ প্রিভিউ</h2>
+              <button
+                type="button"
+                onClick={() => setPreviewUrl(null)}
+                className="p-2 rounded-xl hover:bg-gray-100 text-gray-600"
+                aria-label="প্রিভিউ বন্ধ করুন"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <iframe
+              src={previewUrl}
+              title="রসিদ প্রিভিউ"
+              className="w-full flex-1 bg-gray-100"
+            />
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">

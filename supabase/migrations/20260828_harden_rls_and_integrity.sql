@@ -120,3 +120,29 @@ CREATE VIEW public.member_summary AS
          COUNT(*) FILTER (WHERE status = 'active')::bigint AS active_members
   FROM public.members;
 GRANT SELECT ON public.member_summary TO authenticated;
+
+
+-- Historical monthly pledge amounts; members.monthly_pledge remains the current amount.
+CREATE TABLE IF NOT EXISTS public.member_pledge_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  member_id UUID NOT NULL REFERENCES public.members(id) ON DELETE CASCADE,
+  monthly_amount NUMERIC NOT NULL CHECK (monthly_amount >= 0),
+  effective_from_month TEXT NOT NULL CHECK (effective_from_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  note TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_member_pledge_history_member_month
+  ON public.member_pledge_history(member_id, effective_from_month);
+ALTER TABLE public.member_pledge_history ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "pledge_history_select_staff" ON public.member_pledge_history;
+DROP POLICY IF EXISTS "pledge_history_insert_staff" ON public.member_pledge_history;
+CREATE POLICY "pledge_history_select_staff" ON public.member_pledge_history FOR SELECT
+  USING (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
+CREATE POLICY "pledge_history_insert_staff" ON public.member_pledge_history FOR INSERT
+  WITH CHECK (get_my_role() = ANY (ARRAY['admin', 'treasurer']));
+GRANT SELECT, INSERT ON public.member_pledge_history TO authenticated;
+
+-- Keep one consolidated donation row while preserving the covered month range.
+ALTER TABLE public.donations ADD COLUMN IF NOT EXISTS coverage_start_month TEXT;
+ALTER TABLE public.donations ADD COLUMN IF NOT EXISTS coverage_end_month TEXT;

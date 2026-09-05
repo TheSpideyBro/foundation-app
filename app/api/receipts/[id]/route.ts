@@ -98,16 +98,18 @@ export async function GET(
     return new NextResponse('Donation not found', { status: 404 });
   }
 
-  // Check if it's part of a batch
-  let displayMonth = getBengaliMonthName(donation.donation_month);
+  // Display the covered month range for consolidated advance donations.
+  const coverageStartMonth = donation.coverage_start_month || donation.donation_month;
+  const coverageEndMonth = donation.coverage_end_month || donation.donation_end_month || coverageStartMonth;
+  let displayMonth = getBengaliMonthName(coverageStartMonth);
   let displayAmount = donation.amount;
   let displayReceiptNo = donation.receipt_no;
 
-  if (donation.donation_end_month && donation.donation_end_month !== donation.donation_month) {
-    displayMonth = `${getBengaliMonthName(donation.donation_month)} - ${getBengaliMonthName(donation.donation_end_month)} (${getMonthCount(donation.donation_month, donation.donation_end_month).toString().padStart(2, '০')} মাস)`;
+  if (coverageEndMonth && coverageEndMonth !== coverageStartMonth) {
+    displayMonth = `${getBengaliMonthName(coverageStartMonth)} - ${getBengaliMonthName(coverageEndMonth)} (${getMonthCount(coverageStartMonth, coverageEndMonth).toString().padStart(2, '০')} মাস)`;
   }
 
-  if (donation.batch_id) {
+  if (donation.batch_id && !donation.coverage_start_month) {
     const { data: batchDonations } = await supabase
       .from('donations')
       .select('amount, donation_month, receipt_no')
