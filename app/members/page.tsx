@@ -28,7 +28,9 @@ export default function MembersPage() {
     address: "",
     join_date: new Date().toISOString().split('T')[0],
     status: "active",
-    monthly_pledge: "0"
+    monthly_pledge: "0",
+    pledge_effective_month: new Date().toISOString().slice(0, 7),
+    pledge_note: ""
   });
 
   useEffect(() => {
@@ -59,7 +61,9 @@ export default function MembersPage() {
         address: member.address || "",
         join_date: member.join_date,
         status: member.status,
-        monthly_pledge: (member.monthly_pledge || 0).toString()
+        monthly_pledge: (member.monthly_pledge || 0).toString(),
+        pledge_effective_month: new Date().toISOString().slice(0, 7),
+        pledge_note: ""
       });
     } else {
       setEditingMember(null);
@@ -69,7 +73,9 @@ export default function MembersPage() {
         address: "",
         join_date: new Date().toISOString().split('T')[0],
         status: "active",
-        monthly_pledge: "0"
+        monthly_pledge: "0",
+        pledge_effective_month: new Date().toISOString().slice(0, 7),
+        pledge_note: ""
       });
     }
     setIsModalOpen(true);
@@ -85,10 +91,15 @@ export default function MembersPage() {
     setSubmitting(true);
     try {
       const payload = {
-        ...formData,
+        name: formData.name,
+        phone: formData.phone,
+        address: formData.address,
+        join_date: formData.join_date,
+        status: formData.status,
         monthly_pledge: parseFloat(formData.monthly_pledge)
       };
 
+      let savedMemberId = editingMember?.id;
       if (editingMember) {
         const { error } = await supabase()
           .from("members")
@@ -96,10 +107,23 @@ export default function MembersPage() {
           .eq("id", editingMember.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase()
+        const { data, error } = await supabase()
           .from("members")
-          .insert([payload]);
+          .insert([payload])
+          .select("id")
+          .single();
         if (error) throw error;
+        savedMemberId = data.id;
+      }
+
+      if (isStaff && savedMemberId && Number.isFinite(payload.monthly_pledge) && payload.monthly_pledge >= 0) {
+        const { error: historyError } = await supabase().from("member_pledge_history").insert([{
+          member_id: savedMemberId,
+          monthly_amount: payload.monthly_pledge,
+          effective_from_month: formData.pledge_effective_month,
+          note: formData.pledge_note || null
+        }]);
+        if (historyError) throw historyError;
       }
 
       setIsModalOpen(false);
@@ -317,6 +341,15 @@ export default function MembersPage() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <label className="text-[13px] font-bold text-gray-700 ml-1">কার্যকর মাস</label>
+                  <input
+                    type="month"
+                    value={formData.pledge_effective_month}
+                    onChange={(e) => setFormData({...formData, pledge_effective_month: e.target.value})}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
                   <label className="text-[13px] font-bold text-gray-700 ml-1">স্ট্যাটাস</label>
                   <select 
                     value={formData.status}
@@ -327,6 +360,17 @@ export default function MembersPage() {
                     <option value="inactive">নিষ্ক্রিয়</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[13px] font-bold text-gray-700 ml-1">অঙ্গীকার পরিবর্তনের নোট</label>
+                <input
+                  type="text"
+                  value={formData.pledge_note}
+                  onChange={(e) => setFormData({...formData, pledge_note: e.target.value})}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  placeholder="যেমন: নতুন মাসিক অঙ্গীকার"
+                />
               </div>
 
               <div className="pt-4 flex gap-3">
