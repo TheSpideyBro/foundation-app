@@ -65,6 +65,13 @@ export default function AdminPage() {
       color: "emerald"
     },
     {
+      title: "অঙ্গীকার পরিবর্তনের ইতিহাস",
+      desc: "সদস্যদের pledge amount পরিবর্তনের মাস ও কারণ দেখুন",
+      icon: <History size={24} />,
+      link: "/admin/pledge-history",
+      color: "emerald"
+    },
+    {
       title: "বাকি চাঁদার তালিকা",
       desc: "অনাদায়ী অঙ্গীকার এবং হোয়াটসঅ্যাপ রিমাইন্ডার",
       icon: <Clock size={24} />,
