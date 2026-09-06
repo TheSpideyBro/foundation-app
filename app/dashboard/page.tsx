@@ -8,7 +8,6 @@ import {
   Plus
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-import { buildMonthlyCoverageSummary, type LedgerDonation, type PledgeHistoryEntry } from "@/lib/payment-ledger";
 import Link from "next/link";
 import { useAuth } from "@/components/providers";
 
@@ -47,30 +46,18 @@ export default function Dashboard() {
         { data: donationSummary },
         { data: expenseSummary },
         { data: monthlySummary },
-        { data: donationRows },
-        { data: members },
-        { data: pledgeHistory }
+        { data: donationRows }
       ] = await Promise.all([
         supabase().from("notices").select("*").eq("is_active", true).order("created_at", { ascending: false }).limit(3),
         supabase().from("member_summary").select("total_members").single(),
         supabase().from("donation_summary").select("total_amount").single(),
         supabase().from("expense_summary").select("total_amount").single(),
         supabase().from("monthly_collection_summary").select("month, target_amount, collected_amount, due_amount, collection_rate, active_members, expense_amount, net_balance").order("month", { ascending: true }),
-        supabase().from("donations").select("id, member_id, amount, date, donation_month, donation_end_month").order("date", { ascending: true }),
-        supabase().from("members").select("id, monthly_pledge, join_date, status"),
-        supabase().from("member_pledge_history").select("member_id, monthly_amount, effective_from_month").order("effective_from_month", { ascending: true })
+        supabase().from("donations").select("id, member_id, amount, date, donation_month, donation_end_month").order("date", { ascending: true })
       ]);
 
       setNotices(noticeData || []);
-      const rawMonthlyRows = (monthlySummary || []) as Array<{ month: string; target_amount: number; collected_amount: number; due_amount: number; collection_rate: number; active_members: number; expense_amount: number; net_balance: number }>;
-      const canonicalRows = buildMonthlyCoverageSummary(
-        rawMonthlyRows.map((row) => String(row.month).slice(0, 7)),
-        (members || []) as Array<{ id: string; monthly_pledge?: number | string | null; join_date?: string | null; status?: string | null }>,
-        (donationRows || []) as LedgerDonation[],
-        (pledgeHistory || []) as PledgeHistoryEntry[],
-      );
-      const canonicalByMonth = new Map(canonicalRows.map((row) => [row.month, row]));
-      const monthlyRows = rawMonthlyRows.map((row) => ({ ...row, ...(canonicalByMonth.get(String(row.month).slice(0, 7)) || {}) }));
+      const monthlyRows = (monthlySummary || []) as Array<{ month: string; target_amount: number; collected_amount: number; due_amount: number; collection_rate: number; active_members: number; expense_amount: number; net_balance: number }>;
       const selectedRows = period === "monthly" ? monthlyRows.filter((row) => row.month.slice(0, 7) === selectedMonth) : period === "yearly" ? monthlyRows.filter((row) => row.month.slice(0, 4) === selectedYear) : monthlyRows;
       const selectedSummary = selectedRows[selectedRows.length - 1];
       setCollectionRows(selectedRows.slice(-6));
