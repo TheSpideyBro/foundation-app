@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { buildMemberLedger, type LedgerDonation, type PledgeHistoryEntry } from "@/lib/payment-ledger";
 
 export async function GET(request: Request) {
   const cookieStore = await cookies();
@@ -37,39 +38,32 @@ export async function GET(request: Request) {
   const month = searchParams.get("month") || new Date().toISOString().slice(0, 7); // YYYY-MM
 
   try {
-    // 1. Get all active members with pledges
+    // 1. Load active members, their effective pledge history and all relevant payments.
     const { data: members, error: mError } = await supabase
       .from("members")
       .select("id, name, phone, monthly_pledge")
       .eq("status", "active")
       .gt("monthly_pledge", 0);
-
     if (mError) throw mError;
 
-    // 2. Get all donations for this month
+    const { data: pledgeHistory, error: hError } = await supabase
+      .from("member_pledge_history")
+      .select("member_id, monthly_amount, effective_from_month")
+      .order("effective_from_month", { ascending: true });
+    if (hError) throw hError;
+
     const { data: donations, error: dError } = await supabase
       .from("donations")
-      .select("member_id, amount, donation_month, donation_end_month")
+      .select("id, member_id, amount, date, donation_month, donation_end_month")
       .lte("donation_month", month);
-
     if (dError) throw dError;
 
-    // 3. Calculate pending
-    const donationMap = new Map();
-    donations?.forEach(d => {
-      const coversMonth = d.donation_month === month ||
-        (d.donation_end_month && d.donation_end_month >= month);
-      if (!coversMonth) return;
-      const current = donationMap.get(d.member_id) || 0;
-      const monthCount = d.donation_end_month
-        ? Math.max(1, (Number(d.donation_end_month.slice(0, 4)) - Number(d.donation_month.slice(0, 4))) * 12 + Number(d.donation_end_month.slice(5, 7)) - Number(d.donation_month.slice(5, 7)) + 1)
-        : 1;
-      donationMap.set(d.member_id, current + Number(d.amount) / monthCount);
-    });
-
     const pending = members?.map(m => {
-      const paid = donationMap.get(m.id) || 0;
-      const pledge = Number(m.monthly_pledge);
+      const memberHistory = ((pledgeHistory || []) as PledgeHistoryEntry[]).filter((entry) => entry.member_id === m.id);
+      const memberDonations = ((donations || []) as LedgerDonation[]).filter((donation) => donation.member_id === m.id);
+      const row = buildMemberLedger(memberDonations, Number(m.monthly_pledge) || 0, month, month, memberHistory)[0];
+      const pledge = row?.expected ?? (Number(m.monthly_pledge) || 0);
+      const paid = row?.paid || 0;
       return {
         id: m.id,
         name: m.name,

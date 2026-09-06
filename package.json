@@ -8,6 +8,7 @@
     "start": "npm run prepare:standalone && node .next/standalone/server.js",
     "lint": "eslint",
     "test:e2e": "playwright test",
+    "test:ledger": "node --experimental-strip-types --test tests/payment-ledger.test.ts",
     "prepare:standalone": "node scripts/prepare-standalone.js",
     "test:verify": "npm run prepare:standalone && (PORT=3001 node .next/standalone/server.js > /tmp/verify-server.log 2>&1 &) && sleep 4 && node tests/verify-fixes.js"
   },

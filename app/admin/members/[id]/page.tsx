@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { Phone, MapPin, ArrowLeft, Download, Calendar, ExternalLink } from "lucide-react";
-import { buildMemberLedger, formatMonth } from "@/lib/payment-ledger";
+import { buildMemberLedger, formatMonth, type PledgeHistoryEntry } from "@/lib/payment-ledger";
 
 type Member = { id: string; name: string; phone?: string; address?: string; monthly_pledge?: number; status?: string; join_date?: string };
 type Donation = { id: string; amount: number; date: string; method?: string; receipt_no?: string; donation_month?: string; donation_end_month?: string };
@@ -16,6 +16,7 @@ export default function AdminMemberDetailPage() {
   const router = useRouter();
   const [member, setMember] = useState<Member | null>(null);
   const [donations, setDonations] = useState<Donation[]>([]);
+  const [pledgeHistory, setPledgeHistory] = useState<PledgeHistoryEntry[]>([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
 
@@ -23,9 +24,11 @@ export default function AdminMemberDetailPage() {
     const fetchData = async () => {
       try {
         const { data: m } = await supabase().from("members").select("*").eq("id", id).single();
-        const { data: d } = await supabase().from("donations").select("id, amount, date, method, receipt_no, donation_month, donation_end_month").eq("member_id", id).order("date", { ascending: false });
+        const { data: d } = await supabase().from("donations").select("id, member_id, amount, date, method, receipt_no, donation_month, donation_end_month").eq("member_id", id).order("date", { ascending: false });
+        const { data: history } = await supabase().from("member_pledge_history").select("member_id, monthly_amount, effective_from_month").eq("member_id", id).order("effective_from_month", { ascending: true });
         setMember(m as Member | null);
         setDonations((d || []) as Donation[]);
+        setPledgeHistory((history || []) as PledgeHistoryEntry[]);
       } catch (err) {
         console.error("Error fetching data:", err);
       } finally {
@@ -48,7 +51,7 @@ export default function AdminMemberDetailPage() {
   const selectedEnd = `${year}-12`;
   const ledgerStart = member.join_date && member.join_date.slice(0, 7) > selectedStart ? member.join_date.slice(0, 7) : selectedStart;
   const ledgerEnd = selectedEnd < currentMonth ? selectedEnd : currentMonth;
-  const ledger = ledgerStart <= ledgerEnd ? buildMemberLedger(donations, Number(member.monthly_pledge) || 0, ledgerStart, ledgerEnd) : [];
+  const ledger = ledgerStart <= ledgerEnd ? buildMemberLedger(donations, Number(member.monthly_pledge) || 0, ledgerStart, ledgerEnd, pledgeHistory) : [];
   const totalExpected = ledger.reduce((sum, row) => sum + row.expected, 0);
   const totalPaid = ledger.reduce((sum, row) => sum + row.paid, 0);
   const totalDue = ledger.reduce((sum, row) => sum + row.remaining, 0);
