@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { bn } from "date-fns/locale";
+import { pledgeBreakdown } from "@/lib/payment-ledger";
 
 interface Donation {
   id: string;
@@ -144,31 +145,20 @@ export default function DonationsPage() {
     }
   }
 
-  useEffect(() => {
+    useEffect(() => {
     if (editingDonation || !formData.member_id) return;
-
     const selectedMember = members.find(member => member.id === formData.member_id);
     if (!selectedMember) return;
-
-    const start = new Date(`${formData.donation_month}-01`);
-    const end = formData.is_batch ? new Date(`${formData.end_month}-01`) : start;
-    if (end < start) return;
-
-    const getPledgeForMonth = (month: string) => {
-      const history = pledgeHistory
-        .filter(item => item.member_id === selectedMember.id && item.effective_from_month <= month)
-        .sort((a, b) => b.effective_from_month.localeCompare(a.effective_from_month))[0];
-      return Number(history?.monthly_amount ?? selectedMember.monthly_pledge ?? 0);
-    };
-
-    let total = 0;
-    const current = new Date(start);
-    while (current <= end) {
-      total += getPledgeForMonth(format(current, "yyyy-MM"));
-      current.setMonth(current.getMonth() + 1);
-    }
-
-    setFormData(prev => ({ ...prev, amount: String(total) }));
+    const startMonth = formData.donation_month;
+    const endMonth = formData.is_batch ? formData.end_month : startMonth;
+    if (endMonth < startMonth) return;
+    const breakdown = pledgeBreakdown(
+      startMonth,
+      endMonth,
+      selectedMember.monthly_pledge,
+      pledgeHistory.filter(item => item.member_id === selectedMember.id),
+    );
+    setFormData(prev => ({ ...prev, amount: String(breakdown.reduce((total, row) => total + row.expected, 0)) }));
   }, [editingDonation, formData.member_id, formData.donation_month, formData.end_month, formData.is_batch, members, pledgeHistory]);
 
   function openEditDonation(donation: Donation) {
@@ -333,6 +323,15 @@ export default function DonationsPage() {
     d.members?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     d.receipt_no.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const selectedMember = members.find(member => member.id === formData.member_id);
+  const currentBreakdown = selectedMember
+    ? pledgeBreakdown(
+        formData.donation_month,
+        formData.is_batch ? formData.end_month : formData.donation_month,
+        selectedMember.monthly_pledge,
+        pledgeHistory.filter(item => item.member_id === selectedMember.id),
+      )
+    : [];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20 md:pb-8">
@@ -541,12 +540,14 @@ export default function DonationsPage() {
                   <label className="text-sm font-bold text-gray-700">টাকার পরিমাণ *</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">৳</span>
-                    <input 
-                      type="number" 
-                      placeholder="0.00"
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        placeholder="0.00"
                       value={formData.amount}
-                      readOnly
-                      className="w-full pl-8 pr-4 py-3 bg-gray-100 border border-gray-100 rounded-xl text-sm outline-none cursor-not-allowed"
+                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                      className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                       required
                     />
                   </div>
@@ -562,6 +563,21 @@ export default function DonationsPage() {
                   />
                 </div>
               </div>
+
+              {selectedMember && currentBreakdown.length > 1 && (
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-emerald-800">
+                    <span>মাসভিত্তিক pledge breakdown</span>
+                    <span>মোট ৳{currentBreakdown.reduce((sum, row) => sum + row.expected, 0).toLocaleString("bn-BD")}</span>
+                  </div>
+                  {currentBreakdown.map((row) => (
+                    <div key={row.month} className="flex items-center justify-between text-xs text-gray-700">
+                      <span>{row.month}</span>
+                      <span className="font-bold">৳{row.expected.toLocaleString("bn-BD")}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <label className="flex items-center gap-2 cursor-pointer">

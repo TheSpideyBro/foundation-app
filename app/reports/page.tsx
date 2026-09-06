@@ -5,7 +5,7 @@ import { BarChart3, Calendar, Download, FileText, Filter, RefreshCw, Search, Wal
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
-import { donationMonths, type LedgerDonation } from "@/lib/payment-ledger";
+import { buildMonthlyCoverageSummary, donationMonths, type LedgerDonation, type PledgeHistoryEntry } from "@/lib/payment-ledger";
 
 type Period = "monthly" | "yearly" | "total";
 type Row = Record<string, any>;
@@ -31,21 +31,32 @@ export default function ReportsPage() {
   const [expenses, setExpenses] = useState<Row[]>([]);
   const [members, setMembers] = useState<Row[]>([]);
   const [collectors, setCollectors] = useState<Row[]>([]);
+  const [pledgeHistory, setPledgeHistory] = useState<PledgeHistoryEntry[]>([]);
 
   useEffect(() => { fetchReportData(); }, []);
 
   async function fetchReportData() {
     setLoading(true); setError(null);
     try {
-      const [{ data: summary, error: summaryError }, { data: donationData, error: donationError }, { data: expenseData, error: expenseError }, { data: memberData, error: memberError }, { data: collectorData }] = await Promise.all([
+      const [{ data: summary, error: summaryError }, { data: donationData, error: donationError }, { data: expenseData, error: expenseError }, { data: memberData, error: memberError }, { data: collectorData }, { data: pledgeHistoryData }] = await Promise.all([
         supabase().from("monthly_collection_summary").select("month, target_amount, collected_amount, due_amount, collection_rate, active_members, expense_amount, net_balance").order("month", { ascending: true }),
         supabase().from("donations").select("id, member_id, amount, date, donation_month, donation_end_month, receipt_no, method, collected_by, members(name, phone)").order("date", { ascending: false }),
         supabase().from("expenses").select("id, amount, date, category, description").order("date", { ascending: false }),
         supabase().from("members").select("id, name, phone, status, monthly_pledge, join_date").order("name"),
         supabase().from("users").select("id, name, role").in("role", ["admin", "treasurer"]),
+        supabase().from("member_pledge_history").select("member_id, monthly_amount, effective_from_month").order("effective_from_month", { ascending: true }),
       ]);
       if (summaryError || donationError || expenseError || memberError) throw summaryError || donationError || expenseError || memberError;
-      setMonthlyRows(summary || []); setDonations(donationData || []); setExpenses(expenseData || []); setMembers(memberData || []); setCollectors(collectorData || []);
+      const rawRows = summary || [];
+      const canonicalRows = buildMonthlyCoverageSummary(
+        rawRows.map((row) => String(row.month).slice(0, 7)),
+        memberData || [],
+        (donationData || []) as LedgerDonation[],
+        (pledgeHistoryData || []) as PledgeHistoryEntry[],
+      );
+      const canonicalByMonth = new Map(canonicalRows.map((row) => [row.month, row]));
+      setMonthlyRows(rawRows.map((row) => ({ ...row, ...(canonicalByMonth.get(String(row.month).slice(0, 7)) || {}) })));
+      setDonations(donationData || []); setExpenses(expenseData || []); setMembers(memberData || []); setCollectors(collectorData || []); setPledgeHistory((pledgeHistoryData || []) as PledgeHistoryEntry[]);
     } catch (err) { setError(err instanceof Error ? err.message : "রিপোর্ট লোড করা যায়নি"); }
     finally { setLoading(false); }
   }
