@@ -3,11 +3,11 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { 
-  LayoutDashboard, Users, CreditCard, Wallet, 
+import {
+  LayoutDashboard, Users, CreditCard, Wallet,
   BarChart3, UserCircle, LogOut, Menu, X,
   ShieldCheck, Settings, Bell, Search,
-  Leaf, Home, History
+  Leaf, Home, History, ReceiptText
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
 
@@ -25,6 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const menuItems = [
     { name: "ড্যাশবোর্ড", icon: LayoutDashboard, path: "/dashboard", roles: ["admin", "treasurer", "member"] },
     { name: "সদস্য তালিকা", icon: Users, path: "/members", roles: ["admin", "treasurer", "member"] },
+    { name: "জমা এন্ট্রি", icon: ReceiptText, path: "/payments", roles: ["admin", "treasurer"] },
     { name: "দান সংগ্রহ", icon: CreditCard, path: "/donations", roles: ["admin", "treasurer", "member"] },
     { name: "খরচের হিসাব", icon: Wallet, path: "/expenses", roles: ["admin", "treasurer", "member"] },
     { name: "প্রতিবেদন", icon: BarChart3, path: "/reports", roles: ["admin", "treasurer", "member"] },
