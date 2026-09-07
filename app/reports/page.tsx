@@ -41,7 +41,7 @@ export default function ReportsPage() {
     try {
       const [{ data: summary, error: summaryError }, { data: donationData, error: donationError }, { data: expenseData, error: expenseError }, { data: memberData, error: memberError }, { data: collectorData }, { data: pledgeHistoryData, error: pledgeHistoryError }, { data: allocationData, error: allocationError }] = await Promise.all([
         supabase().from("monthly_collection_summary").select("month, target_amount, collected_amount, due_amount, collection_rate, active_members, expense_amount, net_balance").order("month", { ascending: true }),
-        supabase().from("donations").select("id, member_id, amount, date, donation_month, donation_end_month, coverage_start_month, coverage_end_month, note, receipt_no, method, collected_by, members(name, phone)").order("date", { ascending: false }),
+        supabase().from("donations").select("id, member_id, amount, extra_amount, date, donation_month, donation_end_month, coverage_start_month, coverage_end_month, note, receipt_no, method, collected_by, members(name, phone)").order("date", { ascending: false }),
         supabase().from("expenses").select("id, amount, date, category, description").order("date", { ascending: false }),
         supabase().from("members").select("id, name, phone, status, monthly_pledge, join_date").order("name"),
         supabase().from("users").select("id, name, role").in("role", ["admin", "treasurer"]),
@@ -224,7 +224,7 @@ export default function ReportsPage() {
   }, [donations, members, pledgeHistory, allocations, period, paidMemberMonth, selectedYear, search]);
 
   function exportExcel() {
-    const rows = activeTab === "paid-members" ? paidMemberRows.map((m) => ({ name: m.name, cashReceived: m.receivedAmount, allocated: m.coveredAmount, unallocated: m.unallocatedAmount, status: m.status })) : activeTab === "donations" ? filteredDonations.map((d) => ({ receipt: d.receipt_no, member: d.members?.name, amount: d.amount, date: d.date, month: d.donation_month, method: d.method })) : activeTab === "expenses" ? filteredExpenses.map((e) => ({ date: e.date, category: e.category, description: e.description, amount: e.amount })) : activeTab === "members" ? filteredMembers.map((m) => ({ name: m.name, phone: m.phone, status: m.status, monthly_pledge: m.monthly_pledge })) : collectorRows.map((r) => ({ name: r.name, role: r.role, count: r.count, amount: r.amount }));
+    const rows = activeTab === "paid-members" ? paidMemberRows.map((m) => ({ name: m.name, cashReceived: m.receivedAmount, allocated: m.coveredAmount, unallocated: m.unallocatedAmount, status: m.status })) : activeTab === "donations" ? filteredDonations.map((d) => ({ receipt: d.receipt_no, member: d.members?.name, cashReceived: d.amount, extraAmount: d.extra_amount || 0, date: d.date, month: d.donation_month, method: d.method })) : activeTab === "expenses" ? filteredExpenses.map((e) => ({ date: e.date, category: e.category, description: e.description, amount: e.amount })) : activeTab === "members" ? filteredMembers.map((m) => ({ name: m.name, phone: m.phone, status: m.status, monthly_pledge: m.monthly_pledge })) : collectorRows.map((r) => ({ name: r.name, role: r.role, count: r.count, amount: r.amount }));
     const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), activeTab); XLSX.writeFile(workbook, `foundation-report-${period}-${activeTab}.xlsx`);
   }
 
