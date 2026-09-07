@@ -311,6 +311,9 @@ export async function GET(
       { label: "মাসের নাম", value: displayMonth, icon: 'month' },
       { label: "টাকার পরিমাণ কথায়", value: `${amountInWords} টাকা`, icon: 'text' },
       { label: "টাকার পরিমাণ", value: `৳ ${displayAmount}/-`, icon: 'money' },
+      ...(Number(donation.extra_amount || 0) > 0
+        ? [{ label: "Extra Amount", value: `৳ ${Number(donation.extra_amount).toLocaleString('bn-BD')}/-`, icon: 'money' }]
+        : []),
       { label: "আদায়কারী", value: donation.collector?.members?.name || donation.collector?.name || "অ্যাডমিন", icon: 'edit' }
     ];
 

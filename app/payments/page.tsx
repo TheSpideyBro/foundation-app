@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Banknote, Calendar, CheckCircle2,
-  Loader2, ReceiptText, User, Wallet, AlertCircle,
+  Loader2, ReceiptText, User, Wallet, AlertCircle, Eye, Download,
   Plus, Minus, Info, ChevronDown, ChevronUp, Pencil, X,
   FileCheck, ShieldCheck, TrendingDown, TrendingUp,
 } from "lucide-react";
@@ -36,6 +36,7 @@ type CoverageMode = "single" | "range";
 type JomaForm = {
   memberId: string;
   paymentAmount: string;
+  extraAmount: string;
   paymentDate: string;
   paymentMethod: string;
   receiptNo: string;
@@ -90,6 +91,7 @@ export default function JomaEntryPage() {
   const [form, setForm] = useState<JomaForm>({
     memberId: "",
     paymentAmount: "",
+    extraAmount: "",
     paymentDate: today,
     paymentMethod: "cash",
     receiptNo: generateReceiptNo(),
@@ -111,7 +113,7 @@ export default function JomaEntryPage() {
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successData, setSuccessData] = useState<{ id: string; receipt: string; amount: number } | null>(null);
+  const [successData, setSuccessData] = useState<{ id: string; receipt: string; amount: number; extraAmount: number; allocatedAmount: number; unallocatedAmount: number } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Filtered members for search
@@ -261,7 +263,8 @@ export default function JomaEntryPage() {
     setError(null);
 
     try {
-      const amount = parseFloat(form.paymentAmount);
+                const amount = parseFloat(form.paymentAmount);
+      const extraAmount = Math.max(0, parseFloat(form.extraAmount) || 0);
       const endMonth = form.coverageMode === "range" ? form.coverageEndMonth : form.coverageStartMonth;
 
       const res = await fetch("/api/payments", {
@@ -270,6 +273,7 @@ export default function JomaEntryPage() {
         body: JSON.stringify({
           member_id: form.memberId,
           amount,
+          extra_amount: extraAmount,
           date: form.paymentDate,
           method: form.paymentMethod,
           receipt_no: form.receiptNo,
@@ -290,11 +294,15 @@ export default function JomaEntryPage() {
         id: data.payment_id,
         receipt: form.receiptNo,
         amount,
+        extraAmount,
+        allocatedAmount: allocationPreview.allocatedAmount,
+        unallocatedAmount: allocationPreview.unallocatedAmount + extraAmount,
       });
       // Reset form
       setForm({
         memberId: "",
         paymentAmount: "",
+        extraAmount: "",
         paymentDate: today,
         paymentMethod: "cash",
         receiptNo: generateReceiptNo(),
@@ -370,15 +378,25 @@ export default function JomaEntryPage() {
               </div>
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-gray-400 font-bold mb-1">পরিমাণ</p>
-                <p className="font-bold text-emerald-600">{money(successData.amount)}</p>
+                <p className="font-bold text-emerald-600">{money(successData.amount + successData.extraAmount)}</p>
+              </div>
+              <div className="bg-amber-50 rounded-xl p-4">
+                <p className="text-xs text-amber-600 font-bold mb-1">Extra Amount</p>
+                <p className="font-bold text-amber-700">{money(successData.extraAmount)}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 col-span-2">
                 <p className="text-xs text-gray-400 font-bold mb-1">বরাদ্দ</p>
-                <p className="font-bold text-gray-900">৳{allocationPreview.allocatedAmount.toLocaleString("bn-BD")} বরাদ্দ • ৳{allocationPreview.unallocatedAmount.toLocaleString("bn-BD")} অবণ্টিত</p>
+                <p className="font-bold text-gray-900">৳{successData.allocatedAmount.toLocaleString("bn-BD")} বরাদ্দ • ৳{successData.unallocatedAmount.toLocaleString("bn-BD")} অবণ্টিত</p>
               </div>
             </div>
 
-            <div className="flex gap-3 mt-8 justify-center">
+            <div className="flex gap-3 mt-8 justify-center flex-wrap">
+              <a href={`/api/receipts/${successData.id}`} target="_blank" rel="noreferrer" className="btn-emerald">
+                <Eye size={17} /> রসিদ প্রিভিউ
+              </a>
+              <a href={`/api/receipts/${successData.id}?download=1`} download={`Receipt-${successData.receipt}.jpg`} className="btn-outline">
+                <Download size={17} /> ডাউনলোড
+              </a>
               <button onClick={handleCancel} className="btn-emerald">
                 <Plus size={17} /> নতুন জমা
               </button>
@@ -645,6 +663,24 @@ export default function JomaEntryPage() {
                     </button>
                   </div>
                 )}
+              </div>
+
+              {/* Extra amount */}
+              <div>
+                <label className="text-xs font-bold text-amber-700 mb-1 block">Extra Amount / অতিরিক্ত জমা</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500 font-bold">৳</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={form.extraAmount}
+                    onChange={(e) => set("extraAmount", e.target.value)}
+                    className="w-full pl-8 pr-3 py-3 bg-amber-50 border border-amber-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all font-bold"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">এই অংশটি মাসিক বরাদ্দে যাবে না; রশিদে আলাদাভাবে দেখানো হবে।</p>
               </div>
 
               {/* Payment date */}

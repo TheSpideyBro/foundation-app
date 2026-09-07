@@ -9,6 +9,7 @@ export async function POST(request: Request) {
     const {
       member_id,
       amount,
+      extra_amount,
       date,
       method,
       receipt_no,
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     } = body as {
       member_id: string;
       amount: number;
+      extra_amount?: number;
       date: string;
       method: string;
       receipt_no?: string;
@@ -36,6 +38,8 @@ export async function POST(request: Request) {
 
     // Validation
     if (!member_id) return NextResponse.json({ error: 'Member is required' }, { status: 400 });
+    const extraAmount = Number(extra_amount || 0);
+    if (!Number.isFinite(extraAmount) || extraAmount < 0) return NextResponse.json({ error: 'Extra Amount cannot be negative' }, { status: 400 });
     if (!amount || amount <= 0) return NextResponse.json({ error: 'Amount must be positive' }, { status: 400 });
     if (!date) return NextResponse.json({ error: 'Date is required' }, { status: 400 });
     if (!method) return NextResponse.json({ error: 'Method is required' }, { status: 400 });
@@ -114,6 +118,7 @@ export async function POST(request: Request) {
     const { data, error } = await adminClient.rpc('save_payment_entry', {
       p_member_id: member_id,
       p_amount: amount,
+      p_extra_amount: extraAmount,
       p_date: date,
       p_method: method,
       p_receipt_no: receipt_no || null,
