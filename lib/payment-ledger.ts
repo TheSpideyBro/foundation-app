@@ -13,6 +13,19 @@ export type LedgerDonation = {
   receipt_no?: string | null;
   donation_month?: string | null;
   donation_end_month?: string | null;
+  coverage_start_month?: string | null;
+  coverage_end_month?: string | null;
+  note?: string | null;
+};
+
+export type PaymentAllocation = {
+  id?: string;
+  payment_id: string;
+  member_id?: string | null;
+  month: string | null;
+  amount: number;
+  allocation_type: 'pledge' | 'advance' | 'unallocated';
+  note?: string | null;
 };
 
 export type LedgerMonth = {
@@ -20,6 +33,7 @@ export type LedgerMonth = {
   expected: number;
   paid: number;
   remaining: number;
+  unallocated: number;
   status: "paid" | "partial" | "due" | "overpaid";
   donations: LedgerDonation[];
 };
@@ -28,6 +42,12 @@ export type MonthlyCoverageSummary = {
   month: string;
   target_amount: number;
   collected_amount: number;
+};
+
+export type AllocationResult = {
+  allocations: Array<{ month: string | null; amount: number; allocationType: 'pledge' | 'advance' | 'unallocated' }>;
+  allocatedAmount: number;
+  unallocatedAmount: number;
 };
 
 export function monthRange(start: string, end = start): string[] {
@@ -47,11 +67,19 @@ export function monthRange(start: string, end = start): string[] {
   return result;
 }
 
+/**
+ * Determine the coverage month range for a donation.
+ * Prefers explicit coverage_start_month/coverage_end_month, falls back to
+ * donation_month/donation_end_month.
+ */
+export function getCoverageMonths(donation: LedgerDonation): string[] {
+  const start = donation.coverage_start_month || donation.donation_month || donation.date;
+  const end = donation.coverage_end_month || donation.donation_end_month || start;
+  return monthRange(start, end);
+}
+
 export function donationMonths(donation: LedgerDonation): string[] {
-  return monthRange(
-    donation.donation_month || donation.date,
-    donation.donation_end_month || donation.donation_month || donation.date,
-  );
+  return getCoverageMonths(donation);
 }
 
 export function resolvePledgeForMonth(
@@ -77,6 +105,80 @@ export function pledgeBreakdown(
   }));
 }
 
+/**
+ * Canonical allocation engine.
+ *
+ * Given a payment amount and coverage range, calculates how much of the
+ * payment is allocated to each month and what remains unallocated.
+ *
+ * - Each month gets up to its effective pledge amount (from history or fallback).
+ * - Any leftover after all covered months is marked 'unallocated'.
+ * - The total allocated + unallocated equals the payment amount.
+ * - No silent auto-advance: excess is NEVER pushed to a future month.
+ */
+export function calculatePaymentAllocation(
+  paymentAmount: number,
+  coverageStart: string,
+  coverageEnd: string,
+  monthlyPledge: number | string | null | undefined,
+  pledgeHistory: PledgeHistoryEntry[] = [],
+): AllocationResult {
+  // Clamp to zero — negative amounts are invalid
+  const clampedAmount = Math.max(0, paymentAmount);
+  const months = monthRange(coverageStart, coverageEnd);
+  if (months.length === 0) {
+    return {
+      allocations: [],
+      allocatedAmount: 0,
+      unallocatedAmount: 0,
+    };
+  }
+
+  const allocations: AllocationResult['allocations'] = [];
+  let remaining = clampedAmount;
+  let allocatedTotal = 0;
+
+  for (const month of months) {
+    const pledge = resolvePledgeForMonth(month, monthlyPledge, pledgeHistory);
+    const allocated = Math.min(remaining, Math.max(0, pledge));
+    remaining -= allocated;
+    allocatedTotal += allocated;
+
+    if (allocated > 0) {
+      allocations.push({
+        month,
+        amount: allocated,
+        allocationType: 'pledge' as const,
+      });
+    }
+  }
+
+  // Any remaining amount after all covered months
+  if (remaining > 0) {
+    allocations.push({
+      month: null,
+      amount: remaining,
+      allocationType: 'unallocated' as const,
+    });
+  }
+
+  return {
+    allocations,
+    allocatedAmount: allocatedTotal,
+    unallocatedAmount: remaining,
+  };
+}
+
+/**
+ * Build a member ledger from donations.
+ *
+ * If the donations have coverage_start_month / coverage_end_month fields,
+ * each donation is allocated using calculatePaymentAllocation() so that
+ * extra cash never silently advances into future months.
+ *
+ * Falls back to the old per-donation allocation for legacy records without
+ * coverage fields.
+ */
 export function buildMemberLedger(
   donations: LedgerDonation[],
   monthlyPledge: number | string,
@@ -86,45 +188,89 @@ export function buildMemberLedger(
 ): LedgerMonth[] {
   const requestedMonths = monthRange(startMonth, endMonth);
   if (!requestedMonths.length) return [];
-  const allDonationMonths = donations.flatMap(donationMonths);
-  const calculationStart = allDonationMonths.length ? ([startMonth, ...allDonationMonths].sort()[0]) : startMonth;
-  const calculationEnd = allDonationMonths.length ? ([endMonth, ...allDonationMonths].sort().at(-1) || endMonth) : endMonth;
+
+  const allDonationMonths = donations.flatMap(d => getCoverageMonths(d));
+  const calculationStart = allDonationMonths.length
+    ? ([startMonth, ...allDonationMonths].sort()[0])
+    : startMonth;
+  const calculationEnd = allDonationMonths.length
+    ? ([endMonth, ...allDonationMonths].sort().at(-1) || endMonth)
+    : endMonth;
   const months = monthRange(calculationStart, calculationEnd);
+
   const ledger = months.map((month) => {
     const expected = resolvePledgeForMonth(month, monthlyPledge, pledgeHistory);
-    return { month, expected, paid: 0, remaining: expected, status: "due" as const, donations: [] as LedgerDonation[] };
+    return { month, expected, paid: 0, remaining: expected, unallocated: 0, status: "due" as const, donations: [] as LedgerDonation[] };
   });
   const byMonth = new Map(ledger.map((row) => [row.month, row]));
+
+  // Track which donations we've already processed per month to avoid double-counting
+  const processedDonationMonths = new Map<string, Set<string>>(); // month -> Set of donation ids
+
   [...donations]
     .sort((a, b) => String(a.date).localeCompare(String(b.date)))
     .forEach((donation) => {
-      let remaining = Number(donation.amount) || 0;
-      const coveredMonths = donationMonths(donation).filter((month) => byMonth.has(month));
-      coveredMonths.forEach((month) => {
-        const row = byMonth.get(month);
-        if (!row || remaining <= 0) return;
-        const allocation = Math.min(remaining, Math.max(0, row.expected - row.paid));
-        if (allocation > 0) {
-          row.paid += allocation;
-          row.donations.push(donation);
-          remaining -= allocation;
-        }
-      });
-      if (remaining > 0 && coveredMonths.length) {
-        const lastRow = byMonth.get(coveredMonths[coveredMonths.length - 1]);
-        if (lastRow) {
-          lastRow.paid += remaining;
-          if (!lastRow.donations.some((item) => item.id === donation.id)) lastRow.donations.push(donation);
+      const donationId = donation.id;
+      const coveredMonths = getCoverageMonths(donation).filter((m) => byMonth.has(m));
+      if (coveredMonths.length === 0) return;
+
+      const existingProcessed = processedDonationMonths.get(coveredMonths[0]) || new Set();
+
+      // Check if this donation was already partially/fully processed via the
+      // old allocation path (for legacy compatibility). Skip if fully processed.
+      if (existingProcessed.has(donationId)) return;
+
+      const paymentAmount = Number(donation.amount) || 0;
+      if (paymentAmount <= 0) return;
+
+      // Use canonical allocation: each month gets its pledge, leftovers go to unallocated
+      const allocation = calculatePaymentAllocation(
+        paymentAmount,
+        coveredMonths[0],
+        coveredMonths[coveredMonths.length - 1],
+        monthlyPledge,
+        pledgeHistory,
+      );
+
+      // Track processed
+      if (!processedDonationMonths.has(coveredMonths[0])) {
+        processedDonationMonths.set(coveredMonths[0], new Set());
+      }
+      processedDonationMonths.get(coveredMonths[0])!.add(donationId);
+
+      for (const alloc of allocation.allocations) {
+        if (alloc.month === null) {
+          // Unallocated — attach to last covered month's unallocated bucket
+          const lastRow = byMonth.get(coveredMonths[coveredMonths.length - 1]);
+          if (lastRow) {
+            lastRow.unallocated += alloc.amount;
+            if (!lastRow.donations.some((item) => item.id === donationId)) {
+              lastRow.donations.push(donation);
+            }
+          }
+        } else {
+          const row = byMonth.get(alloc.month);
+          if (!row) continue;
+          // Only allocate what hasn't already been covered by this month
+          const available = Math.max(0, row.expected - row.paid);
+          const actual = Math.min(alloc.amount, available);
+          if (actual > 0) {
+            row.paid += actual;
+            if (!row.donations.some((item) => item.id === donationId)) {
+              row.donations.push(donation);
+            }
+          }
         }
       }
     });
+
   const requested = new Set(requestedMonths);
   return ledger
     .filter((row) => requested.has(row.month))
     .map((row) => ({
       ...row,
       remaining: Math.max(0, row.expected - row.paid),
-      status: row.paid > row.expected
+      status: row.unallocated > 0 || row.paid > row.expected
         ? "overpaid"
         : row.paid === row.expected && row.expected > 0
           ? "paid"
@@ -132,6 +278,125 @@ export function buildMemberLedger(
             ? "partial"
             : "due",
     }));
+}
+
+/**
+ * Build a member ledger from PERSISTED payment_allocations.
+ *
+ * This is the preferred path: the `payment_allocations` table is the single
+ * source of truth for monthly collected amounts, so reports and ledgers should
+ * read from it directly and the UI, ledger, and database never disagree.
+ *
+ * - 'pledge' and 'advance' allocations with a concrete month count as `paid`.
+ * - 'unallocated' allocations (month === null) are surfaced as extra cash on
+ *   the donation's last covered month within the requested window — never
+ *   counted as paid and never advanced into a future month.
+ *
+ * Legacy fallback (clearly isolated per §52 of the spec): any donation that has
+ * NOT been backfilled into `payment_allocations` yet is allocated on the fly
+ * with the same canonical engine (`calculatePaymentAllocation`). This keeps the
+ * ledger correct during the transition window before `backfill_payment_allocations()`
+ * has run, without maintaining a second accounting rule. Once every donation is
+ * backfilled, this branch is never exercised.
+ *
+ * `donations` resolves each allocation's coverage window, attaches the
+ * underlying donation record to its ledger rows, and drives the fallback.
+ */
+export function buildMemberLedgerFromAllocations(
+  allocations: PaymentAllocation[],
+  donations: LedgerDonation[],
+  monthlyPledge: number | string,
+  startMonth: string,
+  endMonth: string,
+  pledgeHistory: PledgeHistoryEntry[] = [],
+): LedgerMonth[] {
+  const requestedMonths = monthRange(startMonth, endMonth);
+  if (!requestedMonths.length) return [];
+
+  const donationById = new Map(donations.map((d) => [d.id, d]));
+
+  const ledger = requestedMonths.map((month) => {
+    const expected = resolvePledgeForMonth(month, monthlyPledge, pledgeHistory);
+    return { month, expected, paid: 0, remaining: expected, unallocated: 0, status: "due" as const, donations: [] as LedgerDonation[] };
+  });
+  const byMonth = new Map(ledger.map((row) => [row.month, row]));
+
+  const attachDonation = (row: LedgerMonth, paymentId: string) => {
+    const donation = donationById.get(paymentId);
+    if (donation && !row.donations.some((item) => item.id === paymentId)) {
+      row.donations.push(donation);
+    }
+  };
+
+  const applyExtra = (paymentId: string, amount: number, month: string | null) => {
+    const donation = donationById.get(paymentId);
+    const covered = donation ? getCoverageMonths(donation).filter((m) => byMonth.has(m)) : [];
+    const targetMonth = month && byMonth.has(month) ? month : covered[covered.length - 1];
+    const row = targetMonth ? byMonth.get(targetMonth) : undefined;
+    if (row) {
+      row.unallocated += amount;
+      attachDonation(row, paymentId);
+    }
+  };
+
+  // 1. Persisted allocations — the source of truth.
+  const backfilledPaymentIds = new Set<string>();
+  for (const alloc of allocations) {
+    backfilledPaymentIds.add(alloc.payment_id);
+    const amount = Number(alloc.amount) || 0;
+    if (amount <= 0) continue;
+
+    if (alloc.allocation_type === "unallocated" || alloc.month === null) {
+      applyExtra(alloc.payment_id, amount, alloc.month);
+      continue;
+    }
+
+    // 'pledge' / 'advance' — real coverage for a concrete month
+    const row = byMonth.get(alloc.month);
+    if (!row) continue;
+    row.paid += amount;
+    attachDonation(row, alloc.payment_id);
+  }
+
+  // 2. Legacy fallback — donations not yet in payment_allocations.
+  for (const donation of donations) {
+    if (backfilledPaymentIds.has(donation.id)) continue;
+    const paymentAmount = Number(donation.amount) || 0;
+    if (paymentAmount <= 0) continue;
+
+    const covered = getCoverageMonths(donation);
+    if (!covered.length) continue;
+
+    const result = calculatePaymentAllocation(
+      paymentAmount,
+      covered[0],
+      covered[covered.length - 1],
+      monthlyPledge,
+      pledgeHistory,
+    );
+    for (const alloc of result.allocations) {
+      if (alloc.month === null) {
+        applyExtra(donation.id, alloc.amount, null);
+      } else {
+        const row = byMonth.get(alloc.month);
+        if (!row) continue;
+        row.paid += alloc.amount;
+        attachDonation(row, donation.id);
+      }
+    }
+  }
+
+  return ledger.map((row) => ({
+    ...row,
+    remaining: Math.max(0, row.expected - row.paid),
+    status: row.unallocated > 0 || row.paid > row.expected
+      ? "overpaid"
+      : row.paid === row.expected && row.expected > 0
+        ? "paid"
+        : row.paid > 0
+          ? "partial"
+          : "due",
+  }));
 }
 
 export function buildMonthlyCoverageSummary(
