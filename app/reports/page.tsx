@@ -5,13 +5,13 @@ import { BarChart3, Calendar, Download, FileText, Filter, RefreshCw, Search, Wal
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
-import { donationMonths, type LedgerDonation } from "@/lib/payment-ledger";
+import { buildMemberLedgerFromAllocations, donationMonths, type LedgerDonation, type PledgeHistoryEntry, type PaymentAllocation } from "@/lib/payment-ledger";
 
 type Period = "monthly" | "yearly" | "total";
 type Row = Record<string, any>;
 type ReportStats = { target: number; collected: number; due: number; expense: number; members: number; balance: number; rate: number };
 type CollectorRow = Row & { id: string; name: string; role: string; count: number; amount: number };
-type PaidMemberRow = { id: string; name: string; payments: Row[]; receivedAmount: number; countedAmount: number; status: string };
+type PaidMemberRow = { id: string; name: string; payments: Row[]; receivedAmount: number; coveredAmount: number; unallocatedAmount: number; status: string };
 
 const money = (value: number) => `৳${Math.round(value || 0).toLocaleString("bn-BD")}`;
 const monthLabel = (value: string) => new Date(`${value}-01T00:00:00`).toLocaleDateString("bn-BD", { month: "short", year: "numeric" });
@@ -31,22 +31,31 @@ export default function ReportsPage() {
   const [expenses, setExpenses] = useState<Row[]>([]);
   const [members, setMembers] = useState<Row[]>([]);
   const [collectors, setCollectors] = useState<Row[]>([]);
+  const [pledgeHistory, setPledgeHistory] = useState<PledgeHistoryEntry[]>([]);
+  const [allocations, setAllocations] = useState<PaymentAllocation[]>([]);
 
   useEffect(() => { fetchReportData(); }, []);
 
   async function fetchReportData() {
     setLoading(true); setError(null);
     try {
-      const [{ data: summary, error: summaryError }, { data: donationData, error: donationError }, { data: expenseData, error: expenseError }, { data: memberData, error: memberError }, { data: collectorData }] = await Promise.all([
+      const [{ data: summary, error: summaryError }, { data: donationData, error: donationError }, { data: expenseData, error: expenseError }, { data: memberData, error: memberError }, { data: collectorData }, { data: pledgeHistoryData, error: pledgeHistoryError }, { data: allocationData, error: allocationError }] = await Promise.all([
         supabase().from("monthly_collection_summary").select("month, target_amount, collected_amount, due_amount, collection_rate, active_members, expense_amount, net_balance").order("month", { ascending: true }),
-        supabase().from("donations").select("id, member_id, amount, date, donation_month, donation_end_month, receipt_no, method, collected_by, members(name, phone)").order("date", { ascending: false }),
+        supabase().from("donations").select("id, member_id, amount, date, donation_month, donation_end_month, coverage_start_month, coverage_end_month, note, receipt_no, method, collected_by, members(name, phone)").order("date", { ascending: false }),
         supabase().from("expenses").select("id, amount, date, category, description").order("date", { ascending: false }),
         supabase().from("members").select("id, name, phone, status, monthly_pledge, join_date").order("name"),
         supabase().from("users").select("id, name, role").in("role", ["admin", "treasurer"]),
+        supabase().from("member_pledge_history").select("member_id, monthly_amount, effective_from_month").order("effective_from_month", { ascending: true }),
+        supabase().from("payment_allocations").select("id, payment_id, member_id, month, amount, allocation_type"),
       ]);
       if (summaryError || donationError || expenseError || memberError) throw summaryError || donationError || expenseError || memberError;
       setMonthlyRows(summary || []);
       setDonations(donationData || []); setExpenses(expenseData || []); setMembers(memberData || []); setCollectors(collectorData || []);
+      if (pledgeHistoryError) console.warn("Pledge history unavailable for reports:", pledgeHistoryError.message);
+      setPledgeHistory((pledgeHistoryData || []) as PledgeHistoryEntry[]);
+      // payment_allocations is the source of truth; tolerate its absence (pre-migration) via canonical fallback.
+      if (allocationError) console.warn("payment_allocations unavailable, using canonical fallback:", allocationError.message);
+      setAllocations((allocationData || []) as PaymentAllocation[]);
     } catch (err) { setError(err instanceof Error ? err.message : "রিপোর্ট লোড করা যায়নি"); }
     finally { setLoading(false); }
   }
@@ -90,34 +99,132 @@ export default function ReportsPage() {
     return Array.from(values).sort().map((value) => ({ value, label: `${value.slice(0, 4)}-${new Date(`${value}-01T00:00:00`).toLocaleDateString("en-US", { month: "short" })}` }));
   }, [monthlyRows, donations]);
   const paidMemberRows = useMemo<PaidMemberRow[]>(() => {
-    const covered = donations.filter((donation) => {
-      const months = donationMonths(donation as LedgerDonation);
-      // The name list is based on the selected month's covered dues, not when the entry was added or received.
-      const coveredInPeriod = period === "monthly" ? months.includes(paidMemberMonth) : period === "yearly" ? months.some((month) => month.startsWith(selectedYear)) : months.length > 0;
-      return coveredInPeriod;
-    });
     const unique = new Map<string, Row>();
-    covered.forEach((donation) => {
+
+    donations.forEach((donation) => {
       const memberId = String(donation.member_id);
       const member = donation.members || { id: memberId, name: "অজ্ঞাত সদস্য" };
       const current = unique.get(memberId);
       if (current) current.payments.push(donation);
-      else unique.set(memberId, { id: memberId, name: member.name || "অজ্ঞাত সদস্য", payments: [donation] });
+      else unique.set(memberId, {
+        id: memberId,
+        name: member.name || "অজ্ঞাত সদস্য",
+        payments: [donation],
+      });
     });
+
     return Array.from(unique.values()).map((member) => {
       const payments = member.payments as Row[];
-      const receivedAmount = payments.reduce((sum, donation) => sum + Number(donation.amount || 0), 0);
-      const countedAmount = payments.filter((donation) => {
-        const receivedMonth = String(donation.date || "").slice(0, 7);
-        return period === "total" || (period === "monthly" ? receivedMonth === paidMemberMonth : receivedMonth.startsWith(selectedYear));
-      }).reduce((sum, donation) => sum + Number(donation.amount || 0), 0);
-      const isAdvance = payments.some((donation) => period === "monthly" && donationMonths(donation as LedgerDonation).includes(paidMemberMonth) && String(donation.date || "").slice(0, 7) < paidMemberMonth);
-      return { id: String(member.id), name: String(member.name || "অজ্ঞাত সদস্য"), payments, receivedAmount, countedAmount, status: isAdvance ? "Advance Paid" : "Paid" };
-    }).filter((member) => !search || String(member.name || "").toLowerCase().includes(search.toLowerCase())).sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "bn"));
-  }, [donations, period, paidMemberMonth, selectedYear, search, periodStart, periodEnd]);
+      const memberRecord = members.find((item) => String(item.id) === String(member.id));
+      const history = pledgeHistory.filter(
+        (entry) => String(entry.member_id) === String(member.id),
+      );
+
+      const coverageMonths = payments
+        .flatMap((donation) => donationMonths(donation as LedgerDonation))
+        .sort();
+
+      const calculationStart =
+        period === "monthly"
+          ? paidMemberMonth
+          : period === "yearly"
+            ? `${selectedYear}-01`
+            : coverageMonths[0];
+
+      const calculationEnd =
+        period === "monthly"
+          ? paidMemberMonth
+          : period === "yearly"
+            ? `${selectedYear}-12`
+            : coverageMonths[coverageMonths.length - 1];
+
+      const memberAllocations = allocations.filter(
+        (entry) => String(entry.member_id) === String(member.id),
+      );
+
+      const ledger =
+        calculationStart &&
+        calculationEnd &&
+        calculationStart <= calculationEnd
+          ? buildMemberLedgerFromAllocations(
+              memberAllocations,
+              payments as LedgerDonation[],
+              Number(memberRecord?.monthly_pledge || 0),
+              calculationStart,
+              calculationEnd,
+              history,
+            )
+          : [];
+
+      const reportRows = ledger.filter((row) =>
+        period === "monthly"
+          ? row.month === paidMemberMonth
+          : period === "yearly"
+            ? row.month.startsWith(selectedYear)
+            : true,
+      );
+
+      const coveredAmount = reportRows.reduce(
+        (sum, row) => sum + Number(row.paid || 0),
+        0,
+      );
+
+      const unallocatedAmount = reportRows.reduce(
+        (sum, row) => sum + Number(row.unallocated || 0),
+        0,
+      );
+
+      const receivedAmount = payments
+        .filter((donation) => {
+          const receivedMonth = String(donation.date || "").slice(0, 7);
+          return (
+            period === "total" ||
+            (period === "monthly"
+              ? receivedMonth === paidMemberMonth
+              : receivedMonth.startsWith(selectedYear))
+          );
+        })
+        .reduce((sum, donation) => sum + Number(donation.amount || 0), 0);
+
+      const isAdvance =
+        period === "monthly" &&
+        coveredAmount > 0 &&
+        payments.some(
+          (donation) =>
+            donationMonths(donation as LedgerDonation).includes(paidMemberMonth) &&
+            String(donation.date || "").slice(0, 7) < paidMemberMonth,
+        );
+
+      return {
+        id: String(member.id),
+        name: String(member.name || "অজ্ঞাত সদস্য"),
+        payments,
+        receivedAmount,
+        coveredAmount,
+        unallocatedAmount,
+        status:
+          isAdvance
+            ? "Advance Paid"
+            : unallocatedAmount > 0
+              ? "Paid + Extra"
+              : "Paid",
+      };
+    })
+      .filter((member) => member.coveredAmount > 0)
+      .filter(
+        (member) =>
+          !search ||
+          String(member.name || "")
+            .toLowerCase()
+            .includes(search.toLowerCase()),
+      )
+      .sort((a, b) =>
+        String(a.name || "").localeCompare(String(b.name || ""), "bn"),
+      );
+  }, [donations, members, pledgeHistory, allocations, period, paidMemberMonth, selectedYear, search]);
 
   function exportExcel() {
-    const rows = activeTab === "paid-members" ? paidMemberRows.map((m) => ({ name: m.name })) : activeTab === "donations" ? filteredDonations.map((d) => ({ receipt: d.receipt_no, member: d.members?.name, amount: d.amount, date: d.date, month: d.donation_month, method: d.method })) : activeTab === "expenses" ? filteredExpenses.map((e) => ({ date: e.date, category: e.category, description: e.description, amount: e.amount })) : activeTab === "members" ? filteredMembers.map((m) => ({ name: m.name, phone: m.phone, status: m.status, monthly_pledge: m.monthly_pledge })) : collectorRows.map((r) => ({ name: r.name, role: r.role, count: r.count, amount: r.amount }));
+    const rows = activeTab === "paid-members" ? paidMemberRows.map((m) => ({ name: m.name, cashReceived: m.receivedAmount, allocated: m.coveredAmount, unallocated: m.unallocatedAmount, status: m.status })) : activeTab === "donations" ? filteredDonations.map((d) => ({ receipt: d.receipt_no, member: d.members?.name, amount: d.amount, date: d.date, month: d.donation_month, method: d.method })) : activeTab === "expenses" ? filteredExpenses.map((e) => ({ date: e.date, category: e.category, description: e.description, amount: e.amount })) : activeTab === "members" ? filteredMembers.map((m) => ({ name: m.name, phone: m.phone, status: m.status, monthly_pledge: m.monthly_pledge })) : collectorRows.map((r) => ({ name: r.name, role: r.role, count: r.count, amount: r.amount }));
     const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), activeTab); XLSX.writeFile(workbook, `foundation-report-${period}-${activeTab}.xlsx`);
   }
 
@@ -128,7 +235,7 @@ export default function ReportsPage() {
   }
 
   function exportCsv() {
-    const rows = activeTab === "paid-members" ? paidMemberRows.map((m) => [m.name]) : activeTab === "donations" ? filteredDonations.map((d) => [d.receipt_no, d.members?.name, d.amount, d.date, d.donation_month, d.method]) : activeTab === "expenses" ? filteredExpenses.map((e) => [e.date, e.category, e.description, e.amount]) : activeTab === "members" ? filteredMembers.map((m) => [m.name, m.phone, m.status, m.monthly_pledge]) : collectorRows.map((r) => [r.name, r.role, r.count, r.amount]);
+    const rows = activeTab === "paid-members" ? paidMemberRows.map((m) => [m.name, m.receivedAmount, m.coveredAmount, m.unallocatedAmount, m.status]) : activeTab === "donations" ? filteredDonations.map((d) => [d.receipt_no, d.members?.name, d.amount, d.date, d.donation_month, d.method]) : activeTab === "expenses" ? filteredExpenses.map((e) => [e.date, e.category, e.description, e.amount]) : activeTab === "members" ? filteredMembers.map((m) => [m.name, m.phone, m.status, m.monthly_pledge]) : collectorRows.map((r) => [r.name, r.role, r.count, r.amount]);
     const csv = rows.map((row) => row.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `foundation-report-${period}-${activeTab}.csv`; link.click(); URL.revokeObjectURL(url);
@@ -141,6 +248,6 @@ export default function ReportsPage() {
     <div className="card-premium p-4 flex flex-wrap items-center gap-3"><label className="text-sm font-bold text-gray-600">সময়কাল</label><select value={period} onChange={(e) => setPeriod(e.target.value as Period)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold"><option value="monthly">মাসিক</option><option value="yearly">বাৎসরিক</option><option value="total">সর্বমোট</option></select>{period === "monthly" ? <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold">{monthOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : period === "yearly" ? <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold">{Array.from({ length: 8 }, (_, i) => String(new Date().getFullYear() - i)).map((year) => <option key={year}>{year}</option>)}</select> : <span className="text-sm font-bold text-gray-500">Foundation শুরু থেকে বর্তমান</span>}{activeTab === "paid-members" && <label className="flex items-center gap-2 text-sm font-bold text-emerald-700">Paid member মাস<select value={paidMemberMonth} onChange={(e) => setPaidMemberMonth(e.target.value)} className="rounded-xl border border-emerald-200 px-3 py-2 font-bold">{monthOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>}</div>
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">{[["সংগ্রহ", stats.collected, "text-emerald-600"],["ব্যয়", stats.expense, "text-rose-600"],["নেট ব্যালেন্স", stats.balance, "text-blue-600"],["বকেয়া", stats.due, "text-amber-600"],["সংগ্রহের হার", stats.rate, "text-violet-600"]].map(([label, value, color]) => <div key={String(label)} className="card-premium p-5"><p className="text-xs font-bold text-gray-400 mb-2">{label}</p><p className={`text-2xl font-black ${color}`}>{label === "সংগ্রহের হার" ? `${value}%` : money(Number(value))}</p></div>)}</div>
     <div className="card-premium p-6"><div className="flex items-center gap-2 mb-5"><BarChart3 className="text-emerald-600" /><div><h2 className="font-bold text-gray-900">সংগ্রহ বনাম লক্ষ্য</h2><p className="text-xs text-gray-400">নির্বাচিত সময়কালের month-wise collection</p></div></div><div className="space-y-3">{chartRows.length ? chartRows.map((row) => <div key={row.month}><div className="flex justify-between text-xs font-bold mb-1"><span>{monthLabel(row.month.slice(0, 7))}</span><span>{money(Number(row.collected_amount))} / {money(Number(row.target_amount))}</span></div><div className="h-3 rounded-full bg-gray-100 overflow-hidden"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Number(row.target_amount) ? Number(row.collected_amount) / Number(row.target_amount) * 100 : 0)}%` }} /></div></div>) : <p className="py-8 text-center text-sm text-gray-400">এই সময়কালে কোনো collection data নেই</p>}</div></div>
-    <div className="card-premium overflow-hidden"><div className="p-5 flex flex-col md:flex-row gap-3 justify-between"><label className="flex items-center gap-3 text-sm font-bold text-gray-600">রিপোর্টের ধরন<select value={activeTab} onChange={(e) => setActiveTab(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold"><option value="donations">জমা রিপোর্ট</option><option value="expenses">ব্যয় রিপোর্ট</option><option value="members">সদস্য রিপোর্ট</option><option value="collectors">আদায়কারী রিপোর্ট</option><option value="paid-members">এই মাসে যারা দিয়েছেন</option></select></label><div className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm" /></div></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50 text-gray-500"><tr>{activeTab === "paid-members" ? <><th>সদস্যের নাম</th></> : activeTab === "donations" ? <><th>রসিদ</th><th>সদস্য</th><th>তারিখ</th><th>মাস</th><th>পদ্ধতি</th><th className="text-right">পরিমাণ</th></> : activeTab === "expenses" ? <><th>তারিখ</th><th>খাত</th><th>বিবরণ</th><th className="text-right">পরিমাণ</th></> : activeTab === "members" ? <><th>সদস্য</th><th>ফোন</th><th>স্ট্যাটাস</th><th className="text-right">মাসিক pledge</th></> : <><th>নাম</th><th>Role</th><th className="text-right">জমা সংখ্যা</th><th className="text-right">মোট সংগ্রহ</th></>}</tr></thead><tbody>{activeTab === "paid-members" ? paidMemberRows.map((member) => <Fragment key={member.id || member.name}><tr className="border-t border-gray-100"><td className="p-0"><button type="button" onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full flex items-center justify-between gap-3 p-3 text-left font-bold hover:bg-emerald-50/50"><span>{member.name}</span><span className="text-gray-400">{expandedMember === member.id ? "⌃" : "⌄"}</span></button></td></tr>{expandedMember === member.id && <tr className="bg-emerald-50/30"><td className="p-4"><div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs"><div><p className="text-gray-400">Received Amount</p><p className="font-bold text-gray-900">{money(member.receivedAmount)}</p></div><div><p className="text-gray-400">Covered Month</p><p className="font-bold text-gray-900">{member.payments.map((payment: Row) => `${payment.donation_month || "—"}${payment.donation_end_month ? ` – ${payment.donation_end_month}` : ""}`).join(", ")}</p></div><div><p className="text-gray-400">Selected Report Month</p><p className="font-bold text-gray-900">{period === "monthly" ? (activeTab === "paid-members" ? paidMemberMonth : selectedMonth) : period === "yearly" ? selectedYear : "Total"}</p></div><div><p className="text-gray-400">Counted Amount</p><p className="font-bold text-emerald-700">{money(member.countedAmount)}</p></div><div><p className="text-gray-400">Status</p><p className="font-bold text-amber-700">{member.status}</p></div></div></td></tr>}</Fragment>) : activeTab === "donations" ? filteredDonations.map((d) => <tr key={d.id} className="border-t border-gray-100"><td className="p-3 font-bold">#{d.receipt_no}</td><td className="p-3">{d.members?.name || "—"}</td><td className="p-3">{d.date}</td><td className="p-3">{d.donation_month}{d.donation_end_month && ` – ${d.donation_end_month}`}</td><td className="p-3">{d.method}</td><td className="p-3 text-right font-bold">{money(Number(d.amount))}</td></tr>) : activeTab === "expenses" ? filteredExpenses.map((e) => <tr key={e.id} className="border-t border-gray-100"><td className="p-3">{e.date}</td><td className="p-3">{e.category || "অন্যান্য"}</td><td className="p-3">{e.description || "—"}</td><td className="p-3 text-right font-bold">{money(Number(e.amount))}</td></tr>) : activeTab === "members" ? filteredMembers.map((m) => <tr key={m.id} className="border-t border-gray-100"><td className="p-3 font-bold">{m.name}</td><td className="p-3">{m.phone || "—"}</td><td className="p-3">{m.status}</td><td className="p-3 text-right">{money(Number(m.monthly_pledge))}</td></tr>) : collectorRows.map((r) => <tr key={r.id} className="border-t border-gray-100"><td className="p-3 font-bold">{r.name}</td><td className="p-3">{r.role}</td><td className="p-3 text-right">{r.count}</td><td className="p-3 text-right font-bold">{money(r.amount)}</td></tr>)}</tbody></table>{((activeTab === "paid-members" && !paidMemberRows.length) || (activeTab === "donations" && !filteredDonations.length) || (activeTab === "expenses" && !filteredExpenses.length) || (activeTab === "members" && !filteredMembers.length) || (activeTab === "collectors" && !collectorRows.length)) && <div className="p-10 text-center text-gray-400">কোনো তথ্য পাওয়া যায়নি</div>}</div></div>
+    <div className="card-premium overflow-hidden"><div className="p-5 flex flex-col md:flex-row gap-3 justify-between"><label className="flex items-center gap-3 text-sm font-bold text-gray-600">রিপোর্টের ধরন<select value={activeTab} onChange={(e) => setActiveTab(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold"><option value="donations">জমা রিপোর্ট</option><option value="expenses">ব্যয় রিপোর্ট</option><option value="members">সদস্য রিপোর্ট</option><option value="collectors">আদায়কারী রিপোর্ট</option><option value="paid-members">এই মাসে যারা দিয়েছেন</option></select></label><div className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm" /></div></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50 text-gray-500"><tr>{activeTab === "paid-members" ? <><th>সদস্যের নাম</th></> : activeTab === "donations" ? <><th>রসিদ</th><th>সদস্য</th><th>তারিখ</th><th>মাস</th><th>পদ্ধতি</th><th className="text-right">পরিমাণ</th></> : activeTab === "expenses" ? <><th>তারিখ</th><th>খাত</th><th>বিবরণ</th><th className="text-right">পরিমাণ</th></> : activeTab === "members" ? <><th>সদস্য</th><th>ফোন</th><th>স্ট্যাটাস</th><th className="text-right">মাসিক pledge</th></> : <><th>নাম</th><th>Role</th><th className="text-right">জমা সংখ্যা</th><th className="text-right">মোট সংগ্রহ</th></>}</tr></thead><tbody>{activeTab === "paid-members" ? paidMemberRows.map((member) => <Fragment key={member.id || member.name}><tr className="border-t border-gray-100"><td className="p-0"><button type="button" onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full flex items-center justify-between gap-3 p-3 text-left font-bold hover:bg-emerald-50/50"><span>{member.name}</span><span className="text-gray-400">{expandedMember === member.id ? "⌃" : "⌄"}</span></button></td></tr>{expandedMember === member.id && <tr className="bg-emerald-50/30"><td className="p-4"><div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs"><div><p className="text-gray-400">Cash Received</p><p className="font-bold text-gray-900">{money(member.receivedAmount)}</p></div><div><p className="text-gray-400">Covered Month</p><p className="font-bold text-gray-900">{member.payments.map((payment: Row) => `${payment.donation_month || "—"}${payment.donation_end_month ? ` – ${payment.donation_end_month}` : ""}`).join(", ")}</p></div><div><p className="text-gray-400">Selected Report Month</p><p className="font-bold text-gray-900">{period === "monthly" ? (activeTab === "paid-members" ? paidMemberMonth : selectedMonth) : period === "yearly" ? selectedYear : "Total"}</p></div><div><p className="text-gray-400">Allocated for Report Period</p><p className="font-bold text-emerald-700">{money(member.coveredAmount)}</p></div><div><p className="text-gray-400">Unallocated / Extra</p><p className="font-bold text-amber-700">{money(member.unallocatedAmount)}</p></div></div></td></tr>}</Fragment>) : activeTab === "donations" ? filteredDonations.map((d) => <tr key={d.id} className="border-t border-gray-100"><td className="p-3 font-bold">#{d.receipt_no}</td><td className="p-3">{d.members?.name || "—"}</td><td className="p-3">{d.date}</td><td className="p-3">{d.donation_month}{d.donation_end_month && ` – ${d.donation_end_month}`}</td><td className="p-3">{d.method}</td><td className="p-3 text-right font-bold">{money(Number(d.amount))}</td></tr>) : activeTab === "expenses" ? filteredExpenses.map((e) => <tr key={e.id} className="border-t border-gray-100"><td className="p-3">{e.date}</td><td className="p-3">{e.category || "অন্যান্য"}</td><td className="p-3">{e.description || "—"}</td><td className="p-3 text-right font-bold">{money(Number(e.amount))}</td></tr>) : activeTab === "members" ? filteredMembers.map((m) => <tr key={m.id} className="border-t border-gray-100"><td className="p-3 font-bold">{m.name}</td><td className="p-3">{m.phone || "—"}</td><td className="p-3">{m.status}</td><td className="p-3 text-right">{money(Number(m.monthly_pledge))}</td></tr>) : collectorRows.map((r) => <tr key={r.id} className="border-t border-gray-100"><td className="p-3 font-bold">{r.name}</td><td className="p-3">{r.role}</td><td className="p-3 text-right">{r.count}</td><td className="p-3 text-right font-bold">{money(r.amount)}</td></tr>)}</tbody></table>{((activeTab === "paid-members" && !paidMemberRows.length) || (activeTab === "donations" && !filteredDonations.length) || (activeTab === "expenses" && !filteredExpenses.length) || (activeTab === "members" && !filteredMembers.length) || (activeTab === "collectors" && !collectorRows.length)) && <div className="p-10 text-center text-gray-400">কোনো তথ্য পাওয়া যায়নি</div>}</div></div>
   </div>;
 }
