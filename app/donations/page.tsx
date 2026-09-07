@@ -26,6 +26,7 @@ interface Donation {
   id: string;
   member_id: string;
   amount: number;
+  extra_amount?: number | null;
   date: string;
   donation_month: string;
   donation_end_month?: string | null;
@@ -63,12 +64,14 @@ export default function DonationsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [successSummary, setSuccessSummary] = useState<{ paymentId: string; total: number; extra: number; allocated: number; unallocated: number; receiptNo: string } | null>(null);
   const [editingDonation, setEditingDonation] = useState<Donation | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     member_id: "",
     amount: "",
+    extra_amount: "0",
     date: format(new Date(), "yyyy-MM-dd"),
     donation_month: format(new Date(), "yyyy-MM"),
     end_month: format(new Date(), "yyyy-MM"),
@@ -165,9 +168,11 @@ export default function DonationsPage() {
     setEditingDonation(donation);
     setError(null);
     setSuccess(false);
+    setSuccessSummary(null);
     setFormData({
       member_id: donation.member_id,
-      amount: String(donation.amount),
+      amount: String(Math.max(0, Number(donation.amount || 0) - Number(donation.extra_amount || 0))),
+      extra_amount: String(Number(donation.extra_amount || 0)),
       date: donation.date,
       donation_month: donation.donation_month,
       end_month: donation.donation_end_month || donation.donation_month,
@@ -181,94 +186,36 @@ export default function DonationsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     setSubmitting(true);
     setError(null);
 
     try {
-      const totalAmount = parseFloat(formData.amount);
-      if (!formData.member_id || !Number.isFinite(totalAmount) || totalAmount <= 0) throw new Error("সদস্য এবং সঠিক টাকার পরিমাণ দিন");
+      const amount = Number(formData.amount);
+      const extraAmount = Number(formData.extra_amount || 0);
+      if (!formData.member_id || !Number.isFinite(amount) || amount <= 0) throw new Error("সদস্য এবং সঠিক টাকার পরিমাণ দিন");
+      if (!Number.isFinite(extraAmount) || extraAmount < 0) throw new Error("Extra Amount শূন্য বা তার বেশি হতে হবে");
+      if (formData.donation_month > (formData.is_batch ? formData.end_month : formData.donation_month)) throw new Error("শেষ মাস শুরু মাসের আগে হতে পারে না");
+      const coverageEnd = formData.is_batch ? formData.end_month : formData.donation_month;
+      let paymentId = editingDonation?.id;
       if (editingDonation) {
-        if (formData.is_batch && formData.end_month < formData.donation_month) throw new Error("শেষ মাস শুরু মাসের আগে হতে পারে না");
-        const { error: updateError } = await supabase.from("donations").update({
-          member_id: formData.member_id,
-          amount: totalAmount,
-          date: formData.date,
-          donation_month: formData.donation_month,
-          donation_end_month: formData.is_batch ? formData.end_month : null,
-          coverage_start_month: formData.is_batch ? formData.donation_month : null,
-          coverage_end_month: formData.is_batch ? formData.end_month : null,
-          method: formData.method,
-          collected_by: formData.collected_by,
-          receipt_no: formData.receipt_no,
-          batch_id: formData.is_batch ? (editingDonation.batch_id || crypto.randomUUID()) : null,
-        }).eq("id", editingDonation.id);
-        if (updateError) throw updateError;
-      } else if (formData.is_batch) {
-        const start = new Date(formData.donation_month + "-01");
-        const end = new Date(formData.end_month + "-01");
-        
-        if (end < start) {
-          throw new Error("শেষ মাস শুরু মাসের আগে হতে পারে না");
-        }
-
-        const months = [];
-        const current = new Date(start);
-        while (current <= end) {
-          months.push(format(current, "yyyy-MM"));
-          current.setMonth(current.getMonth() + 1);
-        }
-
-        const { error: insertError } = await supabase
-          .from("donations")
-          .insert([{
-            member_id: formData.member_id,
-            amount: totalAmount,
-            date: formData.date,
-            donation_month: formData.donation_month,
-            donation_end_month: formData.end_month,
-            coverage_start_month: formData.donation_month,
-            coverage_end_month: formData.end_month,
-            method: formData.method,
-            collected_by: formData.collected_by,
-            batch_id: crypto.randomUUID(),
-            receipt_no: formData.receipt_no
-          }]);
-
-        if (insertError) throw insertError;
+        const response = await fetch("/api/payments", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ payment_id: editingDonation.id, amount, extra_amount: extraAmount, coverage_start_month: formData.donation_month, coverage_end_month: coverageEnd, note: null }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Payment update failed");
       } else {
-        const { error: insertError } = await supabase
-          .from("donations")
-          .insert([{
-            member_id: formData.member_id,
-            amount: parseFloat(formData.amount),
-            date: formData.date,
-            donation_month: formData.donation_month,
-            method: formData.method,
-            collected_by: formData.collected_by,
-            receipt_no: formData.receipt_no
-          }]);
-
-        if (insertError) throw insertError;
+        const response = await fetch("/api/payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ member_id: formData.member_id, amount, extra_amount: extraAmount, date: formData.date, method: formData.method, receipt_no: formData.receipt_no, coverage_start_month: formData.donation_month, coverage_end_month: coverageEnd, collected_by: formData.collected_by }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Payment creation failed");
+        paymentId = result.payment_id;
       }
 
+      const { data: savedDonation } = await supabase.from("donations").select("amount, extra_amount, receipt_no").eq("id", paymentId).single();
+      const { data: allocations } = await supabase.from("payment_allocations").select("amount, allocation_type").eq("payment_id", paymentId);
+      const unallocated = (allocations || []).filter((row) => row.allocation_type === "unallocated").reduce((sum, row) => sum + Number(row.amount || 0), 0);
+      const allocated = (allocations || []).filter((row) => row.allocation_type !== "unallocated").reduce((sum, row) => sum + Number(row.amount || 0), 0);
+      setSuccessSummary({ paymentId: paymentId!, total: Number(savedDonation?.amount || amount + extraAmount), extra: Number(savedDonation?.extra_amount || extraAmount), allocated, unallocated, receiptNo: savedDonation?.receipt_no || formData.receipt_no });
       setSuccess(true);
-      setTimeout(() => {
-        setShowModal(false);
-        setSuccess(false);
-        setEditingDonation(null);
-        fetchData();
-        setFormData({
-          member_id: "",
-          amount: "",
-          date: format(new Date(), "yyyy-MM-dd"),
-          donation_month: format(new Date(), "yyyy-MM"),
-          end_month: format(new Date(), "yyyy-MM"),
-          is_batch: false,
-          method: "cash",
-          collected_by: "",
-          receipt_no: ""
-        });
-      }, 1500);
+      await fetchData();
 
     } catch (err: any) {
       setError(err.message);
@@ -513,10 +460,21 @@ export default function DonationsPage() {
                 </div>
               )}
 
-              {success && (
-                <div className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl text-sm font-medium flex items-center gap-3 border border-emerald-100">
-                  <CheckCircle2 className="w-5 h-5 shrink-0" />
-                  সফলভাবে সেভ করা হয়েছে!
+              {success && successSummary && (
+                <div className="bg-emerald-50 text-emerald-700 p-4 rounded-2xl text-sm font-medium border border-emerald-100 space-y-3">
+                  <div className="flex items-center gap-3"><CheckCircle2 className="w-5 h-5 shrink-0" /> সফলভাবে সেভ করা হয়েছে!</div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <span>মোট জমা: <b>৳{successSummary.total.toLocaleString("bn-BD")}</b></span>
+                    <span>Extra Amount: <b>৳{successSummary.extra.toLocaleString("bn-BD")}</b></span>
+                    <span>বরাদ্দকৃত: <b>৳{successSummary.allocated.toLocaleString("bn-BD")}</b></span>
+                    <span>অবণ্টিত: <b>৳{successSummary.unallocated.toLocaleString("bn-BD")}</b></span>
+                    <span className="col-span-2">রসিদ নং: <b>{successSummary.receiptNo}</b></span>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button type="button" onClick={() => setPreviewUrl(`/api/receipts/${successSummary.paymentId}`)} className="rounded-xl bg-white px-3 py-2 text-xs font-bold">রসিদ প্রিভিউ</button>
+                    <a href={`/api/receipts/${successSummary.paymentId}?download=1`} download className="rounded-xl bg-white px-3 py-2 text-xs font-bold">ডাউনলোড</a>
+                    <button type="button" onClick={() => { setShowModal(false); setSuccess(false); setSuccessSummary(null); setEditingDonation(null); }} className="ml-auto rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white">বন্ধ করুন</button>
+                  </div>
                 </div>
               )}
 
@@ -551,6 +509,14 @@ export default function DonationsPage() {
                       required
                     />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700">Extra Amount / অতিরিক্ত জমা</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">৳</span>
+                    <input type="number" min="0" step="0.01" value={formData.extra_amount} onChange={(e) => setFormData({ ...formData, extra_amount: e.target.value })} className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20" />
+                  </div>
+                  <p className="text-[11px] text-gray-400">মাসিক চাঁদার বাইরে অতিরিক্ত নগদ; এটি ভবিষ্যৎ মাস অগ্রসর করবে না।</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-gray-700">তারিখ *</label>
