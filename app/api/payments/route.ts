@@ -9,6 +9,7 @@ export async function POST(request: Request) {
     const {
       member_id,
       amount,
+      extra_amount,
       date,
       method,
       receipt_no,
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     } = body as {
       member_id: string;
       amount: number;
+      extra_amount?: number;
       date: string;
       method: string;
       receipt_no?: string;
@@ -36,7 +38,10 @@ export async function POST(request: Request) {
 
     // Validation
     if (!member_id) return NextResponse.json({ error: 'Member is required' }, { status: 400 });
-    if (!amount || amount <= 0) return NextResponse.json({ error: 'Amount must be positive' }, { status: 400 });
+    const extraAmount = Number(extra_amount ?? 0);
+    const regularAmount = Number(amount);
+    if (!Number.isFinite(extraAmount) || extraAmount < 0) return NextResponse.json({ error: 'Extra Amount cannot be negative' }, { status: 400 });
+    if (!Number.isFinite(regularAmount) || regularAmount <= 0) return NextResponse.json({ error: 'Amount must be positive' }, { status: 400 });
     if (!date) return NextResponse.json({ error: 'Date is required' }, { status: 400 });
     if (!method) return NextResponse.json({ error: 'Method is required' }, { status: 400 });
     if (!coverage_start_month || !coverage_end_month) {
@@ -113,7 +118,8 @@ export async function POST(request: Request) {
     // Call the atomic RPC function
     const { data, error } = await adminClient.rpc('save_payment_entry', {
       p_member_id: member_id,
-      p_amount: amount,
+      p_amount: regularAmount,
+      p_extra_amount: extraAmount,
       p_date: date,
       p_method: method,
       p_receipt_no: receipt_no || null,
@@ -147,19 +153,24 @@ export async function PUT(request: Request) {
     const {
       payment_id,
       amount,
+      extra_amount,
       coverage_start_month,
       coverage_end_month,
       note,
     } = body as {
       payment_id: string;
       amount: number;
+      extra_amount?: number;
       coverage_start_month: string;
       coverage_end_month: string;
       note?: string;
     };
 
     if (!payment_id) return NextResponse.json({ error: 'Payment ID is required' }, { status: 400 });
-    if (!amount || amount <= 0) return NextResponse.json({ error: 'Amount must be positive' }, { status: 400 });
+    const regularAmount = Number(amount);
+    const extraAmount = Number(extra_amount ?? 0);
+    if (!Number.isFinite(regularAmount) || regularAmount <= 0) return NextResponse.json({ error: 'Amount must be positive' }, { status: 400 });
+    if (!Number.isFinite(extraAmount) || extraAmount < 0) return NextResponse.json({ error: 'Extra Amount cannot be negative' }, { status: 400 });
     if (!coverage_start_month || !coverage_end_month) {
       return NextResponse.json({ error: 'Coverage month range is required' }, { status: 400 });
     }
@@ -202,7 +213,7 @@ export async function PUT(request: Request) {
     // Validate payment exists and belongs to a valid member
     const { data: donation } = await adminClient
       .from('donations')
-      .select('id, member_id')
+      .select('id, member_id, extra_amount')
       .eq('id', payment_id)
       .single();
     if (!donation) return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
@@ -210,7 +221,8 @@ export async function PUT(request: Request) {
     // Call the reallocation RPC
     const { error } = await adminClient.rpc('reallocate_payment', {
       p_payment_id: payment_id,
-      p_amount: amount,
+      p_amount: regularAmount,
+      p_extra_amount: extraAmount,
       p_coverage_start: coverage_start_month,
       p_coverage_end: coverage_end_month,
       p_note: note || null,
