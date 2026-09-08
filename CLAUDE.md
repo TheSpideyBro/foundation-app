@@ -3,7 +3,7 @@
 This app follows a "ledger/khata" visual identity. Reference files are 
 in /reference — always check them before building or modifying any UI.
 
-> **AI agents / coding assistants:** Also read [AGENTS.md](AGENTS.md) for engineering invariants, architecture rules, and testing requirements before modifying code. The full documentation system is in [`docs/`](docs/).
+> **AI agents / coding assistants:** Also read [AGENTS.md](AGENTS.md) for engineering invariants, architecture rules, testing requirements, and the **mandatory doc-sync checklist** before committing. The full documentation system is in [`docs/`](docs/).
 
 ## Colors
 - ink (primary/sidebar): #1B4332
