@@ -80,6 +80,7 @@ The `docs/` tree is a **living document** that must reflect the code and live DB
 | Bug fixed | `docs/decisions/BUGS.md` status → `fixed`, CHANGELOG.md `[Unreleased]` |
 | New trade-off accepted | `docs/decisions/TECH_DEBT.md` (TD-###) |
 | Release notes worth noting | `CHANGELOG.md` at repo root |
+| Code/behavior change (post-commit) | `COMMIT_LOG.md` at repo root (immediately after commit) |
 | Product vision changes | `docs/product/VISION.md` |
 
 ## What to Update When (Quick Reference)
@@ -180,6 +181,7 @@ Before marking a task done, verify **all** of the following that apply:
 - [ ] Roles changed? → updated docs/development/ROLES.md
 - [ ] Zero-sum invariant verified? → SELECT SUM(amount) FROM payment_allocations equals donations
 - [ ] CHANGELOG.md [Unreleased] block updated (if user-facing change)
+- [ ] COMMIT_LOG.md entry written with before→after table (if code/behavior change)
 - [ ] CLAUDE.md / README.md still accurate? (quick scan)
 - [ ] Commit message follows discipline rules (type/scope/body, not "fix" or "WIP")
 ```

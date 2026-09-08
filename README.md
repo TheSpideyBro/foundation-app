@@ -68,6 +68,7 @@ Full setup (Supabase schema, env vars, first admin account, deployment) → [SET
 | 🐞 Bugs / 🧠 Tech debt | [docs/decisions/BUGS.md](docs/decisions/BUGS.md) · [docs/decisions/TECH_DEBT.md](docs/decisions/TECH_DEBT.md) |
 | 📐 Architecture Decision Records | [docs/decisions/ADRs/](docs/decisions/ADRs/) |
 | 🕵️ Repository audit | [docs/audits/REPOSITORY_AUDIT.md](docs/audits/REPOSITORY_AUDIT.md) |
+| 📝 Detailed commit history | [COMMIT_LOG.md](COMMIT_LOG.md) |
 | 💬 WhatsApp Cloud API setup | [docs/development/WHATSAPP_SETUP.md](docs/development/WHATSAPP_SETUP.md) |
 | 📊 Google Sheets backup setup | [docs/development/GOOGLE_SHEETS_SETUP.md](docs/development/GOOGLE_SHEETS_SETUP.md) |
 
