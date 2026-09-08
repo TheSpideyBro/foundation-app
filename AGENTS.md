@@ -75,11 +75,56 @@ The `docs/` tree is a **living document** that must reflect the code and live DB
 | New/renamed route or page | `docs/product/FEATURE_MAP.md` |
 | New ADR-worthy decision | new file in `docs/decisions/ADRs/`, update index |
 | Roles / permissions | `docs/development/ROLES.md` |
-| New bug found | `docs/decisions/BUGS.md` (BUG-###) |
+| New bug found (before fixing) | `docs/decisions/BUGS.md` (BUG-###) with status `open` |
+| Bug fixed | `docs/decisions/BUGS.md` status → `fixed`, CHANGELOG.md `[Unreleased]` |
 | New trade-off accepted | `docs/decisions/TECH_DEBT.md` (TD-###) |
 | Release notes worth noting | `CHANGELOG.md` at repo root |
+| Product vision changes | `docs/product/VISION.md` |
 
-## Code Style & Conventions
+## What to Update When (Quick Reference)
+
+| Situation | Action |
+|-----------|--------|
+| **Found a bug** | Write `BUG-###` entry in `docs/decisions/BUGS.md` with status `open` *before* fixing |
+| **Fixed a bug** | Change bug status to `fixed`, add line to CHANGELOG.md `[Unreleased] > ### Fixed`, commit both together |
+| **Adding a feature** | Update `docs/product/FEATURE_MAP.md`, add to CHANGELOG.md `[Unreleased] > ### Added`, update `README.md` if new route |
+| **Accepting a trade-off** | Write `TD-###` entry in `docs/decisions/TECH_DEBT.md` with status `open` |
+| **Resolving tech debt** | Change TD status to `resolved` or `mitigated`, note in CHANGELOG.md |
+| **Applying a migration** | Update `docs/database/SCHEMA.md` + `MIGRATIONS.md`, run `NOTIFY pgrst, 'reload schema'` |
+| **Changing architecture / data flow** | Update `docs/architecture/SYSTEM.md` or `DATA_FLOW.md` as needed |
+| **Changing roles / permissions** | Update `docs/development/ROLES.md` |
+| **Writing an ADR** | Create `docs/decisions/ADRs/ADR-XXX-title.md`, update `docs/decisions/README.md` index |
+
+## Before You Commit / Push (Required Checklist)
+
+Before marking a task done, verify **all** of the following that apply:
+
+```
+- [ ] Code change? → ran `pnpm test:ledger` (if allocation/financial logic touched)
+- [ ] New bug found? → added entry to docs/decisions/BUGS.md (BUG-###) with status "open"
+- [ ] Bug fixed? → changed BUG-### status to "fixed", added entry to CHANGELOG.md
+- [ ] New trade-off? → added entry to docs/decisions/TECH_DEBT.md (TD-###)
+- [ ] New feature / route? → updated docs/product/FEATURE_MAP.md
+- [ ] Migration applied? → updated docs/database/SCHEMA.md + MIGRATIONS.md + NOTIFY pgrst
+- [ ] New ADR-worthy decision? → wrote docs/decisions/ADRs/ADR-XXX-title.md
+- [ ] Architectural change? → updated docs/architecture/SYSTEM.md or DATA_FLOW.md
+- [ ] Roles changed? → updated docs/development/ROLES.md
+- [ ] Zero-sum invariant verified? → SELECT SUM(amount) FROM payment_allocations equals donations
+- [ ] CHANGELOG.md [Unreleased] block updated (if user-facing change)
+- [ ] CLAUDE.md / README.md still accurate? (quick scan)
+```
+
+**Rule:** Never push to `dev` without completing this checklist. A commit with code but no doc update is an incomplete commit — fix the docs first, or create a follow-up issue in `docs/decisions/BUGS.md` as BUG-followup.
+
+## Before You Consider a Task Done
+
+- [ ] Read the applicable docs in `docs/` first (don't guess from code alone)
+- [ ] If you changed allocation or any financial write: ran `pnpm test:ledger`, behavior matches SQL engine, zero-sum verified
+- [ ] If you added a migration: `docs/database/` updated, `NOTIFY pgrst` present
+- [ ] No secrets introduced; no `auth.role()`; no `@ts-ignore`
+- [ ] Docs reflect reality (code and live DB are the source of truth)
+- [ ] CHANGELOG.md [Unreleased] block contains the change (if user-facing)
+- [ ] All checklist items above are resolved
 
 - **TypeScript strict.** Follow the surrounding style match the repo idiom (comment density, naming).
 - **Bengali-first UX.** All user-facing text, numerals (`toBengaliNumber`), dates, and money (`formatMoney`) are Bengali. Don't introduce English labels in UI.

@@ -11,6 +11,21 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Planned / Next Up
+
+These are the items currently queued for the next release. Add new items here as they come up.
+
+- [ ] TD-001: Remove hardcoded founder email bypass, replace with proper role migration
+- [ ] TD-002: Remove `ignoreBuildErrors: true`, fix remaining type errors
+- [ ] TD-003: Cache `get_my_role()` result to reduce per-RLS-call overhead
+- [ ] TD-004: Evaluate SVG/CSS receipt generation as alternative to node-canvas
+- [ ] TD-005: Consolidate Bengali number-to-words into single shared utility
+- [ ] TD-006: Consolidate two Supabase browser client implementations (see TD-006)
+- [ ] TD-007: Unify Excel/PDF export into a single reporting engine
+- [ ] Roadmap: per-member monthly collection report (from `payment_allocations`)
+- [ ] Roadmap: overdue pledge auto-reminder via WhatsApp
+- [ ] Roadmap: receipt PDF export (currently JPEG only)
+
 ### Known debt (tracked in [docs/decisions/TECH_DEBT.md](docs/decisions/TECH_DEBT.md))
 - TD-001 Hardcoded founder email as admin bypass
 - TD-002 `ignoreBuildErrors: true` masks type errors in CI
