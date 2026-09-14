@@ -139,9 +139,9 @@ export default function Dashboard() {
               <span className="hidden sm:inline">শিট সিঙ্ক</span>
               <span className="sm:hidden">সিঙ্ক</span>
             </button>
-            <Link href="/donations" className="flex-1 sm:flex-none btn-emerald h-12 px-5">
+            <Link href="/joma" className="flex-1 sm:flex-none btn-emerald h-12 px-5">
               <Plus size={18} />
-              <span className="hidden sm:inline">নতুন ডোনেশন</span>
+              <span className="hidden sm:inline">নতুন জমা</span>
               <span className="sm:hidden">নতুন দান</span>
             </Link>
           </div>
