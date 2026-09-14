@@ -1,657 +1,86 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Download, Eye, FileText, Loader2, Search, Share2, Trash2, X, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+
 const supabase = createClient();
-import { 
-  Plus, 
-  Search, 
-  Download, 
-  Share2, 
-  Eye, 
-  FileText, 
-  Calendar, 
-  Trash2, 
-  Edit2, 
-  X,
-  AlertCircle,
-  Loader2,
-  CheckCircle2
-} from "lucide-react";
-import { format } from "date-fns";
-import { bn } from "date-fns/locale";
-import { pledgeBreakdown } from "@/lib/payment-ledger";
 
-interface Donation {
+type Donation = {
   id: string;
   member_id: string;
-  amount: number;
-  extra_amount?: number | null;
+  amount: number | string;
+  extra_amount?: number | string | null;
   date: string;
-  donation_month: string;
+  donation_month?: string | null;
   donation_end_month?: string | null;
-  receipt_no: string;
-  method: string;
-  collected_by: string;
-  batch_id?: string;
-  members: {
-    name: string;
-    phone: string;
-  };
-}
+  receipt_no?: string | null;
+  method?: string | null;
+  batch_id?: string | null;
+  members?: { name?: string | null; phone?: string | null } | null;
+};
 
-interface Member {
-  id: string;
-  name: string;
-  phone: string;
-  monthly_pledge?: number | string;
-}
-
-interface PledgeHistory {
-  member_id: string;
-  monthly_amount: number | string;
-  effective_from_month: string;
-}
+const money = (value: number) => `৳${Math.round(value).toLocaleString("bn-BD")}`;
 
 export default function DonationsPage() {
   const [donations, setDonations] = useState<Donation[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [pledgeHistory, setPledgeHistory] = useState<PledgeHistory[]>([]);
-  const [treasurers, setTreasurers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [successSummary, setSuccessSummary] = useState<{ paymentId: string; total: number; extra: number; allocated: number; unallocated: number; receiptNo: string } | null>(null);
-  const [editingDonation, setEditingDonation] = useState<Donation | null>(null);
+  const [search, setSearch] = useState("");
+  const [monthFilter, setMonthFilter] = useState("all");
+  const [methodFilter, setMethodFilter] = useState("all");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
-    member_id: "",
-    amount: "",
-    extra_amount: "0",
-    date: format(new Date(), "yyyy-MM-dd"),
-    donation_month: format(new Date(), "yyyy-MM"),
-    end_month: format(new Date(), "yyyy-MM"),
-    is_batch: false,
-    method: "cash",
-    collected_by: "",
-    receipt_no: ""
-  });
+  useEffect(() => { void loadDonations(); }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (showModal && !formData.receipt_no) {
-      setFormData(prev => ({
-        ...prev,
-        receipt_no: `R-${Math.floor(100000 + Math.random() * 900000)}`
-      }));
-    }
-  }, [showModal]);
-
-  async function fetchData() {
-    try {
-      setLoading(true);
-      const { data: donationsData, error: donationsError } = await supabase
-        .from("donations")
-        .select(`
-          *,
-          members (name, phone)
-        `)
-        .order("date", { ascending: false });
-
-      if (donationsError) throw donationsError;
-      setDonations(donationsData || []);
-
-      const { data: membersData, error: membersError } = await supabase
-        .from("members")
-        .select("id, name, phone, monthly_pledge")
-        .order("name");
-
-      if (membersError) throw membersError;
-      setMembers(membersData || []);
-
-      const { data: pledgeHistoryData, error: pledgeHistoryError } = await supabase
-        .from("member_pledge_history")
-        .select("member_id, monthly_amount, effective_from_month")
-        .order("effective_from_month", { ascending: true });
-
-      if (pledgeHistoryError) {
-        console.warn("Pledge history unavailable for this role:", pledgeHistoryError.message);
-        setPledgeHistory([]);
-      } else {
-        setPledgeHistory(pledgeHistoryData || []);
-      }
-
-      const { data: usersData, error: usersError } = await supabase
-        .from("users")
-        .select("id, name, phone, role")
-        .in("role", ["admin", "treasurer"]);
-
-      if (usersError) throw usersError;
-      setTreasurers(usersData.map(u => ({ 
-        id: u.id, 
-        name: u.name || "Unknown", 
-        phone: u.phone || "" 
-      })));
-
-    } catch (err: any) {
-      console.error("Error fetching data:", err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-    useEffect(() => {
-    if (editingDonation || !formData.member_id) return;
-    const selectedMember = members.find(member => member.id === formData.member_id);
-    if (!selectedMember) return;
-    const startMonth = formData.donation_month;
-    const endMonth = formData.is_batch ? formData.end_month : startMonth;
-    if (endMonth < startMonth) return;
-    const breakdown = pledgeBreakdown(
-      startMonth,
-      endMonth,
-      selectedMember.monthly_pledge,
-      pledgeHistory.filter(item => item.member_id === selectedMember.id),
-    );
-    setFormData(prev => ({ ...prev, amount: String(breakdown.reduce((total, row) => total + row.expected, 0)) }));
-  }, [editingDonation, formData.member_id, formData.donation_month, formData.end_month, formData.is_batch, members, pledgeHistory]);
-
-  function openEditDonation(donation: Donation) {
-    setEditingDonation(donation);
+  async function loadDonations() {
+    setLoading(true);
     setError(null);
-    setSuccess(false);
-    setSuccessSummary(null);
-    setFormData({
-      member_id: donation.member_id,
-      amount: String(Math.max(0, Number(donation.amount || 0) - Number(donation.extra_amount || 0))),
-      extra_amount: String(Number(donation.extra_amount || 0)),
-      date: donation.date,
-      donation_month: donation.donation_month,
-      end_month: donation.donation_end_month || donation.donation_month,
-      is_batch: Boolean(donation.donation_end_month && donation.donation_end_month !== donation.donation_month),
-      method: donation.method,
-      collected_by: donation.collected_by || "",
-      receipt_no: donation.receipt_no,
-    });
-    setShowModal(true);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (submitting) return;
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      const amount = Number(formData.amount);
-      const extraAmount = Number(formData.extra_amount || 0);
-      if (!formData.member_id || !Number.isFinite(amount) || amount <= 0) throw new Error("সদস্য এবং সঠিক টাকার পরিমাণ দিন");
-      if (!Number.isFinite(extraAmount) || extraAmount < 0) throw new Error("Extra Amount শূন্য বা তার বেশি হতে হবে");
-      if (formData.donation_month > (formData.is_batch ? formData.end_month : formData.donation_month)) throw new Error("শেষ মাস শুরু মাসের আগে হতে পারে না");
-      const coverageEnd = formData.is_batch ? formData.end_month : formData.donation_month;
-      let paymentId = editingDonation?.id;
-      if (editingDonation) {
-        const response = await fetch("/api/payments", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ payment_id: editingDonation.id, amount, extra_amount: extraAmount, coverage_start_month: formData.donation_month, coverage_end_month: coverageEnd, note: null }) });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "Payment update failed");
-      } else {
-        const response = await fetch("/api/payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ member_id: formData.member_id, amount, extra_amount: extraAmount, date: formData.date, method: formData.method, receipt_no: formData.receipt_no, coverage_start_month: formData.donation_month, coverage_end_month: coverageEnd, collected_by: formData.collected_by }) });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "Payment creation failed");
-        paymentId = result.payment_id;
-      }
-
-      const { data: savedDonation } = await supabase.from("donations").select("amount, extra_amount, receipt_no").eq("id", paymentId).single();
-      const { data: allocations } = await supabase.from("payment_allocations").select("amount, allocation_type").eq("payment_id", paymentId);
-      const unallocated = (allocations || []).filter((row) => row.allocation_type === "unallocated").reduce((sum, row) => sum + Number(row.amount || 0), 0);
-      const allocated = (allocations || []).filter((row) => row.allocation_type !== "unallocated").reduce((sum, row) => sum + Number(row.amount || 0), 0);
-      setSuccessSummary({ paymentId: paymentId!, total: Number(savedDonation?.amount || amount + extraAmount), extra: Number(savedDonation?.extra_amount || extraAmount), allocated, unallocated, receiptNo: savedDonation?.receipt_no || formData.receipt_no });
-      setSuccess(true);
-      await fetchData();
-
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
+    const { data, error: queryError } = await supabase.from("donations").select("id, member_id, amount, extra_amount, date, donation_month, donation_end_month, receipt_no, method, batch_id, members(name, phone)").order("date", { ascending: false });
+    if (queryError) setError(queryError.message);
+    setDonations((data || []) as Donation[]);
+    setLoading(false);
   }
 
   async function handleShare(donation: Donation) {
     const receiptUrl = `${window.location.origin}/api/receipts/${donation.id}`;
-    const shareText = `রসিদ নং #${donation.receipt_no} — ${donation.members?.name || "সদস্য"}`;
     try {
       const response = await fetch(receiptUrl, { credentials: "same-origin" });
       if (!response.ok) throw new Error("রসিদ তৈরি করা যায়নি");
       const blob = await response.blob();
-      const file = new File([blob], `Receipt-${donation.receipt_no}.jpg`, { type: blob.type || "image/jpeg" });
-
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title: "Foundation Receipt", text: shareText, files: [file] });
-        return;
-      }
-      if (navigator.share) {
-        await navigator.share({ title: "Foundation Receipt", text: shareText, url: receiptUrl });
-        return;
-      }
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${receiptUrl}`)}`;
-      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      const file = new File([blob], `Receipt-${donation.receipt_no || donation.id}.jpg`, { type: blob.type || "image/jpeg" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) return navigator.share({ title: "Foundation Receipt", text: `রসিদ নং #${donation.receipt_no || "—"}`, files: [file] });
+      if (navigator.share) return navigator.share({ title: "Foundation Receipt", text: `রসিদ নং #${donation.receipt_no || "—"}`, url: receiptUrl });
+      window.open(`https://wa.me/?text=${encodeURIComponent(`রসিদ নং #${donation.receipt_no || "—"}\n${receiptUrl}`)}`, "_blank", "noopener,noreferrer");
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      const message = err instanceof Error ? err.message : "শেয়ার করা যায়নি";
-      alert(`${message}। অনুগ্রহ করে আবার চেষ্টা করুন।`);
+      if (!(err instanceof DOMException && err.name === "AbortError")) window.alert(err instanceof Error ? err.message : "রসিদ শেয়ার করা যায়নি");
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("আপনি কি নিশ্চিতভাবে এই জমাটি ডিলিট করতে চান?")) return;
-
-    try {
-      const { error } = await supabase
-        .from("donations")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-      fetchData();
-    } catch (err: any) {
-      alert("Error deleting: " + err.message);
-    }
+  async function handleDelete(donation: Donation) {
+    if (!window.confirm(`রসিদ ${donation.receipt_no || "—"} ডিলিট করতে চান? এটি coverage হিসাবেও প্রভাব ফেলবে।`)) return;
+    const { error: deleteError } = await supabase.from("donations").delete().eq("id", donation.id);
+    if (deleteError) setError(deleteError.message);
+    else await loadDonations();
   }
 
-  const filteredDonations = donations.filter(d => 
-    d.members?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    d.receipt_no.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  const selectedMember = members.find(member => member.id === formData.member_id);
-  const currentBreakdown = selectedMember
-    ? pledgeBreakdown(
-        formData.donation_month,
-        formData.is_batch ? formData.end_month : formData.donation_month,
-        selectedMember.monthly_pledge,
-        pledgeHistory.filter(item => item.member_id === selectedMember.id),
-      )
-    : [];
+  const months = useMemo(() => Array.from(new Set(donations.map((item) => item.donation_month).filter((month): month is string => Boolean(month)))).sort().reverse(), [donations]);
+  const filtered = useMemo(() => donations.filter((donation) => {
+    const haystack = `${donation.members?.name || ""} ${donation.members?.phone || ""} ${donation.receipt_no || ""}`.toLowerCase();
+    return haystack.includes(search.toLowerCase()) && (monthFilter === "all" || donation.donation_month === monthFilter) && (methodFilter === "all" || donation.method === methodFilter);
+  }), [donations, search, monthFilter, methodFilter]);
+  const total = filtered.reduce((sum, donation) => sum + Number(donation.amount || 0), 0);
+  const extra = filtered.reduce((sum, donation) => sum + Number(donation.extra_amount || 0), 0);
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20 md:pb-8">
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 h-16 md:h-20 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl md:text-2xl font-black text-gray-900 flex items-center gap-2">
-              <FileText className="w-6 h-6 text-emerald-600" />
-              অনুদান ও জমা
-            </h1>
-            <p className="text-[10px] md:text-xs text-gray-500 font-medium mt-0.5">ফাউন্ডেশনের সকল জমার হিসাব</p>
-          </div>
-          <button 
-            onClick={() => { setEditingDonation(null); setError(null); setSuccess(false); setShowModal(true); }}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-200 active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden md:inline">নতুন জমা</span>
-            <span className="md:hidden">নতুন</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="relative mb-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input 
-            type="text"
-            placeholder="সদস্য বা রসিদ নং খুঁজুন..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-4 bg-white border border-gray-100 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-sm"
-          />
-        </div>
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-10 h-10 text-emerald-600 animate-spin mb-4" />
-            <p className="text-gray-500 font-medium">লোড হচ্ছে...</p>
-          </div>
-        ) : filteredDonations.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
-            <div className="bg-gray-50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Search className="w-8 h-8 text-gray-300" />
-            </div>
-            <h3 className="text-gray-900 font-bold">কোনো জমা পাওয়া যায়নি</h3>
-            <p className="text-gray-500 text-sm mt-1">অনুগ্রহ করে অন্য কিছু লিখে খুঁজুন</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredDonations.map((donation) => (
-              <div key={donation.id} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                {donation.batch_id && (
-                  <div className="absolute top-0 right-0 bg-emerald-50 text-emerald-600 text-[10px] font-bold px-3 py-1 rounded-bl-xl border-l border-b border-emerald-100">
-                    অগ্রিম
-                  </div>
-                )}
-                
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 font-black text-xl shrink-0">
-                    {donation.members?.name[0]}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-gray-900 truncate pr-8">{donation.members?.name}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Calendar className="w-3 h-3 text-gray-400" />
-                      <span className="text-[11px] text-gray-500 font-medium">
-                        {format(new Date(donation.date), "dd MMM, yyyy", { locale: bn })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl mb-4">
-                  <div>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">রসিদ নং</p>
-                    <p className="text-sm font-black text-gray-900">#{donation.receipt_no}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">পরিমাণ</p>
-                    <p className="text-lg font-black text-emerald-600">৳{donation.amount.toLocaleString()}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between mb-5 px-1">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                    <span className="text-xs font-bold text-gray-700">
-                      {donation.donation_end_month && donation.donation_end_month !== donation.donation_month
-                        ? `${donation.donation_month} – ${donation.donation_end_month}`
-                        : donation.donation_month}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase bg-white px-2 py-0.5 rounded-full border border-gray-100">
-                    {donation.method === 'cash' ? 'নগদ' : donation.method.toUpperCase()}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 pt-4 border-t border-dashed border-gray-100">
-                  <button 
-                    onClick={() => setPreviewUrl(`/api/receipts/${donation.id}`)}
-                    className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-gray-800 transition-all active:scale-95"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    প্রিভিউ
-                  </button>
-                  <button onClick={() => handleShare(donation)} className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all active:scale-95" title="রসিদ শেয়ার করুন" aria-label="রসিদ শেয়ার করুন">
-                    <Share2 className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = `/api/receipts/${donation.id}?download=1`;
-                      link.download = `Receipt-${donation.receipt_no}.jpg`;
-                      link.click();
-                    }}
-                    className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all active:scale-95"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => openEditDonation(donation)} className="p-2.5 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all active:scale-95" title="সম্পাদনা">
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(donation.id)}
-                    className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all active:scale-95"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {previewUrl && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-3xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h2 className="font-black text-gray-900">রসিদ প্রিভিউ</h2>
-              <button
-                type="button"
-                onClick={() => setPreviewUrl(null)}
-                className="p-2 rounded-xl hover:bg-gray-100 text-gray-600"
-                aria-label="প্রিভিউ বন্ধ করুন"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <iframe
-              src={previewUrl}
-              title="রসিদ প্রিভিউ"
-              className="w-full flex-1 bg-gray-100"
-            />
-          </div>
-        </div>
-      )}
-
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="bg-emerald-600 p-6 text-white relative">
-              <button 
-                onClick={() => { setEditingDonation(null); setShowModal(false); }}
-                className="absolute right-6 top-6 p-2 hover:bg-white/20 rounded-full transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              <h2 className="text-xl font-black">{editingDonation ? "জমার তথ্য সম্পাদনা করুন" : "নতুন অনুদান যোগ করুন"}</h2>
-              <p className="text-emerald-100 text-sm mt-1">সঠিক তথ্য প্রদান করে সেভ করুন</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
-              {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-2xl text-sm font-medium flex items-center gap-3 border border-red-100">
-                  <AlertCircle className="w-5 h-5 shrink-0" />
-                  {error}
-                </div>
-              )}
-
-              {success && successSummary && (
-                <div className="bg-emerald-50 text-emerald-700 p-4 rounded-2xl text-sm font-medium border border-emerald-100 space-y-3">
-                  <div className="flex items-center gap-3"><CheckCircle2 className="w-5 h-5 shrink-0" /> সফলভাবে সেভ করা হয়েছে!</div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <span>মোট জমা: <b>৳{successSummary.total.toLocaleString("bn-BD")}</b></span>
-                    <span>Extra Amount: <b>৳{successSummary.extra.toLocaleString("bn-BD")}</b></span>
-                    <span>বরাদ্দকৃত: <b>৳{successSummary.allocated.toLocaleString("bn-BD")}</b></span>
-                    <span>অবণ্টিত: <b>৳{successSummary.unallocated.toLocaleString("bn-BD")}</b></span>
-                    <span className="col-span-2">রসিদ নং: <b>{successSummary.receiptNo}</b></span>
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <button type="button" onClick={() => setPreviewUrl(`/api/receipts/${successSummary.paymentId}`)} className="rounded-xl bg-white px-3 py-2 text-xs font-bold">রসিদ প্রিভিউ</button>
-                    <a href={`/api/receipts/${successSummary.paymentId}?download=1`} download className="rounded-xl bg-white px-3 py-2 text-xs font-bold">ডাউনলোড</a>
-                    <button type="button" onClick={() => { setShowModal(false); setSuccess(false); setSuccessSummary(null); setEditingDonation(null); }} className="ml-auto rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white">বন্ধ করুন</button>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">সদস্য নির্বাচন করুন *</label>
-                <select 
-                  value={formData.member_id}
-                  onChange={(e) => setFormData({...formData, member_id: e.target.value})}
-                  className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                  required
-                >
-                  <option value="">সদস্য সিলেক্ট করুন</option>
-                  {members.map(m => (
-                    <option key={m.id} value={m.id}>{m.name} ({m.phone})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">টাকার পরিমাণ *</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">৳</span>
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        placeholder="0.00"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">Extra Amount / অতিরিক্ত জমা</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">৳</span>
-                    <input type="number" min="0" step="0.01" value={formData.extra_amount} onChange={(e) => setFormData({ ...formData, extra_amount: e.target.value })} className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20" />
-                  </div>
-                  <p className="text-[11px] text-gray-400">মাসিক চাঁদার বাইরে অতিরিক্ত নগদ; এটি ভবিষ্যৎ মাস অগ্রসর করবে না।</p>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">তারিখ *</label>
-                  <input 
-                    type="date" 
-                    value={formData.date}
-                    onChange={(e) => setFormData({...formData, date: e.target.value})}
-                    className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                    required
-                  />
-                </div>
-              </div>
-
-              {selectedMember && currentBreakdown.length > 1 && (
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-emerald-800">
-                    <span>মাসভিত্তিক pledge breakdown</span>
-                    <span>মোট ৳{currentBreakdown.reduce((sum, row) => sum + row.expected, 0).toLocaleString("bn-BD")}</span>
-                  </div>
-                  {currentBreakdown.map((row) => (
-                    <div key={row.month} className="flex items-center justify-between text-xs text-gray-700">
-                      <span>{row.month}</span>
-                      <span className="font-bold">৳{row.expected.toLocaleString("bn-BD")}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox"
-                    checked={formData.is_batch}
-                    onChange={(e) => setFormData({...formData, is_batch: e.target.checked})}
-                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span className="text-sm font-bold text-gray-700">অগ্রিম/একাধিক মাসের চাঁদা</span>
-                </label>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">{formData.is_batch ? 'শুরু মাস' : 'মাসের নাম'}</label>
-                  <input 
-                    type="month" 
-                    value={formData.donation_month}
-                    onChange={(e) => setFormData({...formData, donation_month: e.target.value})}
-                    className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all" 
-                    required
-                  />
-                </div>
-                {formData.is_batch && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700">শেষ মাস</label>
-                    <input 
-                      type="month" 
-                      value={formData.end_month}
-                      onChange={(e) => setFormData({...formData, end_month: e.target.value})}
-                      className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all" 
-                      required
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">পেমেন্ট মেথড</label>
-                <select 
-                  value={formData.method}
-                  onChange={(e) => setFormData({...formData, method: e.target.value})}
-                  className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                >
-                  <option value="cash">নগদ (Cash)</option>
-                  <option value="bkash">বিকাশ (bKash)</option>
-                  <option value="nagad">নগদ (Nagad)</option>
-                  <option value="bank">ব্যাংক (Bank)</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">আদায়কারী (টাকা গ্রহণ করেছেন) *</label>
-                <select 
-                  value={formData.collected_by}
-                  onChange={(e) => setFormData({...formData, collected_by: e.target.value})}
-                  className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                  required
-                >
-                  <option value="">আদায়কারী সিলেক্ট করুন</option>
-                  {treasurers.map(m => (
-                    <option key={m.id} value={m.id}>{m.name} ({m.phone})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[13px] font-bold text-gray-700 ml-1">রসিদ নম্বর</label>
-                <input 
-                  type="text"
-                  value={formData.receipt_no}
-                  onChange={(e) => setFormData({...formData, receipt_no: e.target.value})}
-                  className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button 
-                  type="button"
-                  onClick={() => { setEditingDonation(null); setShowModal(false); }}
-                  className="flex-1 px-6 py-3.5 bg-gray-100 text-gray-600 rounded-2xl text-sm font-bold hover:bg-gray-200 transition-all"
-                >
-                  বাতিল
-                </button>
-                <button 
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-[2] px-6 py-3.5 bg-emerald-600 text-white rounded-2xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      সেভ হচ্ছে...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      সেভ করুন
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+  return <main className="min-h-screen bg-[#F8FAFC] pb-16">
+    <div className="bg-white border-b border-gray-100 sticky top-0 z-20"><div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4"><div><div className="flex items-center gap-2"><FileText className="text-emerald-600" size={23} /><h1 className="text-xl md:text-2xl font-black text-gray-900">অনুদান ও জমার হিসাব</h1></div><p className="text-xs text-gray-500 mt-1">এখানে শুধু জমার রেকর্ড দেখা ও যাচাই করা যায়</p></div><Link href="/joma" className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 text-sm font-black shadow-lg shadow-emerald-200 active:scale-[.98] transition-all"><Plus size={17} /> জমা এন্ট্রি পেজে যান</Link></div></div>
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3"><div className="bg-white rounded-2xl p-4 border border-gray-100"><p className="text-xs text-gray-400 font-bold">দেখানো রেকর্ড</p><p className="text-2xl font-black text-gray-900 mt-1">{filtered.length}</p></div><div className="bg-white rounded-2xl p-4 border border-gray-100"><p className="text-xs text-gray-400 font-bold">মোট amount</p><p className="text-2xl font-black text-emerald-600 mt-1">{money(total)}</p></div><div className="bg-white rounded-2xl p-4 border border-gray-100"><p className="text-xs text-gray-400 font-bold">Extra amount</p><p className="text-2xl font-black text-amber-600 mt-1">{money(extra)}</p></div><div className="bg-white rounded-2xl p-4 border border-gray-100"><p className="text-xs text-gray-400 font-bold">Workflow</p><p className="text-sm font-black text-gray-900 mt-2">/joma only</p></div></div>
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 grid md:grid-cols-[1fr_180px_180px] gap-3"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="সদস্য, ফোন বা রসিদ দিয়ে খুঁজুন" className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-200 outline-none focus:bg-white focus:ring-4 focus:ring-emerald-500/10" /></div><select value={monthFilter} onChange={(event) => setMonthFilter(event.target.value)} className="px-3 py-3 rounded-xl bg-gray-50 border border-gray-200 outline-none"><option value="all">সব মাস</option>{months.map((month) => <option key={month} value={month}>{month}</option>)}</select><select value={methodFilter} onChange={(event) => setMethodFilter(event.target.value)} className="px-3 py-3 rounded-xl bg-gray-50 border border-gray-200 outline-none"><option value="all">সব পদ্ধতি</option><option value="cash">নগদ</option><option value="bkash">বিকাশ</option><option value="nagad">নগদ (Nagad)</option><option value="bank">ব্যাংক</option></select></div>
+      {error && <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 text-rose-700 text-sm font-bold">{error}</div>}
+      {loading ? <div className="py-24 flex justify-center"><Loader2 className="animate-spin text-emerald-600" size={34} /></div> : filtered.length === 0 ? <div className="bg-white rounded-3xl border border-dashed border-gray-200 py-20 text-center"><Search className="mx-auto text-gray-300" size={36} /><p className="mt-3 font-black text-gray-800">কোনো জমা পাওয়া যায়নি</p><p className="text-sm text-gray-400 mt-1">Filter পরিবর্তন করুন অথবা /joma থেকে নতুন জমা করুন</p></div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{filtered.map((donation) => <article key={donation.id} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm"><div className="flex items-start justify-between gap-3"><div><h2 className="font-black text-gray-900">{donation.members?.name || "সদস্য"}</h2><p className="text-xs text-gray-400 mt-1">{donation.members?.phone || ""}</p></div><p className="text-lg font-black text-emerald-600">{money(Number(donation.amount) || 0)}</p></div><div className="mt-4 space-y-2 text-xs text-gray-500"><div className="flex justify-between"><span>রসিদ</span><b className="text-gray-800">#{donation.receipt_no || "—"}</b></div><div className="flex justify-between"><span>তারিখ</span><b className="text-gray-800">{donation.date}</b></div><div className="flex justify-between"><span>coverage</span><b className="text-gray-800">{donation.donation_month || "—"}{donation.donation_end_month ? ` – ${donation.donation_end_month}` : ""}</b></div><div className="flex justify-between"><span>পদ্ধতি</span><b className="uppercase text-gray-800">{donation.method || "cash"}</b></div>{Number(donation.extra_amount || 0) > 0 && <div className="flex justify-between"><span>extra</span><b className="text-amber-600">{money(Number(donation.extra_amount))}</b></div>}</div><div className="flex items-center gap-2 mt-5 pt-4 border-t border-dashed border-gray-100"><button onClick={() => setPreviewUrl(`/api/receipts/${donation.id}`)} className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-xs font-black flex items-center justify-center gap-2"><Eye size={15} /> প্রিভিউ</button><button onClick={() => void handleShare(donation)} className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600" title="শেয়ার"><Share2 size={16} /></button><a href={`/api/receipts/${donation.id}?download=1`} download={`Receipt-${donation.receipt_no || donation.id}.jpg`} className="p-2.5 rounded-xl bg-blue-50 text-blue-600" title="ডাউনলোড"><Download size={16} /></a><button onClick={() => void handleDelete(donation)} className="p-2.5 rounded-xl bg-rose-50 text-rose-600" title="ডিলিট"><Trash2 size={16} /></button></div></article>)}</div>}
     </div>
-  );
+    {previewUrl && <div className="fixed inset-0 z-50 bg-gray-900/70 backdrop-blur-sm flex items-center justify-center p-4"><div className="bg-white w-full max-w-4xl h-[85vh] rounded-3xl overflow-hidden flex flex-col"><div className="flex items-center justify-between px-5 py-4 border-b border-gray-100"><h2 className="font-black">রসিদ প্রিভিউ</h2><button onClick={() => setPreviewUrl(null)} className="p-2 rounded-xl hover:bg-gray-100" aria-label="বন্ধ"><X size={19} /></button></div><iframe src={previewUrl} title="রসিদ প্রিভিউ" className="w-full flex-1 bg-gray-100" /></div></div>}
+  </main>;
 }
-// Force deploy Wed Aug 26 17:57:25 UTC 2026

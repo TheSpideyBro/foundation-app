@@ -25,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const menuItems = [
     { name: "ড্যাশবোর্ড", icon: LayoutDashboard, path: "/dashboard", roles: ["admin", "treasurer", "member"] },
     { name: "সদস্য তালিকা", icon: Users, path: "/members", roles: ["admin", "treasurer", "member"] },
-    { name: "জমা এন্ট্রি", icon: ReceiptText, path: "/payments", roles: ["admin", "treasurer"] },
+    { name: "জমা এন্ট্রি", icon: ReceiptText, path: "/joma", roles: ["admin", "treasurer"] },
     { name: "দান সংগ্রহ", icon: CreditCard, path: "/donations", roles: ["admin", "treasurer", "member"] },
     { name: "খরচের হিসাব", icon: Wallet, path: "/expenses", roles: ["admin", "treasurer", "member"] },
     { name: "প্রতিবেদন", icon: BarChart3, path: "/reports", roles: ["admin", "treasurer", "member"] },
