@@ -36,3 +36,11 @@ yarn-error.log*
 # Misc
 *.tsbuildinfo
 .cache/
+
+# Secrets / local tooling (contain Supabase PAC tokens — never commit)
+.mcp.json
+scripts/db_review.py
+scripts/supabase_query.py
+
+# Claude Code local session data
+.claude/

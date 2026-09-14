@@ -72,7 +72,7 @@
 | Excel | xlsx, exceljs | — |
 | QR Codes | qrcode (npm) | — |
 | Receipt Canvas | canvas (node-canvas) | — |
-| Fonts | Bengali: Hind Siliguri, Tiro Bangla; Numbers: JetBrains Mono |
+| Fonts | Bengali: Hind Siliguri, Tiro Bangla; Numerals: Bengali locale (`bn-BD`) |
 | Testing | Node.js test runner (experimental strip types) | — |
 | E2E | Playwright | — |
 | PWA | Service Worker, Web App Manifest | — |
@@ -87,7 +87,7 @@ Browser → Next.js Middleware (auth check) → App Router Page →
 
 ### 2. Payment Submission (Joma Entry)
 ```
-Browser → /payments page → calculatePaymentAllocation() [client preview]
+Browser → /joma page → calculatePaymentAllocation() [client preview]
   → POST /api/payments → cookie-based auth → 
   → service-role Supabase client → save_payment_entry RPC →
   → PostgreSQL: insert donations + payment_allocations + update member →
@@ -146,7 +146,7 @@ foundation-app/
 │   ├── login/page.tsx      # Login
 │   ├── signup/page.tsx     # Registration
 │   ├── dashboard/page.tsx  # Dashboard
-│   ├── payments/page.tsx   # Joma Entry
+│   ├── joma/page.tsx       # Joma Entry
 │   ├── donations/page.tsx  # Donation list
 │   ├── expenses/page.tsx   # Expense list
 │   ├── members/page.tsx    # Member directory

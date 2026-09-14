@@ -84,8 +84,8 @@ supabase-schema.sql   — Database schema + RLS policies
 
 ## Design System
 
-Follows the "ledger/khata" identity from `/reference`:
-- Ink green sidebar (#1B4332), paper card backgrounds (#FBF8F1)
-- Gold accent for active nav, buttons (#C9972D)
-- Red for expenses/negative amounts (#A63D40)
-- Fonts: Hind Siliguri (body), Tiro Bangla (headings), JetBrains Mono (numbers/money)
+Follows the modern emerald identity:
+- Emerald primary theme (#059669 / #064E3B), white card backgrounds (#FFFFFF)
+- Amber accent (#F59E0B) for targets and warnings
+- Rose for expenses/negative amounts (#E11D48 / rose-600)
+- Fonts: Hind Siliguri (body), Tiro Bangla (headings), Bengali locale numerals for money (`৳` + `bn-BD`)

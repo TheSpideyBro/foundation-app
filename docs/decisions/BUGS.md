@@ -238,3 +238,59 @@ Unsafe access into JSONB `details` without guards.
 ### Fix
 
 Safe rendering of audit log details (`01b88ea`), plus RLS policy fixes for the users table and nullable member `user_id` (`45564ba`).
+
+---
+
+## BUG-011: Joma Entry / Payments API — Unauthorized on Every Request
+
+**Status:** fixed
+**Found:** 2026-09-14
+**Fixed:** 2026-09-14
+**Region:** backend/auth
+
+### Description
+
+POST and PUT to `/api/payments` (used by the Joma Entry page) always returned **401 Unauthorized**. Staff could not create or edit payments. Same bug affected `/api/admin/auto-link`, `/api/admin/reset-password`, `/api/sync-sheets`, `/api/restore-sheets`.
+
+### Root Cause
+
+All five routes manually parsed the `sb-*-auth-token` cookie assuming a `base64-<base64url-json>` format and extracted `access_token` from it. This cookie format was specific to an older `@supabase/ssr` version. v0.12.4 writes a different cookie shape (plain JWT or chunked session), so the manual parser always produced an empty token → `getUser()` returned null → 401.
+
+### Fix
+
+Replaced all manual cookie parsing with the canonical `createClient()` from `lib/supabase/server.ts`, which uses `@supabase/ssr`'s `createServerClient` and correctly reads the current cookie format. Pattern matches the working `/api/receipts/[id]` route.
+
+Affected routes:
+- `app/api/payments/route.ts` (POST + PUT) — **Joma root cause**
+- `app/api/admin/auto-link/route.ts` (POST)
+- `app/api/admin/reset-password/route.ts` (POST)
+- `app/api/sync-sheets/route.ts` (POST)
+- `app/api/restore-sheets/route.ts` (POST)
+
+Also corrected `/api/sync-sheets` comment that falsely claimed clients send an Authorization header — dashboard/admin pages send cookies only.
+
+### Verification
+
+- `tsc --noEmit`: zero errors project-wide
+- Manual: Joma Entry form now submits successfully with staff session
+
+### Preventative
+
+Always use `lib/supabase/server.ts`'s `createClient()` for server-side auth. Never manually parse Supabase auth cookies — the format changes between `@supabase/ssr` versions.
+
+**Status:** fixed
+**Found:** 2026-08
+**Fixed:** 2026-08
+**Region:** frontend
+
+### Description
+
+Audit log page failed to render when audit entries contained unexpected/null detail structures.
+
+### Root Cause
+
+Unsafe access into JSONB `details` without guards.
+
+### Fix
+
+Safe rendering of audit log details (`01b88ea`), plus RLS policy fixes for the users table and nullable member `user_id` (`45564ba`).

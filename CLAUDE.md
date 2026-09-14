@@ -1,29 +1,33 @@
-# Design System — DO NOT DEVIATE
+# Design System — Emerald Visual Identity
 
-This app follows a "ledger/khata" visual identity. Reference files are 
-in /reference — always check them before building or modifying any UI.
+This app follows a clean, modern emerald visual identity with rounded geometry and Bengali typography.
 
 > **AI agents / coding assistants:** Also read [AGENTS.md](AGENTS.md) for engineering invariants, architecture rules, testing requirements, and the **mandatory doc-sync checklist** before committing. The full documentation system is in [`docs/`](docs/).
 
-## Colors
-- ink (primary/sidebar): #1B4332
-- paper (card bg): #FBF8F1
-- page bg: #EDEAE0
-- border: #E4DCC8
-- gold (accent): #C9972D
-- red (expense/negative): #A63D40
-- text: #2B2B26
-- sub text: #8A8371
+## Color Tokens (defined in `app/globals.css` `@theme`)
+
+- **Primary / Deep Green:** `#064E3B` (used for banners, branding surfaces, dark cards)
+- **Primary Light / Emerald:** `#059669` / `emerald-600` (main brand color, active nav, primary CTAs, positive accents)
+- **Accent (Amber):** `#F59E0B` / `amber-600` (targets, warnings, highlight badges)
+- **Page Background:** `#FDFDFC` / `#FDFCF9` (warm off-white)
+- **Card Background:** `#FFFFFF`
+- **Border:** `#F3F4F6` / `emerald-100/50`
+- **Negative / Expense:** `#E11D48` / `rose-600`
+- **Text Primary:** `#111827` / `gray-900`
+- **Text Secondary:** `#4B5563` / `gray-500`
+- **Text Muted / Labels:** `gray-400` / uppercase tracking-widest
 
 ## Typography
-- Bangla body: 'Hind Siliguri'
-- Headings: 'Tiro Bangla'
-- Numbers/money: 'JetBrains Mono'
 
-## Component patterns
-- Cards: rounded-sm, border, paper background, thin colored left-edge 
-  accent for stat cards
-- Buttons: gold background, ink text, rounded-sm
-- Sidebar: ink green background, gold highlight for active nav item
-- Always follow the exact layout patterns in /reference/full-app-design.jsx 
-  and /reference/receipt-design.jsx — do not invent new styles.
+- **Headings & Titles:** `'Tiro Bangla', serif` (`font-tiro`)
+- **Body & UI Text:** `'Hind Siliguri', sans-serif` (`font-hind`)
+- **Numbers / Currency:** Formatted in Bengali locale via `.toLocaleString("bn-BD")` prefixed with `৳`
+
+## Component Patterns
+
+- **Cards:** `.card-premium` — `bg-white`, `border border-gray-100`, `rounded-2xl` (desktop `rounded-[2rem]`), subtle hover shadow + lift
+- **Primary Buttons:** `.btn-emerald` — `bg-emerald-600`, text white, `rounded-2xl`, min-height 48px, active scale-95
+- **Secondary Buttons:** `.btn-outline` — `bg-white`, `border border-gray-200`, text gray-700, `rounded-2xl`
+- **Sidebar (Desktop):** White background, emerald active highlight (`bg-emerald-600 text-white shadow-lg`), dark gray for admin section
+- **Mobile Navigation:** Fixed top header + bottom navigation bar (Home, Donations, Expenses, Members, Profile) + slide-out drawer for full menu
+- **Receipts (JPEG):** Follows `/reference/receipt-design.jsx` canvas spec (`#064E3B` header gradient, `#C9A227` gold accent, Bengali typography, QR code).

@@ -6,7 +6,7 @@ Instructions for AI coding assistants (Claude Code, Cursor, GitHub Copilot, etc.
 
 This repository has **two** AI-guidance files:
 
-- **CLAUDE.md** — design rules, the ledger/khata visual identity. **Do not deviate** from those patterns.
+- **CLAUDE.md** — design rules, the emerald visual identity. Follow those patterns for all UI work.
 - **AGENTS.md** (this file) — engineering rules: architecture, invariants, security, testing, documentation sync, commit discipline.
 
 Both files were audited against the actual code and live database before being written.

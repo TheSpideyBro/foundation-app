@@ -1,3 +1,11 @@
+/**
+ * @deprecated HISTORICAL CONCEPT ONLY (Khata / Ledger style)
+ * The production app uses the modern Emerald Design System defined in
+ * app/globals.css and CLAUDE.md.
+ * This file is retained as an archive of the original prototype layout.
+ * For receipt canvas specs, see reference/receipt-design.jsx.
+ */
+
 import React, { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import {

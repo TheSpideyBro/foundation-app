@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupaClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(req: Request) {
   try {
@@ -12,34 +12,20 @@ export async function POST(req: Request) {
 
     // Check if the current user is an admin
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const supabaseServiceKey = process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseServiceKey) throw new Error("Service role key missing");
 
-    const cookieStore = await cookies();
-    const tokenCookie = cookieStore.getAll().find((c) => /^sb-.*-auth-token$/.test(c.name));
-    const rawToken = tokenCookie?.value || "";
-    let accessToken = rawToken;
-    if (rawToken.startsWith("base64-")) {
-      try {
-        const json = Buffer.from(rawToken.slice(7), "base64url").toString("utf8");
-        const parsed = JSON.parse(json);
-        accessToken = typeof parsed?.access_token === "string" ? parsed.access_token : "";
-      } catch { accessToken = ""; }
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } }
-    });
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Auth via the canonical server client (reads the @supabase/ssr session
+    // cookie; the manual base64- parsing it replaced always 401'd on v0.12).
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Check role from public.users table
     const { data: userData } = await supabase
       .from('users')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', session.user.id)
       .single();
 
     if (userData?.role !== 'admin') {
@@ -47,7 +33,7 @@ export async function POST(req: Request) {
     }
 
     // Use service role client to update password
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    const adminClient = createSupaClient(supabaseUrl, supabaseServiceKey);
     const { error } = await adminClient.auth.admin.updateUserById(userId, {
       password: newPassword
     });

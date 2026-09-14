@@ -13,9 +13,9 @@ Complete feature inventory with route, role access, and implementation status.
 - **Period Selector**: monthly / yearly / total
 
 ### 2. Joma Entry (জমা এন্ট্রি)
-- **Route**: `/payments`
+- **Route**: `/joma`
 - **Roles**: admin, treasurer
-- **Implementation**: `app/payments/page.tsx`
+- **Implementation**: `app/joma/page.tsx`
 - **Description**: Advanced payment entry form with member selection, amount, date, payment method (cash/bkash/nagad/bank), receipt number, coverage month range selector, optional pledge change, real-time allocation preview
 - **Allocation Preview**: Uses `calculatePaymentAllocation` from `lib/payment-ledger.ts` to show how the payment will be split before saving
 - **Backend**: `app/api/payments/route.ts` → calls `save_payment_entry` RPC (atomic insert + reallocate)

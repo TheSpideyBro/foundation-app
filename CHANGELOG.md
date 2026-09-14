@@ -11,6 +11,15 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+- **BUG-011**: Joma Entry and all staff-facing API routes (payments, admin/auto-link, admin/reset-password, sync-sheets, restore-sheets) returned 401 Unauthorized on every request due to a broken manual cookie parser. Replaced with the canonical `createClient()` from `lib/supabase/server.ts`.
+- **BUG-006** (follow-up): Dashboard " syncing" button called wrong `/api/sheets/sync` path — fixed to `/api/sync-sheets`.
+- **BUG-007** (follow-up): Dashboard showed a fabricated "অ্যাক্টিভিটি স্কোর ৯৪%"; replaced with real `stats.netBalance`.
+- **BUG-008** (follow-up): "বকষয় সদস্য় দেখুন" link to `/admin/pending` was visible to all roles — now admin-only.
+- **BUG-009** (follow-up): Unapproved members could access the full app instead of seeing the approval-pending screen. Added approval gate in `layout-wrapper`.
+- `app/layout.tsx`: Removed `maximumScale: 1` to re-enable pinch-zoom for accessibility.
+- `package.json`: Removed unsupported `--experimental-default-type=module` flag from `test:ledger`.
+
 ### Planned / Next Up
 
 These are the items currently queued for the next release. Add new items here as they come up.

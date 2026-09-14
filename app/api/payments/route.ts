@@ -1,6 +1,24 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupaClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
+
+// Canonical staff auth check (same pattern as /api/admin routes and
+// /api/receipts/[id]). Returns a NextResponse error on failure, or null when
+// the caller may proceed. The manual cookie parsing this replaced assumed a
+// "base64-" cookie format that @supabase/ssr v0.12 no longer writes, which is
+// why POST/PUT here always failed with 401 Unauthorized.
+async function requireStaff(actionLabel: string): Promise<NextResponse | null> {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { data: userData } = await supabase.from('users').select('role').eq('id', session.user.id).single();
+  if (userData?.role !== 'admin' && userData?.role !== 'treasurer') {
+    return NextResponse.json({ error: `Only staff can ${actionLabel}` }, { status: 403 });
+  }
+
+  return null;
+}
 
 export async function POST(request: Request) {
   try {
@@ -63,41 +81,17 @@ export async function POST(request: Request) {
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const supabaseServiceKey = process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseServiceKey) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const cookieStore = await cookies();
-    const tokenCookie = cookieStore.getAll().find((c) => /^sb-.*-auth-token$/.test(c.name));
-    const rawToken = tokenCookie?.value || '';
-    let accessToken = rawToken;
-    if (rawToken.startsWith('base64-')) {
-      try {
-        const json = Buffer.from(rawToken.slice(7), 'base64url').toString('utf8');
-        const parsed = JSON.parse(json);
-        accessToken = typeof parsed?.access_token === 'string' ? parsed.access_token : '';
-      } catch {
-        accessToken = '';
-      }
-    }
-
-    // Auth client (to check user role)
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    });
-
-    const { data: { user } } = await authClient.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: userData } = await authClient.from('users').select('role').eq('id', user.id).single();
-    if (userData?.role !== 'admin' && userData?.role !== 'treasurer') {
-      return NextResponse.json({ error: 'Only staff can create payments' }, { status: 403 });
-    }
+    // Auth check via canonical server client
+    const authError = await requireStaff('create payments');
+    if (authError) return authError;
 
     // Service role client for RPC calls
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey!);
+    const adminClient = createSupaClient(supabaseUrl, supabaseServiceKey!);
 
     // Validate member exists
     const { data: member } = await adminClient
@@ -176,39 +170,16 @@ export async function PUT(request: Request) {
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const supabaseServiceKey = process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseServiceKey) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const cookieStore = await cookies();
-    const tokenCookie = cookieStore.getAll().find((c) => /^sb-.*-auth-token$/.test(c.name));
-    const rawToken = tokenCookie?.value || '';
-    let accessToken = rawToken;
-    if (rawToken.startsWith('base64-')) {
-      try {
-        const json = Buffer.from(rawToken.slice(7), 'base64url').toString('utf8');
-        const parsed = JSON.parse(json);
-        accessToken = typeof parsed?.access_token === 'string' ? parsed.access_token : '';
-      } catch {
-        accessToken = '';
-      }
-    }
+    // Auth check via canonical server client
+    const authError = await requireStaff('edit payments');
+    if (authError) return authError;
 
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    });
-
-    const { data: { user } } = await authClient.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: userData } = await authClient.from('users').select('role').eq('id', user.id).single();
-    if (userData?.role !== 'admin' && userData?.role !== 'treasurer') {
-      return NextResponse.json({ error: 'Only staff can edit payments' }, { status: 403 });
-    }
-
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey!);
+    const adminClient = createSupaClient(supabaseUrl, supabaseServiceKey!);
 
     // Validate payment exists and belongs to a valid member
     const { data: donation } = await adminClient

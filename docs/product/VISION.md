@@ -6,7 +6,7 @@
 
 ## Purpose
 
-A community fund management application built for a local Bengali welfare foundation. The app digitizes the traditional "khata" (ledger book) workflow — collecting monthly member pledges (chada), tracking donations and expenses, generating official receipts, and producing financial reports. Everything is in Bengali (Bangla) with Bengali numerals, Bengali month names, and a visual identity inspired by physical ledger books.
+A community fund management application built for a local Bengali welfare foundation. The app digitizes the traditional "khata" (ledger book) workflow — collecting monthly member pledges (chada), tracking donations and expenses, generating official receipts, and producing financial reports. Everything is in Bengali (Bangla) with Bengali numerals, Bengali month names, and a modern emerald visual identity.
 
 ## Problem
 

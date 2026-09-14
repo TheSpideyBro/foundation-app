@@ -70,15 +70,15 @@
 - All numbers display in Bengali numerals via `toBengaliNumber()`
 - Money formatted with `formatMoney()` (Bengali numerals + ৳ prefix)
 - Dates use Bengali month names via `formatDateBengali()`
-- Typography: Tiro Bangla for headings, Hind Siliguri for body, JetBrains Mono for numbers
+- Typography: Tiro Bangla for headings, Hind Siliguri for body, Bengali numerals (`.toLocaleString("bn-BD")`) for numbers
 
 ### Design System
 
-Follow `CLAUDE.md` strictly:
-- Colors: ink (#1B4332), paper (#FBF8F1), page (#EDEAE0), border (#E4DCC8), gold (#C9972D), red (#A63D40)
-- Cards: rounded-sm, border, paper bg, thin colored left-edge accent
-- Buttons: gold bg, ink text, rounded-sm
-- Reference files in `/reference/`
+Follow `CLAUDE.md` and `app/globals.css` `@theme`:
+- Colors: primary (#064E3B), emerald (#059669), amber (#F59E0B), white cards (#FFFFFF), rose (#E11D48)
+- Cards: `.card-premium` (rounded-2xl, white bg, subtle hover shadow)
+- Buttons: `.btn-emerald` (emerald-600 bg, white text, rounded-2xl), `.btn-outline`
+- Reference receipt spec in `/reference/receipt-design.jsx`
 
 ### File Organization
 
