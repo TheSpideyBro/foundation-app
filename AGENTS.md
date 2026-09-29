@@ -35,7 +35,10 @@ See [docs/decisions/ADRs/ADR-001-canonical-payment-allocation.md](docs/decisions
 app/                    Next.js App Router pages + API routes
 lib/                    Shared TS libraries (CANONICAL engine, supabase clients, utils, integrations)
 components/             React components (AuthProvider, layout shell, shadcn/ui)
-supabase/migrations/    SQL migrations (chronological, applied to live DB)
+supabase/migrations/    SQL migrations for the Main project (chronological, applied to live DB)
+supabase/migrations-test/  SQL migrations for the Test project only (signatures differ)
+supabase/schema.sql     GENERATED from the live catalog — never edit by hand
+scripts/                Node/Python utilities (standalone build, schema dump, sheet sync)
 tests/                  Unit tests (node --experimental-strip-types --test)
 docs/                   Documentation system (source of truth for design + engineering docs)
 public/                 Static assets, Bengali fonts, PWA
@@ -202,7 +205,7 @@ Before marking a task done, verify **all** of the following that apply:
 
 - **TypeScript strict.** Follow the surrounding style match the repo idiom (comment density, naming).
 - **Bengali-first UX.** All user-facing text, numerals (`toBengaliNumber`), dates, and money (`formatMoney`) are Bengali. Don't introduce English labels in UI.
-- **Client access** to Supabase uses the singleton in `lib/supabase-client.ts` (`getSupabase()`), with `createBrowserClient` in `lib/supabase/client.ts` noted as an overlapping alternative (TD-006 — prefer the singleton until consolidated).
+- **Client access** to Supabase uses the singleton in `lib/supabase-client.ts` (`getSupabase()`) — it is the only browser client (TD-006 resolved).
 - **Roles** resolved via `useAuth()` in `components/providers.tsx`.
 - **Commit messages:** conventional commits with required body for non-trivial changes. See "Commit Message Discipline" above.
 
@@ -211,9 +214,30 @@ Before marking a task done, verify **all** of the following that apply:
 ```bash
 pnpm test:ledger     # 28-case canonical allocation engine tests — REQUIRED after touching allocation
 pnpm test:e2e        # Playwright (dashboard, reports)
-pnpm lint            # ESLint — keep it clean (note: build has ignoreBuildErrors, see TD-002)
+pnpm lint            # ESLint — must stay clean (TD-002 resolved: build type-checks, no ignoreBuildErrors)
 ```
 
 ## Live Database Access
 
-The live Supabase project is `pvfdgrdvvoytsfmjyvde` (Supabase MCP is configured). Schema/function changes go through the Supabase MCP `apply_migration`, and `NOTIFY pgrst, 'reload schema'` must be emitted. After any change that affects `payment_allocations` or `donations`, verify the zero-sum invariant and update `docs/database/SCHEMA.md`.
+Two deployments of the same app:
+
+| Project | Ref | Migrations |
+|---------|-----|------------|
+| Daulkhar Foundation **Main** (production) | `mlnzxhuozuyidpxepxex` | `supabase/migrations/` |
+| Daulkhar Foundation **Test** | `pvfdgrdvvoytsfmjyvde` | `supabase/migrations-test/` |
+
+The schemas have diverged (different `save_payment_entry` / `reallocate_payment`
+argument lists) — never replay one project's files on the other. See TD-011.
+
+Schema/function changes are applied through the Supabase Management API
+(`POST /v1/projects/<ref>/database/query` with `SUPABASE_ACCESS_TOKEN`), wrapped in
+`BEGIN; … COMMIT;`, and must emit `NOTIFY pgrst, 'reload schema'`. After any change that
+affects `payment_allocations` or `donations`, verify the zero-sum invariant (currently
+Main `7,850 = 7,850`, Test `7,442 = 7,442`) and update `docs/database/SCHEMA.md`.
+
+`supabase/schema.sql` is **generated from the live catalog** — do not edit it. Regenerate:
+
+```bash
+SUPABASE_ACCESS_TOKEN=... SUPABASE_PROJECT_REF=mlnzxhuozuyidpxepxex \
+  python3 scripts/dump-supabase-schema.py > supabase/schema.sql
+```

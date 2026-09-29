@@ -115,7 +115,7 @@ When allocations exist for a payment, they take precedence. The ledger only fall
 - **Total**: All-time cumulative
 
 ### Export Formats
-- **Excel**: Full data export with formatted headers (xlsx/exceljs)
+- **Excel**: Full data export with formatted headers (xlsx)
 - **PDF**: Summary report (jsPDF)
 
 ## Key Invariants

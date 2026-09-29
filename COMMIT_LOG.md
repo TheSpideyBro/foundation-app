@@ -59,6 +59,103 @@
 
 ---
 
+## 7f712c1 — fix(db): harden RPCs and views, restore zero-sum backfill, add Test migrations
+
+**Date:** 2026-09-29  
+**Author:** AI Assistant (opencode)  
+**Branch:** main  
+**Files changed:** `supabase/migrations/20260929_harden_handle_new_user_role.sql`, `20260929_harden_definer_rpcs.sql`, `20260929_backfill_legacy_donations.sql`, `supabase/migrations-test/20260929_harden_test_project.sql`, `supabase/schema.sql`, `scripts/dump-supabase-schema.py`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Write RPC auth (BUG-015) | `save_payment_entry` / `reallocate_payment` / `backfill_payment_allocations` = `SECURITY DEFINER`, no internal auth check, `GRANT EXECUTE` to `anon` (+ `authenticated` on Main) | `service_role` only — `REVOKE` from `anon`/`authenticated`/`PUBLIC`, `GRANT EXECUTE` to `service_role` on Main and Test |
+| View exposure (BUG-015) | all summary views granted `SELECT` to `anon`, including `audit_log_view` (member data + audit trail with no session) | `anon` has `SELECT` on **0** views on both projects |
+| Signup (BUG-012) | `handle_new_user()` trusted metadata; self-registration could set `role='admin'` | hardcodes `role='member'`, `is_approved=false` — applied to Main **and** Test |
+| Pledge change (BUG-016) | Joma's validated pledge change was dropped: Main's `save_payment_entry` never touched `members.monthly_pledge`; Test updated history but not the member row; its `reallocate_payment` dropped the coverage window | `members.monthly_pledge` + `member_pledge_history` updated in the same transaction; coverage months persisted |
+| Receipt numbers (BUG-017) | no lock, `lpad(6)` truncated the sequence (`991783` → `R-9917`) → guaranteed UNIQUE collision | `pg_advisory_xact_lock`, pad only when needed |
+| Member self-update (BUG-018) | `members_update_own` let a member change their own `monthly_pledge`, `status`, `join_date` | `trg_member_self_update` restricts self-service columns to `name`/`address`/`phone` |
+| Zero-sum (BUG-019) | `SUM(donations)=7,850` vs `SUM(payment_allocations)=3,300`; `backfill_payment_allocations()` missing from the project | function restored, 14 legacy rows coverage-pinned, backfilled → **7,850 = 7,850**, `unbackfilled = 0` |
+| Summary view (BUG-020) | live view still the pre-ADR-002 greedy definition (`20260907_…_from_allocations.sql` never applied) → two algorithms live at once | canonical allocation-based view applied; reported 2026-09 4,350 → 3,000, 2026-08 400 → 500 (user-visible) |
+| Schema file | hand-written `supabase/schema.sql` drifted (missing `payment_allocations`, `extra_amount`, wrong policy, phantom `members.user_id`) | generated from the live catalog by `scripts/dump-supabase-schema.py` |
+| Test project | unaudited, anon-readable views, unsigned write RPCs, no `monthly_pledge` update | hardened via `supabase/migrations-test/` (its RPC signatures differ — Main's files must not be replayed) |
+| Constraints/indexes | `users.role` unvalidated, `is_approved`/`monthly_pledge` nullable, missing FK indexes | `CHECK` + `NOT NULL` + 14 (Main) / 7 (Test) indexes |
+
+### Why
+
+The Supabase audit found that the documented "hardening" migration had never been applied,
+that the security-critical RPCs were callable without a session, that 14 donations had no
+allocation rows, and that two incompatible versions of the summary view existed. These are
+the DB findings BUG-015 → BUG-020 / DB-001 → DB-013.
+
+### Tests Run
+
+- [x] Post-application catalog queries on Main: zero-sum `7,850 = 7,850`, `unbackfilled = 0`, 0 anon-readable views, 0 anon-execute write RPCs, `handle_new_user` returns `member`/`false`
+- [x] Same assertions on Test: zero-sum `7,442 = 7,442`, 0 anon-readable views
+- [x] `supabase/schema.sql` regenerated and diffed against the catalog
+- [x] `pnpm test:ledger` — 28/28 (run with a TS-capable Node 22; the distro `node` build lacks type stripping)
+
+### Related
+
+- Bug: BUG-012, BUG-015, BUG-016, BUG-017, BUG-018, BUG-019, BUG-020
+- Tech Debt: TD-008 (resolved), TD-009 (resolved), TD-010 (resolved), TD-011 (open)
+- Migrations: `20260929_harden_handle_new_user_role.sql`, `20260929_harden_definer_rpcs.sql`, `20260929_backfill_legacy_donations.sql`, `20260907_monthly_collection_summary_from_allocations.sql`, `migrations-test/20260929_harden_test_project.sql`
+
+### Known Risks / Follow-ups
+
+- **User-visible report numbers changed** (BUG-020): September collection now shows ৳3,000 instead of ৳4,350 — this is the correct, allocation-based figure; worth telling the team before month-end.
+- Main and Test schemas have diverged (TD-011); the `supabase_migrations.schema_migrations` ledger on Main stops at `20260907194636`, so verify against the catalog, not the ledger.
+- Any existing script or client calling `save_payment_entry`/`reallocate_payment` with the anon key will now get 42501 — the server must use the service-role key (it does, in `app/api/payments/route.ts`).
+
+---
+
+## 87ab2eb — fix(app): close auth, authorization, date and accounting-display bugs
+
+**Date:** 2026-09-29  
+**Author:** AI Assistant (opencode)  
+**Branch:** main  
+**Files changed:** `app/**`, `components/providers.tsx`, `components/layout.tsx`, `lib/auth.ts`, `lib/server-auth.ts`, `lib/utils.ts`, `lib/supabase-client.ts`, `next.config.ts`, `package.json`, `.env.example` (+ deleted `lib/audit.ts`, `lib/supabase/client.ts`, `package-lock.json`)
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| API auth (BUG-011) | hand-rolled cookie parser never matched, every staff API returned 401 | canonical `createClient()` from `lib/supabase/server.ts` |
+| Route authorization (BUG-014) | `/api/notify/whatsapp` had no auth at all; `/admin/members/[id]` had no role gate; admin tiles visible to every role | `requireAuth("staff"\|"admin")` in `lib/server-auth.ts`, enforces `is_approved === true` |
+| Role logic | 16 inlined founder-email literals across pages | one `FOUNDER_EMAIL` + `isStaff`/`isAdmin`/`isApproved` in `lib/auth.ts` |
+| Approval check | `isApproved = is_approved !== false` — `null` counted as approved | `isApproved === true`, fails closed (safe now that the column is `NOT NULL`) |
+| Dates (BUG-013) | UTC month/day defaults → Joma + admin pages defaulted to *yesterday* 00:00–06:00 | `todayISO`/`currentMonthStr`/`toLocalISODate` in `lib/utils.ts` |
+| Sign-up payload | sent `role`/`is_approved` from the client | removed; `ensureProfile()` hardcodes `member`/`false` |
+| Build hygiene | `ignoreBuildErrors: true`, unused `exceljs`, duplicate `package-lock.json` + browser client, silent mock writes | removed; mock throws `SUPABASE_NOT_CONFIGURED` |
+| Dead code | `lib/audit.ts` (broken, no importers) | deleted — the audit trail is written by DB triggers |
+| Dashboard | fabricated "অ্যাক্টিভিটি স্কোর ৯৪%", wrong `/api/sheets/sync` path, public pending-members link | real `stats.netBalance`, `/api/sync-sheets`, admin-only |
+
+### Why
+
+Repository audit found broken auth on every staff API, a publicly callable WhatsApp endpoint,
+client-controlled role metadata, and UTC date drift. Together with the DB work these are
+BUG-006 → BUG-014.
+
+### Tests Run
+
+- [x] `./node_modules/.bin/tsc --noEmit` — clean
+- [x] `pnpm lint` — clean
+- [x] `pnpm build` — exit 0 (no `ignoreBuildErrors`)
+- [x] `pnpm test:ledger` — 28/28 (with a TS-capable Node 22)
+
+### Related
+
+- Bug: BUG-006, BUG-007, BUG-008, BUG-011, BUG-012, BUG-013, BUG-014
+- Tech Debt: TD-002 (resolved), TD-005 (resolved), TD-006 (resolved), TD-007 (resolved)
+
+### Known Risks / Follow-ups
+
+- `requireAuth()` rejections are a behavior change: routes that previously answered `200` now return `401`/`403` — intentional, but any client relying on the old open routes will notice.
+- Founder-bypass removal (TD-001) is still open: it is now centralized in `lib/auth.ts` but the live role row must be confirmed first.
+
+---
+
 ## 2c59228 — docs(AGENTS): add commit message discipline section, fix duplicates
 
 **Date:** 2026-09-07  

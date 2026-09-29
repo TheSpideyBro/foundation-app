@@ -69,7 +69,7 @@
 | ORM/Client | Supabase JS | @supabase/supabase-js |
 | Charts | Recharts | — |
 | PDF | jsPDF | — |
-| Excel | xlsx, exceljs | — |
+| Excel | xlsx | — |
 | QR Codes | qrcode (npm) | — |
 | Receipt Canvas | canvas (node-canvas) | — |
 | Fonts | Bengali: Hind Siliguri, Tiro Bangla; Numerals: Bengali locale (`bn-BD`) |

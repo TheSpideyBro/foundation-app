@@ -43,7 +43,7 @@ Complete feature inventory with route, role access, and implementation status.
 - **Route**: `/reports`
 - **Roles**: admin, treasurer
 - **Implementation**: `app/reports/page.tsx`
-- **Description**: Financial reports with tabs for donations, expenses, members, collectors. Uses `buildMemberLedgerFromAllocations` for allocation-based ledger display. Excel export via xlsx/exceljs, PDF export via jsPDF
+- **Description**: Financial reports with tabs for donations, expenses, members, collectors. Uses `buildMemberLedgerFromAllocations` for allocation-based ledger display. Excel export via xlsx, PDF export via jsPDF
 
 ### 7. Profile (প্রোফাইল)
 - **Route**: `/profile`
