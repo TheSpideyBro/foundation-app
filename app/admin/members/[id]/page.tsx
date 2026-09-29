@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { currentMonthStr } from "@/lib/utils";
 import { useParams, useRouter } from "next/navigation";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-import { Phone, MapPin, ArrowLeft, Download, Calendar, ExternalLink } from "lucide-react";
+import { useAuth } from "@/components/providers";
+import { isStaff as hasStaffRole } from "@/lib/auth";
+import { Phone, MapPin, ArrowLeft, Download, Calendar, ExternalLink, ShieldCheck } from "lucide-react";
 import { buildMemberLedgerFromAllocations, formatMonth, type PledgeHistoryEntry, type PaymentAllocation, type LedgerDonation } from "@/lib/payment-ledger";
 
 type Member = { id: string; name: string; phone?: string; address?: string; monthly_pledge?: number; status?: string; join_date?: string };
@@ -14,19 +17,28 @@ const statusClass: Record<string, string> = { paid: "bg-emerald-100 text-emerald
 export default function AdminMemberDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const { user, role, loading: authLoading } = useAuth();
+  const isStaffView = hasStaffRole(role, user?.email);
   const [member, setMember] = useState<Member | null>(null);
   const [donations, setDonations] = useState<Donation[]>([]);
   const [allocations, setAllocations] = useState<PaymentAllocation[]>([]);
   const [pledgeHistory, setPledgeHistory] = useState<PledgeHistoryEntry[]>([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: m } = await supabase().from("members").select("*").eq("id", id).single();
-        const { data: d } = await supabase().from("donations").select("id, member_id, amount, date, method, receipt_no, donation_month, donation_end_month, coverage_start_month, coverage_end_month, note").eq("member_id", id).order("date", { ascending: false });
-        const { data: history } = await supabase().from("member_pledge_history").select("member_id, monthly_amount, effective_from_month").eq("member_id", id).order("effective_from_month", { ascending: true });
+        setLoadError(null);
+        const [{ data: m, error: mErr }, { data: d, error: dErr }, { data: history, error: hErr }] = await Promise.all([
+          supabase().from("members").select("*").eq("id", id).single(),
+          supabase().from("donations").select("id, member_id, amount, date, method, receipt_no, donation_month, donation_end_month, coverage_start_month, coverage_end_month, note").eq("member_id", id).order("date", { ascending: false }),
+          supabase().from("member_pledge_history").select("member_id, monthly_amount, effective_from_month").eq("member_id", id).order("effective_from_month", { ascending: true }),
+        ]);
+        // Errors used to be destructured away: a denied read rendered an empty
+        // ledger as if the member genuinely had no payments.
+        if (mErr || dErr || hErr) throw (mErr || dErr || hErr);
         // payment_allocations is the source of truth; tolerate its absence (pre-migration) via fallback.
         const { data: allocs, error: allocError } = await supabase().from("payment_allocations").select("id, payment_id, member_id, month, amount, allocation_type").eq("member_id", id);
         if (allocError) console.warn("payment_allocations unavailable, using canonical fallback:", allocError.message);
@@ -36,6 +48,7 @@ export default function AdminMemberDetailPage() {
         setPledgeHistory((history || []) as PledgeHistoryEntry[]);
       } catch (err) {
         console.error("Error fetching data:", err);
+        setLoadError(err instanceof Error ? err.message : "load failed");
       } finally {
         setLoading(false);
       }
@@ -43,15 +56,35 @@ export default function AdminMemberDetailPage() {
     fetchData();
   }, [id]);
 
-  if (loading) return (
+  if (authLoading || loading) return (
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
     </div>
   );
 
+  // /admin/members/[id] has no admin layout to inherit a gate from — anyone
+  // holding a member UUID could open the full payment ledger.
+  if (!isStaffView) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+      <div className="text-center p-8">
+        <ShieldCheck className="w-16 h-16 text-rose-400 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold text-gray-900 font-tiro mb-2">প্রবেশাধিকার সংরক্ষিত</h1>
+        <p className="text-gray-500">এই পেজটি শুধুমাত্র স্টাফ সদস্যদের জন্য।</p>
+        <button onClick={() => router.push("/dashboard")} className="mt-6 btn-emerald">ড্যাশবোর্ডে যান</button>
+      </div>
+    </div>
+  );
+
+  if (loadError) return (
+    <div className="p-20 text-center space-y-4">
+      <p className="text-rose-600 font-bold">লোড করা যায়নি: {loadError}</p>
+      <button onClick={() => window.location.reload()} className="btn-emerald">আবার চেষ্টা করুন</button>
+    </div>
+  );
+
   if (!member) return <div className="p-20 text-center">সদস্য পাওয়া যায়নি</div>;
 
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = currentMonthStr();
   const selectedStart = `${year}-01`;
   const selectedEnd = `${year}-12`;
   const ledgerStart = member.join_date && member.join_date.slice(0, 7) > selectedStart ? member.join_date.slice(0, 7) : selectedStart;

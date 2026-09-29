@@ -1,49 +1,25 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { buildMemberLedger, type LedgerDonation, type PledgeHistoryEntry } from "@/lib/payment-ledger";
+import { NextResponse } from 'next/server';
+import { currentMonthStr } from "@/lib/utils";
+import { requireAuth } from '@/lib/server-auth';
+import { buildMemberLedger, type LedgerDonation, type PledgeHistoryEntry } from '@/lib/payment-ledger';
 
 export async function GET(request: Request) {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
-        },
-      },
-    }
-  );
-  const { data: { session } } = await supabase.auth.getSession();
+  const auth = await requireAuth('admin');
+  if (!auth.ok) return auth.response;
 
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Check admin role
-  const { data: user } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", session.user.id)
-    .single();
-
-  if (user?.role !== 'admin' && session.user.email !== 'saddamakash234@gmail.com') {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
+  const { supabase } = auth;
   const { searchParams } = new URL(request.url);
-  const month = searchParams.get("month") || new Date().toISOString().slice(0, 7); // YYYY-MM
+  const month = searchParams.get("month") || currentMonthStr(); // YYYY-MM
 
   try {
     // 1. Load active members, their effective pledge history and all relevant payments.
+    // Every active member is loaded: the arrears filter belongs after the
+    // ledger resolves the pledge effective for the requested month, not on the
+    // current members.monthly_pledge value.
     const { data: members, error: mError } = await supabase
       .from("members")
       .select("id, name, phone, monthly_pledge")
-      .eq("status", "active")
-      .gt("monthly_pledge", 0);
+      .eq("status", "active");
     if (mError) throw mError;
 
     const { data: pledgeHistory, error: hError } = await supabase
@@ -52,10 +28,13 @@ export async function GET(request: Request) {
       .order("effective_from_month", { ascending: true });
     if (hError) throw hError;
 
+    // Legacy rows can have donation_month NULL (predating the
+    // set_donation_month trigger) — exclude them explicitly rather than
+    // silently dropping them through an IS NULL comparison.
     const { data: donations, error: dError } = await supabase
       .from("donations")
       .select("id, member_id, amount, date, donation_month, donation_end_month")
-      .lte("donation_month", month);
+      .or(`donation_month.lte.${month},donation_month.is.null`);
     if (dError) throw dError;
 
     const pending = members?.map(m => {

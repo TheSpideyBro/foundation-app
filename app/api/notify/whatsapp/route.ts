@@ -1,14 +1,27 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/server-auth';
 import { sendDonationAlert } from '@/lib/whatsapp';
 
+/**
+ * POST /api/notify/whatsapp { donationId }
+ * Sends the member a WhatsApp donation alert with a receipt link.
+ *
+ * This route used to have NO authentication at all (middleware skips /api/*),
+ * so anyone could trigger messages — and paid WhatsApp API calls — for any
+ * donation id. It now requires a staff session.
+ */
 export async function POST(req: Request) {
   try {
+    const auth = await requireAuth('staff');
+    if (!auth.ok) return auth.response;
+
     const { donationId } = await req.json();
-    const supabase = createClient();
-    
-    // Get donation details
-    const { data: donation, error } = await supabase
+    if (typeof donationId !== 'string' || !donationId) {
+      return NextResponse.json({ error: 'donationId is required' }, { status: 400 });
+    }
+
+    // Get donation details (cookie-scoped client — RLS applies)
+    const { data: donation, error } = await auth.supabase
       .from('donations')
       .select('*, members(*)')
       .eq('id', donationId)
@@ -22,12 +35,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Member has no phone number' }, { status: 400 });
     }
 
-    // Construct the public URL for the receipt image
-    // Note: The receipt must be publicly accessible for WhatsApp to download it.
-    // We'll use the existing receipt API route.
-    const protocol = req.headers.get('x-forwarded-proto') || 'http';
+    // Receipt link. Prefer the configured site URL: building it from the
+    // request Host/x-forwarded-proto headers lets a caller point the member
+    // at an arbitrary origin.
     const host = req.headers.get('host');
-    const receiptUrl = `${protocol}://${host}/api/receipts/${donation.id}`;
+    const fallback = host ? `${req.headers.get('x-forwarded-proto') || 'http'}://${host}` : null;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || fallback;
+    if (!baseUrl) {
+      return NextResponse.json({ error: 'Site URL is not configured' }, { status: 500 });
+    }
+    const receiptUrl = `${baseUrl}/api/receipts/${donation.id}`;
 
     const result = await sendDonationAlert(
       donation.members,

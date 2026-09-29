@@ -1,38 +1,39 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/server-auth";
+
+/**
+ * GET  /api/admin/bulk?type=members|donations|expenses  — export rows
+ * POST /api/admin/bulk                                   — bulk import
+ *
+ * `type` is user input: it must be allow-listed or an admin session could
+ * read or write ANY table (users, auth-adjacent tables included).
+ */
+const ALLOWED_TABLES = new Set(["members", "donations", "expenses"]);
+const EXPORT_SELECT: Record<string, string> = {
+  members: "*",
+  donations: "*, members(name)",
+  expenses: "*",
+};
+
+function resolveTable(type: unknown): string | null {
+  return typeof type === "string" && ALLOWED_TABLES.has(type) ? type : null;
+}
 
 export async function GET(request: Request) {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
-        },
-      },
-    }
-  );
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { data: user } = await supabase.from("users").select("role").eq("id", session.user.id).single();
-  if (user?.role !== 'admin' && session.user.email !== 'saddamakash234@gmail.com') {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const auth = await requireAuth("admin");
+  if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(request.url);
-  const type = searchParams.get("type"); // members | donations | expenses
+  const table = resolveTable(searchParams.get("type")); // members | donations | expenses
+  if (!table) {
+    return NextResponse.json(
+      { error: `Invalid type — allowed: ${[...ALLOWED_TABLES].join(", ")}` },
+      { status: 400 }
+    );
+  }
 
   try {
-    let query = supabase.from(type as string).select("*");
-    if (type === 'donations') query = query.select("*, members(name)");
-    
-    const { data, error } = await query;
+    const { data, error } = await auth.supabase.from(table).select(EXPORT_SELECT[table]);
     if (error) throw error;
 
     return NextResponse.json(data);
@@ -42,33 +43,23 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
-        },
-      },
-    }
-  );
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { data: user } = await supabase.from("users").select("role").eq("id", session.user.id).single();
-  if (user?.role !== 'admin' && session.user.email !== 'saddamakash234@gmail.com') {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const auth = await requireAuth("admin");
+  if (!auth.ok) return auth.response;
 
   try {
     const { type, items } = await request.json();
-    if (!items || !Array.isArray(items)) throw new Error("Invalid items");
+    const table = resolveTable(type);
+    if (!table) {
+      return NextResponse.json(
+        { error: `Invalid type — allowed: ${[...ALLOWED_TABLES].join(", ")}` },
+        { status: 400 }
+      );
+    }
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "Invalid items" }, { status: 400 });
+    }
 
-    const { data, error } = await supabase.from(type).insert(items);
+    const { error } = await auth.supabase.from(table).insert(items);
     if (error) throw error;
 
     return NextResponse.json({ success: true, count: items.length });

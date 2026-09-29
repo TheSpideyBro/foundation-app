@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { isStaff } from '@/lib/auth';
+import { numberToWordsBengali } from '@/lib/utils';
 import { createCanvas, loadImage, registerFont } from 'canvas';
 import QRCode from 'qrcode';
 import fs from 'fs';
@@ -18,43 +20,6 @@ const fontPathSignature = path.join(process.cwd(), 'public', 'fonts', 'MainakBun
 if (fs.existsSync(fontPathSignature)) {
   registerFont(fontPathSignature, { family: 'SignatureFont' });
 }
-
-const numberToBengaliWords = (n: number): string => {
-  const units = ['', 'এক', 'দুই', 'তিন', 'চার', 'পাঁচ', 'ছয়', 'সাত', 'আট', 'নয়'];
-  const tens = ['', 'দশ', 'বিশ', 'ত্রিশ', 'চল্লিশ', 'পঞ্চাশ', 'ষাট', 'সত্তর', 'আশি', 'নব্বই'];
-  const special = {
-    10: 'দশ', 11: 'এগারো', 12: 'বারো', 13: 'তেরো', 14: 'চৌদ্দ', 15: 'পনেরো', 16: 'ষোলো', 17: 'সতেরো', 18: 'আঠারো', 19: 'উনিশ',
-    20: 'বিশ', 21: 'একুশ', 22: 'বাইশ', 23: 'তেইশ', 24: 'চব্বিশ', 25: 'পঁচিশ', 26: 'ছাব্বিশ', 27: 'সাতাশ', 28: 'আটাশ', 29: 'উনত্রিশ',
-    30: 'ত্রিশ', 31: 'একত্রিশ', 32: 'বত্রিশ', 33: 'তেতাল্লিশ', 34: 'চৌত্রিশ', 35: 'পঁচিশ', 36: 'ছত্রিশ', 37: 'সাঁইত্রিশ', 38: 'আটত্রিশ', 39: 'ঊনচল্লিশ',
-    40: 'চল্লিশ', 41: 'একচল্লিশ', 42: 'বিয়াল্লিশ', 43: 'তেতাল্লিশ', 44: 'চুয়াল্লিশ', 45: 'পঁয়তাল্লিশ', 46: 'ছেচল্লিশ', 47: 'সাতচল্লিশ', 48: 'আটচল্লিশ', 49: 'ঊনপঞ্চাশ',
-    50: 'পঞ্চাশ', 100: 'একশত', 200: 'দুইশত', 300: 'তিনশত', 400: 'চারশত', 500: 'পাঁচশত', 600: 'ছয়শত', 700: 'সাতশত', 800: 'আটশত', 900: 'নয়শত'
-  };
-
-  if (n === 0) return 'শূন্য';
-  if (n in special) return (special as any)[n];
-
-  let result = '';
-  if (n >= 1000) {
-    const thousand = Math.floor(n / 1000);
-    result += (thousand === 1 ? 'এক' : numberToBengaliWords(thousand)) + ' হাজার ';
-    n %= 1000;
-  }
-  if (n >= 100) {
-    const hundred = Math.floor(n / 100);
-    result += (hundred === 1 ? 'এক' : units[hundred]) + ' শত ';
-    n %= 100;
-  }
-  if (n > 0) {
-    if (n in special) result += (special as any)[n];
-    else {
-      const ten = Math.floor(n / 10);
-      const unit = n % 10;
-      if (ten > 0) result += tens[ten] + ' ';
-      if (unit > 0) result += units[unit];
-    }
-  }
-  return result.trim();
-};
 
 const getMonthCount = (startMonth: string, endMonth: string) => {
   const [startYear, startValue] = startMonth.split('-').map(Number);
@@ -129,12 +94,12 @@ export async function GET(
     .from('users')
     .select('role, member_id')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
-  const isAdmin = userData?.role === 'admin' || userData?.role === 'treasurer' || user?.email === 'saddamakash234@gmail.com';
-  const isOwner = userData?.member_id === donation.member_id;
-  
-  if (!isAdmin && !isOwner) {
+  // Staff OR the member who owns this donation may view the receipt.
+  const canView = isStaff(userData?.role, user?.email) || userData?.member_id === donation.member_id;
+
+  if (!canView) {
     return new NextResponse('Forbidden', { status: 403 });
   }
 
@@ -303,7 +268,7 @@ export async function GET(
     } catch (e) {}
 
     // 7. Content Rows
-    const amountInWords = numberToBengaliWords(displayAmount || 0);
+    const amountInWords = numberToWordsBengali(displayAmount || 0);
     const rows = [
       { label: "রসিদ নং", value: displayReceiptNo || 'N/A', icon: 'doc' },
       { label: "তারিখ", value: donation.date, icon: 'cal' },

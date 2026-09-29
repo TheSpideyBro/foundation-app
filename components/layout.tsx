@@ -10,6 +10,7 @@ import {
   Leaf, Home, History, ReceiptText
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
+import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -41,8 +42,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isActive = (path: string) => pathname === path;
 
-  const isAdminEmail = user?.email === "saddamakash234@gmail.com";
-  const isStaff = role === "admin" || role === "treasurer" || isAdminEmail;
+  const isAdminEmail = hasAdminRole(role, user?.email);
+  const isStaff = hasStaffRole(role, user?.email);
 
   // Filter items based on current user role
   const visibleMenuItems = menuItems.filter(item => item.roles.includes(role || "") || (isAdminEmail && item.roles.includes("admin")));

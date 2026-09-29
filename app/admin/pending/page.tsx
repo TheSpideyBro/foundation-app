@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { currentMonthStr } from "@/lib/utils";
 import { 
   AlertCircle, MessageCircle, Search, 
   Calendar, Phone, User, ArrowLeft,
@@ -8,14 +9,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/providers";
+import { isAdmin as hasAdminRole } from "@/lib/auth";
 
 export default function PendingPledgesPage() {
   const { user, role } = useAuth();
-  const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
+  const isAdmin = hasAdminRole(role, user?.email);
   
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [month, setMonth] = useState(currentMonthStr());
   const [pending, setPending] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -26,10 +29,16 @@ export default function PendingPledgesPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/pending-pledges?month=${month}`);
-      const data = await res.json();
-      setPending(data.pending || []);
+      const data = await res.json().catch(() => ({}));
+      // A 401/403/500 body has no `pending` key: without this check every
+      // failure rendered the green "all pledges fulfilled" empty state.
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setLoadError(null);
+      setPending(Array.isArray(data.pending) ? data.pending : []);
     } catch (err) {
       console.error(err);
+      setPending([]);
+      setLoadError(err instanceof Error ? err.message : "লোড করতে সমস্যা হয়েছে");
     } finally {
       setLoading(false);
     }
@@ -83,10 +92,27 @@ export default function PendingPledgesPage() {
         <div className="divide-y divide-gray-50">
           {loading ? (
             <div className="p-20 text-center"><div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto"></div></div>
-          ) : filtered.length === 0 ? (
+          ) : loadError ? (
+            <div className="p-20 text-center text-gray-400">
+              <AlertTriangle size={48} className="mx-auto mb-4 text-red-500 opacity-60" />
+              <p className="font-bold font-tiro text-sm mb-1 text-gray-600">তালিকা লোড করা যায়নি</p>
+              <p className="text-xs mb-5">{loadError}</p>
+              <button
+                onClick={fetchPending}
+                className="btn-outline px-6 py-2 text-sm"
+              >
+                আবার চেষ্টা করুন
+              </button>
+            </div>
+          ) : pending.length === 0 ? (
             <div className="p-20 text-center text-gray-400">
               <CheckCircle2 size={48} className="mx-auto mb-4 opacity-20 text-emerald-600" />
-              <p className="font-bold font-tiro text-sm">এই মাসের সকল অঙ্গীকার পূর্ণ হয়েছে!</p>
+              <p className="font-bold font-tiro text-sm">এই মাসের সকল অঙ্গীকার পূর্ণ হয়েছে!</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-20 text-center text-gray-400">
+              <Search size={48} className="mx-auto mb-4 opacity-20" />
+              <p className="font-bold font-tiro text-sm">অনুসন্ধানে কোনো সদস্য পাওয়া যায়নি</p>
             </div>
           ) : (
             filtered.map((p) => (

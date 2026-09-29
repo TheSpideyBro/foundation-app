@@ -11,6 +11,34 @@ export function toBengaliNumber(num: number | string): string {
   return String(num).replace(/[0-9]/g, (d) => bengaliDigits[parseInt(d)]);
 }
 
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * Local-timezone date/month helpers.
+ *
+ * NEVER use `new Date().toISOString()` for "today" in this app: it is UTC,
+ * so between 00:00 and 06:00 Asia/Dhaka (UTC+6) it yields yesterday — default
+ * payment/expense dates and coverage months silently land in the wrong day
+ * or the wrong month (BUG-013).
+ */
+export function toLocalISODate(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+export function toLocalMonth(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+}
+
+/** Today as YYYY-MM-DD in the local timezone. */
+export function todayISO(): string {
+  return toLocalISODate(new Date());
+}
+
+/** Current month as YYYY-MM in the local timezone. */
+export function currentMonthStr(): string {
+  return toLocalMonth(new Date());
+}
+
 export function formatMoney(amount: number): string {
   return "৳" + amount.toLocaleString("bn-BD");
 }

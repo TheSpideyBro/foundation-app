@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { todayISO, currentMonthStr } from "@/lib/utils";
 import { 
   Users, UserPlus, Search, Filter, 
   Phone, MapPin, ChevronRight, MoreHorizontal,
@@ -9,11 +10,12 @@ import {
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
+import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
 export default function MembersPage() {
   const { user, role } = useAuth();
-  const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
-  const isStaff = isAdmin || role === 'treasurer';
+  const isAdmin = hasAdminRole(role, user?.email);
+  const isStaff = hasStaffRole(role, user?.email);
   
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,10 +28,10 @@ export default function MembersPage() {
     name: "",
     phone: "",
     address: "",
-    join_date: new Date().toISOString().split('T')[0],
+    join_date: todayISO(),
     status: "active",
     monthly_pledge: "0",
-    pledge_effective_month: new Date().toISOString().slice(0, 7),
+    pledge_effective_month: currentMonthStr(),
     pledge_note: ""
   });
 
@@ -63,7 +65,7 @@ export default function MembersPage() {
         join_date: member.join_date,
         status: member.status,
         monthly_pledge: (member.monthly_pledge || 0).toString(),
-        pledge_effective_month: new Date().toISOString().slice(0, 7),
+        pledge_effective_month: currentMonthStr(),
         pledge_note: ""
       });
     } else {
@@ -72,10 +74,10 @@ export default function MembersPage() {
         name: "",
         phone: "",
         address: "",
-        join_date: new Date().toISOString().split('T')[0],
+        join_date: todayISO(),
         status: "active",
         monthly_pledge: "0",
-        pledge_effective_month: new Date().toISOString().slice(0, 7),
+        pledge_effective_month: currentMonthStr(),
         pledge_note: ""
       });
     }
@@ -89,6 +91,18 @@ export default function MembersPage() {
       return;
     }
 
+    // parseFloat("") === NaN, which JSON-serialises to null: a cleared pledge
+    // box used to write NULL into members.monthly_pledge (read as 0
+    // everywhere downstream) with no history row and no visible error.
+    const pledgeInput = formData.monthly_pledge.trim() === "" ? "0" : formData.monthly_pledge;
+    const monthlyPledge = parseFloat(pledgeInput);
+    if (!Number.isFinite(monthlyPledge) || monthlyPledge < 0) {
+      alert("মাসিক অঙ্গীকার শূন্য বা তার বেশি একটি সংখ্যা হতে হবে।");
+      return;
+    }
+    const previousPledge = Number(editingMember?.monthly_pledge ?? NaN);
+    const pledgeChanged = !editingMember || previousPledge !== monthlyPledge;
+
     setSubmitting(true);
     try {
       const payload = {
@@ -97,7 +111,7 @@ export default function MembersPage() {
         address: formData.address,
         join_date: formData.join_date,
         status: formData.status,
-        monthly_pledge: parseFloat(formData.monthly_pledge)
+        monthly_pledge: monthlyPledge
       };
 
       let savedMemberId = editingMember?.id;
@@ -117,7 +131,10 @@ export default function MembersPage() {
         savedMemberId = data.id;
       }
 
-      if (isStaff && savedMemberId && Number.isFinite(payload.monthly_pledge) && payload.monthly_pledge >= 0) {
+      // Only write a pledge-history row when the pledge actually changed:
+      // every submit used to insert one (address/phone edits included), which
+      // inflated the audit page's change counter with phantom entries.
+      if (isStaff && savedMemberId && pledgeChanged) {
         const { error: historyError } = await supabase().from("member_pledge_history").insert([{
           member_id: savedMemberId,
           monthly_amount: payload.monthly_pledge,
@@ -223,12 +240,19 @@ export default function MembersPage() {
                       )}
                       <button 
                         onClick={async () => {
-                          const res = await fetch(`/api/members/${member.id}/qr`).then(r => r.json());
-                          if (res.qrImage) {
-                            const link = document.createElement('a');
+                          try {
+                            const r = await fetch(`/api/members/${member.id}/qr`);
+                            const res = await r.json().catch(() => ({}));
+                            if (!r.ok || !res.qrImage) {
+                              alert("কিউআর কোড তৈরি করা যায়নি: " + (res.error || `HTTP ${r.status}`));
+                              return;
+                            }
+                            const link = document.createElement("a");
                             link.href = res.qrImage;
                             link.download = `QR_${member.name}.png`;
                             link.click();
+                          } catch (err) {
+                            alert("কিউআর কোড তৈরি করা যায়নি");
                           }
                         }}
                         className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all active:scale-90"
@@ -259,7 +283,7 @@ export default function MembersPage() {
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">মাসিক অঙ্গীকার</span>
-                  <span className="text-base font-bold text-emerald-600 font-tiro">৳{Number(member.monthly_pledge || 0).toLocaleString()}</span>
+                  <span className="text-base font-bold text-emerald-600 font-tiro">৳{Number(member.monthly_pledge || 0).toLocaleString("bn-BD")}</span>
                 </div>
               </div>
             </div>

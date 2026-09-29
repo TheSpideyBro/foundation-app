@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { todayISO } from "@/lib/utils";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { 
   Users, Shield, CheckCircle, XCircle, 
   Trash2, Key, Search, Filter, Mail, AlertCircle
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
+import { isAdmin as hasAdminRole } from "@/lib/auth";
 
 export default function AdminUsersPage() {
   const { user: authUser, role: authRole } = useAuth();
-  const isAdmin = authRole === 'admin' || authUser?.email === 'saddamakash234@gmail.com';
+  const isAdmin = hasAdminRole(authRole, authUser?.email);
 
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ export default function AdminUsersPage() {
     name: "",
     phone: "",
     address: "",
-    join_date: new Date().toISOString().split('T')[0],
+    join_date: todayISO(),
     monthly_pledge: "0"
   });
 
@@ -113,7 +115,7 @@ export default function AdminUsersPage() {
       name: user.name || "",
       phone: user.phone || "",
       address: "",
-      join_date: new Date().toISOString().split('T')[0],
+      join_date: todayISO(),
       monthly_pledge: "0"
     });
     setIsModalOpen(true);
@@ -196,18 +198,20 @@ export default function AdminUsersPage() {
     try {
       // Fetch members who are not linked to any user
       // We check users table to see which members are already taken
-      const { data: linkedMemberIds } = await supabase()
+      const { data: linkedMemberIds, error: linkedErr } = await supabase()
         .from("users")
         .select("member_id")
         .not("member_id", "is", null);
-      
+      if (linkedErr) throw linkedErr;
+
       const excludedIds = linkedMemberIds?.map(u => u.member_id) || [];
 
-      const { data } = await supabase()
+      const { data, error: membersErr } = await supabase()
         .from("members")
         .select("id, name, phone")
         .not("id", "in", `(${excludedIds.join(',') || '00000000-0000-0000-0000-000000000000'})`)
         .order("name");
+      if (membersErr) throw membersErr;
       setAvailableMembers(data || []);
       setIsLinkModalOpen(true);
     } catch (err) {

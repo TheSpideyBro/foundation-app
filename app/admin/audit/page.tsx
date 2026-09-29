@@ -2,29 +2,44 @@
 
 import { useState, useEffect } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
+import { useAuth } from "@/components/providers";
+import { isAdmin as hasAdminRole } from "@/lib/auth";
 import { 
   History, User, Activity, Calendar, 
-  Search, Filter, Clock, ArrowRight
+  Search, Filter, Clock, ArrowRight, AlertCircle
 } from "lucide-react";
 
 export default function AuditLogsPage() {
+  const { user, role } = useAuth();
+  const isAdmin = hasAdminRole(role, user?.email);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
+    // audit_log RLS is admin-only; skip the query (and its guaranteed empty
+    // result) for anyone else instead of rendering "no logs found".
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
     const fetchLogs = async () => {
       try {
-        const { data } = await supabase().from("audit_log").select("*").order("created_at", { ascending: false });
+        const { data, error } = await supabase().from("audit_log").select("*").order("created_at", { ascending: false });
+        if (error) throw error;
+        setLoadError(null);
         setLogs(data || []);
       } catch (err) {
         console.error("Error fetching logs:", err);
+        setLogs([]);
+        setLoadError(err instanceof Error ? err.message : "লগ লোড করতে সমস্যা হয়েছে");
       } finally {
         setLoading(false);
       }
     };
     fetchLogs();
-  }, []);
+  }, [isAdmin]);
 
   const getActionLabel = (action: string) => {
     const act = action.toUpperCase();
@@ -47,6 +62,8 @@ export default function AuditLogsPage() {
     log.actor_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     log.target_table?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (!isAdmin) return <div className="p-20 text-center font-bold">প্রবেশাধিকার সংরক্ষিত</div>;
 
   if (loading) return (
     <div className="min-h-[400px] flex items-center justify-center">
@@ -78,10 +95,18 @@ export default function AuditLogsPage() {
         </div>
 
         <div className="divide-y divide-gray-50">
-          {filteredLogs.length === 0 ? (
+          {loadError ? (
+            <div className="p-20 text-center text-gray-400">
+              <AlertCircle size={48} className="mx-auto mb-4 text-red-500 opacity-60" />
+              <p className="font-bold font-tiro text-sm mb-1 text-gray-600">অডিট লগ লোড করা যায়নি</p>
+              <p className="text-xs">{loadError}</p>
+            </div>
+          ) : filteredLogs.length === 0 ? (
             <div className="p-20 text-center text-gray-400">
               <History size={48} className="mx-auto mb-4 opacity-20" />
-              <p className="font-bold font-tiro text-sm">কোনো লগ পাওয়া যায়নি।</p>
+              <p className="font-bold font-tiro text-sm">
+                {searchQuery ? "অনুসন্ধানে কোনো লগ পাওয়া যায়নি।" : "কোনো লগ পাওয়া যায়নি।"}
+              </p>
             </div>
           ) : (
             filteredLogs.map((log) => (

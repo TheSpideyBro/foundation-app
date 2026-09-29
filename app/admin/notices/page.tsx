@@ -9,15 +9,17 @@ import {
 import Link from "next/link";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
+import { isAdmin as hasAdminRole } from "@/lib/auth";
 
 export default function NoticeManagementPage() {
   const { user, role } = useAuth();
-  const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
+  const isAdmin = hasAdminRole(role, user?.email);
   
   const [notices, setNotices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNotice, setEditingNotice] = useState<any>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [formData, setFormData] = useState({ title: "", content: "", is_active: true });
 
   useEffect(() => {
@@ -26,7 +28,11 @@ export default function NoticeManagementPage() {
 
   const fetchNotices = async () => {
     setLoading(true);
-    const { data } = await supabase().from("notices").select("*").order("created_at", { ascending: false });
+    setLoadError(null);
+    const { data, error } = await supabase().from("notices").select("*").order("created_at", { ascending: false });
+    // Supabase returns errors instead of throwing — a denied read used to
+    // render as "no notices yet".
+    if (error) setLoadError(error.message);
     setNotices(data || []);
     setLoading(false);
   };
@@ -35,33 +41,46 @@ export default function NoticeManagementPage() {
     e.preventDefault();
     const payload = { ...formData, created_by: user?.id };
     
+    let error = null;
     if (editingNotice) {
-      const { error } = await supabase().from("notices").update(payload).eq("id", editingNotice.id);
-      if (error) alert(error.message);
+      ({ error } = await supabase().from("notices").update(payload).eq("id", editingNotice.id));
     } else {
-      const { error } = await supabase().from("notices").insert([payload]);
-      if (error) alert(error.message);
+      ({ error } = await supabase().from("notices").insert([payload]));
     }
-    
+    // Keep the modal open on failure — closing it used to discard the
+    // unsaved notice while looking like a successful save.
+    if (error) {
+      alert("সেভ করতে সমস্যা হয়েছে: " + error.message);
+      return;
+    }
+
     setIsModalOpen(false);
     fetchNotices();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("আপনি কি নিশ্চিতভাবে এই নোটিশটি ডিলিট করতে চান?")) return;
-    await supabase().from("notices").delete().eq("id", id);
-    fetchNotices();
+    const { error } = await supabase().from("notices").delete().eq("id", id);
+    if (error) alert("ডিলিট করতে সমস্যা হয়েছে: " + error.message);
+    else fetchNotices();
   };
 
   const toggleStatus = async (notice: any) => {
-    await supabase().from("notices").update({ is_active: !notice.is_active }).eq("id", notice.id);
-    fetchNotices();
+    const { error } = await supabase().from("notices").update({ is_active: !notice.is_active }).eq("id", notice.id);
+    if (error) alert("আপডেট করতে সমস্যা হয়েছে: " + error.message);
+    else fetchNotices();
   };
 
   if (!isAdmin) return <div className="p-20 text-center font-bold">প্রবেশাধিকার সংরক্ষিত</div>;
 
   return (
     <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
+      {loadError && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex flex-col sm:flex-row sm:items-center gap-3">
+          <p className="flex-1 text-sm font-bold text-rose-700">লোড করা যায়নি: <span className="font-normal">{loadError}</span></p>
+          <button onClick={fetchNotices} className="btn-outline text-xs shrink-0">আবার চেষ্টা করুন</button>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
         <div className="flex items-center gap-4">
           <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-xl transition-colors">

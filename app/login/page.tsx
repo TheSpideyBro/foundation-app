@@ -33,7 +33,18 @@ export default function LoginPage() {
       if (error) throw error;
       router.push("/dashboard");
     } catch (err: any) {
-      setError("ফোন নম্বর বা পাসওয়ার্ড ভুল। আবার চেষ্টা করুন।");
+      const msg: string = err?.message || "";
+      if (msg.includes("Invalid login credentials")) {
+        setError("ফোন নম্বর বা পাসওয়ার্ড ভুল। আবার চেষ্টা করুন।");
+      } else if (msg.includes("Email not confirmed")) {
+        setError("অ্যাকাউন্ট নিশ্চিত করা হয়নি। অ্যাডমিনের সাথে যোগাযোগ করুন।");
+      } else if (msg.includes("For security purposes") || msg.toLowerCase().includes("rate limit")) {
+        setError("অনেকবার ভুল চেষ্টা হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।");
+      } else if (msg) {
+        setError("লগইন করতে সমস্যা হয়েছে: " + msg);
+      } else {
+        setError("লগইন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+      }
     } finally {
       setLoading(false);
     }

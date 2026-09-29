@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { currentMonthStr, toLocalMonth } from "@/lib/utils";
 import { BarChart3, Calendar, Download, FileText, Filter, RefreshCw, Search, Wallet } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import * as XLSX from "xlsx";
@@ -18,8 +19,8 @@ const monthLabel = (value: string) => new Date(`${value}-01T00:00:00`).toLocaleD
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>("monthly");
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [paidMemberMonth, setPaidMemberMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
+  const [paidMemberMonth, setPaidMemberMonth] = useState(currentMonthStr());
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   const [activeTab, setActiveTab] = useState("donations");
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
@@ -70,19 +71,29 @@ export default function ReportsPage() {
   const periodEnd = period === "monthly" ? `${selectedMonth}-31` : period === "yearly" ? `${selectedYear}-12-31` : "9999-12-31";
   const inPeriod = (date?: string) => !date || (date >= periodStart && date <= periodEnd);
   const stats = useMemo<ReportStats>(() => {
-    const summary = periodRows.reduce((a, r) => ({ target: a.target + Number(r.target_amount || 0), collected: a.collected + Number(r.collected_amount || 0), due: a.due + Number(r.due_amount || 0), expense: a.expense + Number(r.expense_amount || 0), members: Math.max(a.members, Number(r.active_members || 0)) }), { target: 0, collected: 0, due: 0, expense: 0, members: 0 });
-    const filteredExpenses = expenses.filter((e) => inPeriod(e.date));
-    const filteredDonations = donations.filter((d) => inPeriod(d.date));
-    const coverageCollected = periodRows.reduce((a, r) => a + Number(r.collected_amount || 0), 0);
-    const cashCollected = filteredDonations.reduce((a, d) => a + Number(d.amount || 0), 0);
-    summary.collected = cashCollected;
-    summary.expense = filteredExpenses.reduce((a, e) => a + Number(e.amount || 0), 0);
-    if (period === "total") {
-      summary.collected = donations.reduce((a, d) => a + Number(d.amount || 0), 0);
-      summary.expense = expenses.reduce((a, e) => a + Number(e.amount || 0), 0);
-    }
-    summary.due = Math.max(0, summary.target - coverageCollected);
-    return { target: summary.target, collected: summary.collected, due: summary.due, expense: summary.expense, members: summary.members, balance: summary.collected - summary.expense, rate: summary.target ? Math.round((coverageCollected / summary.target) * 100) : 0 };
+    const summary = periodRows.reduce((a, r) => ({ target: a.target + Number(r.target_amount || 0), collected: a.collected + Number(r.collected_amount || 0), expense: a.expense + Number(r.expense_amount || 0), members: Math.max(a.members, Number(r.active_members || 0)) }), { target: 0, collected: 0, expense: 0, members: 0 });
+    // Cash-side fallbacks, used only when the summary view has no rows
+    // (view missing / no data in range). Kept here rather than above because
+    // the `filtered*` consts are declared after this memo.
+    const cashCollected = donations.reduce((a, d) => a + (inPeriod(d.date) ? Number(d.amount || 0) + Number(d.extra_amount || 0) : 0), 0);
+    const cashExpense = expenses.reduce((a, e) => a + (inPeriod(e.date) ? Number(e.amount || 0) : 0), 0);
+    const hasSummary = periodRows.length > 0;
+    // Single source: `monthly_collection_summary`. The "সংগ্রহ" card used the
+    // donations rows while "সংগ্রহের হার"/"বকেয়া" used the view's coverage
+    // amounts, so three cards on one screen could never reconcile (and cash
+    // totals silently ignored extra_amount / shifting coverage months).
+    const collected = hasSummary ? summary.collected : cashCollected;
+    const expense = hasSummary ? summary.expense : cashExpense;
+    const due = Math.max(0, summary.target - collected);
+    return {
+      target: summary.target,
+      collected,
+      due,
+      expense,
+      members: summary.members,
+      balance: collected - expense,
+      rate: summary.target ? Math.round((collected / summary.target) * 100) : 0,
+    };
   }, [periodRows, donations, expenses, period, periodStart, periodEnd]);
 
   const filteredDonations = donations.filter((d) => inPeriod(d.date) && `${d.members?.name || ""} ${d.receipt_no || ""} ${d.method || ""}`.toLowerCase().includes(search.toLowerCase()));
@@ -92,8 +103,8 @@ export default function ReportsPage() {
   const chartRows = periodRows;
   const monthOptions = useMemo(() => {
     const values = new Set<string>();
-    const base = new Date(`${new Date().toISOString().slice(0, 7)}-01T00:00:00`);
-    for (let offset = -24; offset <= 24; offset += 1) { const date = new Date(base); date.setMonth(base.getMonth() + offset); values.add(date.toISOString().slice(0, 7)); }
+    const base = new Date(`${currentMonthStr()}-01T00:00:00`);
+    for (let offset = -24; offset <= 24; offset += 1) { const date = new Date(base); date.setMonth(base.getMonth() + offset); values.add(toLocalMonth(date)); }
     monthlyRows.forEach((row) => values.add(String(row.month).slice(0, 7)));
     donations.forEach((donation) => donationMonths(donation as LedgerDonation).forEach((month) => values.add(month)));
     return Array.from(values).sort().map((value) => ({ value, label: `${value.slice(0, 4)}-${new Date(`${value}-01T00:00:00`).toLocaleDateString("en-US", { month: "short" })}` }));

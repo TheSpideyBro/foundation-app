@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { currentMonthStr } from "@/lib/utils";
 import { 
   Users, CreditCard, Wallet, TrendingUp, 
   ArrowUpRight, ArrowDownRight, Calendar,
@@ -10,9 +11,13 @@ import {
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import Link from "next/link";
 import { useAuth } from "@/components/providers";
+import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
 export default function Dashboard() {
-  const { role } = useAuth();
+  const { user, role } = useAuth();
+  // Founder bypass lives in lib/auth, not in the stored role column.
+  const isStaffView = hasStaffRole(role, user?.email);
+  const isAdminView = hasAdminRole(role, user?.email);
   const [stats, setStats] = useState({
     totalMembers: 0,
     totalDonations: 0,
@@ -26,18 +31,20 @@ export default function Dashboard() {
   const [recentDonations, setRecentDonations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"monthly" | "yearly" | "total">("monthly");
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   const [syncing, setSyncing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [notices, setNotices] = useState<any[]>([]);
   const [collectionRows, setCollectionRows] = useState<Array<{ month: string; target_amount: number; collected_amount: number }>>([]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [role, period, selectedMonth, selectedYear]);
+  }, [role, user?.email, period, selectedMonth, selectedYear]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       // Parallel data fetching for better performance
       const [
@@ -82,7 +89,7 @@ export default function Dashboard() {
         collectionRate: monthlyTarget ? Math.round((coverageCollection / monthlyTarget) * 100) : 0,
       });
 
-      if (role !== 'member') {
+      if (isStaffView) {
         const { data: recent } = await supabase()
           .from("donations")
           .select("*, members(name)")
@@ -95,7 +102,10 @@ export default function Dashboard() {
 
 
     } catch (error) {
+      // Previously swallowed: the page rendered all-zero stats that looked
+      // like "no data yet", which is indistinguishable from a failed load.
       console.error("Error fetching dashboard data:", error);
+      setLoadError(error instanceof Error ? error.message : "ড্যাশবোর্ড লোড করা যায়নি");
     } finally {
       setLoading(false);
     }
@@ -122,13 +132,24 @@ export default function Dashboard() {
 
   return (
     <div className="touch-spacing animate-slide-up pb-8 px-1 sm:px-0">
+      {loadError && (
+        <div className="mb-4 p-4 rounded-2xl bg-rose-50 border border-rose-100 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="font-bold text-rose-700 text-sm">ড্যাশবোর্ড লোড করা যায়নি</p>
+            <p className="text-xs text-rose-600 mt-0.5">{loadError} — পুরো পাতায় শূন্য মান দেখানো হচ্ছে, সঠিক নয়।</p>
+          </div>
+          <button onClick={fetchDashboardData} className="btn-outline text-xs shrink-0">
+            <RefreshCw size={14} /> আবার চেষ্টা করুন
+          </button>
+        </div>
+      )}
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-1 font-tiro">আসসালামু আলাইকুম!</h1>
           <p className="text-sm text-gray-500 font-medium">আজকের ফাউন্ডেশন কার্যক্রমের চিত্র।</p>
         </div>
-        {role !== 'member' && (
+        {isStaffView && (
           <div className="flex items-center gap-3">
             <button 
               onClick={handleSync}
@@ -160,7 +181,7 @@ export default function Dashboard() {
           <p className="text-xs sm:text-sm text-gray-400 mb-6">নির্বাচিত সময়কালের বকেয়া চিত্র</p>
           <div className="flex items-end justify-between gap-4">
             <div><p className="text-3xl font-black text-rose-600">৳{stats.currentDue.toLocaleString('bn-BD')}</p><p className="text-xs text-gray-500 mt-1">মোট বকেয়া</p></div>
-            {role === 'admin' && (
+            {isAdminView && (
               <Link href="/admin/pending" className="btn-outline text-xs">বকেয়া সদস্য দেখুন <ChevronRight size={14} /></Link>
             )}
           </div>
@@ -199,7 +220,7 @@ export default function Dashboard() {
 
       {/* Recent Donations */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
-        {role !== 'member' && (
+        {isStaffView && (
           <div className="lg:col-span-2 card-premium p-4 sm:p-8">
             <div className="flex items-center justify-between mb-4 sm:mb-8">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-tiro">সাম্প্রতিক দান</h3>
@@ -223,7 +244,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm sm:text-lg font-bold text-emerald-600">৳{donation.amount.toLocaleString()}</p>
+                    <p className="text-sm sm:text-lg font-bold text-emerald-600">৳{Number(donation.amount).toLocaleString("bn-BD")}</p>
                     <p className="text-[8px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-widest">{donation.method || "ক্যাশ"}</p>
                   </div>
                 </div>

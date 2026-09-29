@@ -10,11 +10,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/providers";
+import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
 export default function AdminPage() {
   const { user, role } = useAuth();
-  const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
-  const isStaff = isAdmin || role === 'treasurer';
+  const isAdmin = hasAdminRole(role, user?.email);
+  const isStaff = hasStaffRole(role, user?.email);
   
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
@@ -50,33 +51,52 @@ export default function AdminPage() {
   }
 
   const adminTools = [
+    // Tools whose page gate and backend are admin-only are hidden from
+    // treasurers: /admin/audit (RLS admin), /admin/pending,
+    // /admin/bulk and auto-link (all admin-only API routes). They used to be
+    // shown to staff, who then got 403s or a silent empty "no logs" page.
     ...(isAdmin ? [{
       title: "ইউজার ম্যানেজমেন্ট",
-      desc: "ইউজারদের রোল এবং অ্যাপ্রুভাল নিয়ন্ত্রণ করুন",
+      desc: "ইউজারদের রোল এবং অ্যাপ্রুভাল নিয়ন্ত্রণ করুন",
       icon: <Users size={24} />,
       link: "/admin/users",
       color: "blue"
-    }] : []),
-    {
+    }, {
       title: "অডিট লগ",
       desc: "সিস্টেমের সকল কার্যক্রমের ইতিহাস দেখুন",
       icon: <History size={24} />,
       link: "/admin/audit",
       color: "emerald"
-    },
+    }, {
+      title: "বাকি চাঁদার তালিকা",
+      desc: "অনাদায়ী অঙ্গীকার এবং হোয়াটসঅ্যাপ রিমাইন্ডার",
+      icon: <Clock size={24} />,
+      link: "/admin/pending",
+      color: "rose"
+    }, {
+      title: "বাল্ক ইম্পোর্ট/এক্সপোর্ট",
+      desc: "এক্সেল ফাইলের মাধ্যমে ডাটা ব্যাকআপ ও আপলোড",
+      icon: <Database size={24} />,
+      link: "/admin/bulk",
+      color: "emerald"
+    }, {
+      title: "অটো-লিঙ্ক সদস্য",
+      desc: "ফোন নম্বর অনুযায়ী মেম্বারদের অটো-লিঙ্ক করুন",
+      icon: <UserPlus size={24} />,
+      action: async () => {
+        const res = await fetch('/api/admin/auto-link', { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.error) alert("লিঙ্ক করতে সমস্যা হয়েছে: " + (data.error || `HTTP ${res.status}`));
+        else alert(`সফলভাবে ${data.linkedCount || 0} জন সদস্যকে লিঙ্ক করা হয়েছে।`);
+      },
+      color: "purple"
+    }] : []),
     {
       title: "অঙ্গীকার পরিবর্তনের ইতিহাস",
       desc: "সদস্যদের pledge amount পরিবর্তনের মাস ও কারণ দেখুন",
       icon: <History size={24} />,
       link: "/admin/pledge-history",
       color: "emerald"
-    },
-    {
-      title: "বাকি চাঁদার তালিকা",
-      desc: "অনাদায়ী অঙ্গীকার এবং হোয়াটসঅ্যাপ রিমাইন্ডার",
-      icon: <Clock size={24} />,
-      link: "/admin/pending",
-      color: "rose"
     },
     {
       title: "নোটিশ বোর্ড",
@@ -87,28 +107,10 @@ export default function AdminPage() {
     },
     {
       title: "ক্যাটাগরি ম্যানেজমেন্ট",
-      desc: "খরচের ক্যাটাগরিগুলো নিয়ন্ত্রণ করুন",
+      desc: "খরচের ক্যাটাগরিগুলো নিয়ন্ত্রণ করুন",
       icon: <Tag size={24} />,
       link: "/admin/categories",
       color: "blue"
-    },
-    {
-      title: "বাল্ক ইম্পোর্ট/এক্সপোর্ট",
-      desc: "এক্সেল ফাইলের মাধ্যমে ডাটা ব্যাকআপ ও আপলোড",
-      icon: <Database size={24} />,
-      link: "/admin/bulk",
-      color: "emerald"
-    },
-    {
-      title: "অটো-লিঙ্ক সদস্য",
-      desc: "ফোন নম্বর অনুযায়ী মেম্বারদের অটো-লিঙ্ক করুন",
-      icon: <UserPlus size={24} />,
-      action: async () => {
-        const res = await fetch('/api/admin/auto-link', { method: 'POST' }).then(r => r.json());
-        if (res.error) alert("লিঙ্ক করতে সমস্যা হয়েছে: " + res.error);
-        else alert(`সফলভাবে ${res.linkedCount || res.count || 0} জন সদস্যকে লিঙ্ক করা হয়েছে।`);
-      },
-      color: "purple"
     }
   ];
 

@@ -8,16 +8,18 @@ import {
 import Link from "next/link";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
+import { isAdmin as hasAdminRole } from "@/lib/auth";
 
 export default function CategoryManagementPage() {
   const { user, role } = useAuth();
-  const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
+  const isAdmin = hasAdminRole(role, user?.email);
   
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newCategory, setNewCategory] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAdmin) fetchCategories();
@@ -25,7 +27,9 @@ export default function CategoryManagementPage() {
 
   const fetchCategories = async () => {
     setLoading(true);
-    const { data } = await supabase().from("expense_categories").select("*").order("name");
+    setLoadError(null);
+    const { data, error } = await supabase().from("expense_categories").select("*").order("name");
+    if (error) setLoadError(error.message);
     setCategories(data || []);
     setLoading(false);
   };
@@ -61,6 +65,12 @@ export default function CategoryManagementPage() {
 
   return (
     <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
+      {loadError && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex flex-col sm:flex-row sm:items-center gap-3">
+          <p className="flex-1 text-sm font-bold text-rose-700">লোড করা যায়নি: <span className="font-normal">{loadError}</span></p>
+          <button onClick={fetchCategories} className="btn-outline text-xs shrink-0">আবার চেষ্টা করুন</button>
+        </div>
+      )}
       <div className="flex items-center gap-4 mb-2">
         <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
           <ArrowLeft size={24} />

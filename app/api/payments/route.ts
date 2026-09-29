@@ -1,27 +1,14 @@
 import { createClient as createSupaClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-
-// Canonical staff auth check (same pattern as /api/admin routes and
-// /api/receipts/[id]). Returns a NextResponse error on failure, or null when
-// the caller may proceed. The manual cookie parsing this replaced assumed a
-// "base64-" cookie format that @supabase/ssr v0.12 no longer writes, which is
-// why POST/PUT here always failed with 401 Unauthorized.
-async function requireStaff(actionLabel: string): Promise<NextResponse | null> {
-  const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { data: userData } = await supabase.from('users').select('role').eq('id', session.user.id).single();
-  if (userData?.role !== 'admin' && userData?.role !== 'treasurer') {
-    return NextResponse.json({ error: `Only staff can ${actionLabel}` }, { status: 403 });
-  }
-
-  return null;
-}
+import { requireAuth } from '@/lib/server-auth';
 
 export async function POST(request: Request) {
   try {
+    // Staff gate first: never validate or persist anything for a caller who
+    // is not allowed to create payments.
+    const auth = await requireAuth('staff');
+    if (!auth.ok) return auth.response;
+
     const body = await request.json();
 
     const {
@@ -82,16 +69,12 @@ export async function POST(request: Request) {
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseServiceKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    // Auth check via canonical server client
-    const authError = await requireStaff('create payments');
-    if (authError) return authError;
-
     // Service role client for RPC calls
-    const adminClient = createSupaClient(supabaseUrl, supabaseServiceKey!);
+    const adminClient = createSupaClient(supabaseUrl, supabaseServiceKey);
 
     // Validate member exists
     const { data: member } = await adminClient
@@ -142,6 +125,9 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const auth = await requireAuth('staff');
+    if (!auth.ok) return auth.response;
+
     const body = await request.json();
 
     const {
@@ -168,18 +154,17 @@ export async function PUT(request: Request) {
     if (!coverage_start_month || !coverage_end_month) {
       return NextResponse.json({ error: 'Coverage month range is required' }, { status: 400 });
     }
+    if (coverage_start_month > coverage_end_month) {
+      return NextResponse.json({ error: 'Coverage start month must be before end month' }, { status: 400 });
+    }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseServiceKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    // Auth check via canonical server client
-    const authError = await requireStaff('edit payments');
-    if (authError) return authError;
-
-    const adminClient = createSupaClient(supabaseUrl, supabaseServiceKey!);
+    const adminClient = createSupaClient(supabaseUrl, supabaseServiceKey);
 
     // Validate payment exists and belongs to a valid member
     const { data: donation } = await adminClient

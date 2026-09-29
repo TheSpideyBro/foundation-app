@@ -1,35 +1,19 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/server-auth";
 import QRCode from "qrcode";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
-        },
-      },
-    }
-  );
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // QR codes are only offered to staff on /members — enforce it here too.
+  const auth = await requireAuth("staff");
+  if (!auth.ok) return auth.response;
 
   const { id } = await params;
 
   try {
-    const { data: member, error } = await supabase
+    const { data: member, error } = await auth.supabase
       .from("members")
       .select("id, name")
       .eq("id", id)
@@ -37,10 +21,11 @@ export async function GET(
 
     if (error || !member) throw new Error("Member not found");
 
-    // Create a URL for the member profile (canonical)
+    // Canonical member page (admin/members/[id]) — /profile/{id} does not
+    // exist and every generated code used to scan to a 404.
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://daulkharfoundation.vercel.app';
-    const qrData = `${baseUrl}/profile/${id}`;
-    
+    const qrData = `${baseUrl}/admin/members/${id}`;
+
     const qrImage = await QRCode.toDataURL(qrData, {
       width: 400,
       margin: 2,

@@ -14,6 +14,7 @@ export default function ProfilePage() {
   const [member, setMember] = useState<any>(null);
   const [donations, setDonations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -31,8 +32,14 @@ export default function ProfilePage() {
         return;
       }
       try {
-        const { data: m } = await supabase().from("members").select("*").eq("id", memberId).single();
-        const { data: d } = await supabase().from("donations").select("*").eq("member_id", memberId).order("date", { ascending: false });
+        setLoadError(null);
+        const [{ data: m, error: mErr }, { data: d, error: dErr }] = await Promise.all([
+          supabase().from("members").select("*").eq("id", memberId).single(),
+          supabase().from("donations").select("*").eq("member_id", memberId).order("date", { ascending: false }),
+        ]);
+        // Errors used to be dropped: a denied read rendered a blank profile
+        // that looked like "member not found".
+        if (mErr || dErr) throw (mErr || dErr);
         setMember(m);
         setDonations(d || []);
         if (m) {
@@ -44,6 +51,7 @@ export default function ProfilePage() {
         }
       } catch (err) {
         console.error("Error fetching profile:", err);
+        setLoadError(err instanceof Error ? err.message : "প্রোফাইল লোড করা যায়নি");
       } finally {
         setLoading(false);
       }
@@ -105,6 +113,13 @@ export default function ProfilePage() {
   if (loading) return (
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+    </div>
+  );
+
+  if (loadError) return (
+    <div className="p-20 text-center space-y-4">
+      <p className="text-rose-600 font-bold">প্রোফাইল লোড করা যায়নি: {loadError}</p>
+      <button onClick={() => window.location.reload()} className="btn-emerald">আবার চেষ্টা করুন</button>
     </div>
   );
 

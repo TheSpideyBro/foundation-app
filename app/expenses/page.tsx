@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { todayISO } from "@/lib/utils";
 import { 
   Plus, Search, Filter, Download, 
   Trash2, Edit2, Wallet, Calendar,
@@ -8,11 +9,12 @@ import {
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
+import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
 export default function ExpensesPage() {
   const { user, role } = useAuth();
-  const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
-  const isStaff = isAdmin || role === 'treasurer';
+  const isAdmin = hasAdminRole(role, user?.email);
+  const isStaff = hasStaffRole(role, user?.email);
   
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,11 +22,12 @@ export default function ExpensesPage() {
   const [editingExpense, setEditingExpense] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     category: "General",
     amount: "",
-    date: new Date().toISOString().split('T')[0],
+    date: todayISO(),
     description: "",
     proof_url: ""
   });
@@ -35,16 +38,21 @@ export default function ExpensesPage() {
 
   const fetchExpenses = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       if (!isStaff) {
-        const { data } = await supabase().from("expense_summary").select("total_amount, expense_count").single();
+        const { data, error } = await supabase().from("expense_summary").select("total_amount, expense_count").single();
+        if (error) throw error;
         setExpenses(data ? [{ id: "summary", amount: data.total_amount, description: "সকল খরচের মোট", category: "সারাংশ", date: "" }] : []);
       } else {
-        const { data } = await supabase().from("expenses").select("*").order("date", { ascending: false });
+        const { data, error } = await supabase().from("expenses").select("*").order("date", { ascending: false });
+        if (error) throw error;
         setExpenses(data || []);
       }
     } catch (err) {
+      // A failed read used to render an empty list as "no expenses yet".
       console.error("Error fetching expenses:", err);
+      setLoadError(err instanceof Error ? err.message : "খরচ লোড করা যায়নি");
     } finally {
       setLoading(false);
     }
@@ -65,7 +73,7 @@ export default function ExpensesPage() {
       setFormData({
         category: "General",
         amount: "",
-        date: new Date().toISOString().split('T')[0],
+        date: todayISO(),
         description: "",
         proof_url: ""
       });
@@ -136,6 +144,15 @@ export default function ExpensesPage() {
 
   return (
     <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
+      {loadError && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="font-bold text-rose-700 text-sm">খরচের তালিকা লোড করা যায়নি</p>
+            <p className="text-xs text-rose-600 mt-0.5">{loadError}</p>
+          </div>
+          <button onClick={fetchExpenses} className="btn-outline text-xs shrink-0">আবার চেষ্টা করুন</button>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">ব্যয় ও খরচ</h1>

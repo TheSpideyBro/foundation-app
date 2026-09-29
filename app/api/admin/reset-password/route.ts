@@ -1,38 +1,32 @@
 import { createClient as createSupaClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/server-auth';
+
+const MIN_PASSWORD_LENGTH = 8;
 
 export async function POST(req: Request) {
   try {
+    const auth = await requireAuth('admin');
+    if (!auth.ok) return auth.response;
+
     const { userId, newPassword } = await req.json();
 
-    if (!userId || !newPassword) {
-      return NextResponse.json({ error: 'Missing userId or newPassword' }, { status: 400 });
+    if (typeof userId !== 'string' || !userId) {
+      return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+    }
+    if (typeof newPassword !== 'string' || newPassword.length < MIN_PASSWORD_LENGTH) {
+      return NextResponse.json(
+        { error: `পাসওয়ার্ড কমপক্ষে ${MIN_PASSWORD_LENGTH} অক্ষরের হতে হবে` },
+        { status: 400 }
+      );
     }
 
-    // Check if the current user is an admin
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseServiceKey) throw new Error("Service role key missing");
-
-    // Auth via the canonical server client (reads the @supabase/ssr session
-    // cookie; the manual base64- parsing it replaced always 401'd on v0.12).
-    const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    // Check role from public.users table
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', session.user.id)
-      .single();
-
-    if (userData?.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 });
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    // Use service role client to update password
     const adminClient = createSupaClient(supabaseUrl, supabaseServiceKey);
     const { error } = await adminClient.auth.admin.updateUserById(userId, {
       password: newPassword

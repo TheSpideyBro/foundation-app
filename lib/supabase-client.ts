@@ -4,33 +4,57 @@ import { createBrowserClient } from "@supabase/ssr";
 // One long-lived browser client that persists the session via cookies.
 // Using createBrowserClient avoids the "Multiple GoTrueClient instances
 // detected" warning: the client is created once and reused, with the
-// auth session flowing through cookies (no new client needed after
-// sign-in / sign-out, so invalidateSupabaseClient is a no-op on the web).
+// auth session flowing through cookies. Never invalidate this singleton on
+// auth events — that spawns a second GoTrueClient next to the live listener.
 let _instance: SupabaseClient<any, "public"> | null = null;
 
 function buildMockClient(): SupabaseClient<any, "public"> {
-  const mockQuery: any = {
-    select: () => mockQuery,
-    order: () => mockQuery,
-    eq: () => mockQuery,
+  // Build-time / misconfigured fallback. Reads return empty results, but
+  // WRITES FAIL LOUDLY: the previous mock resolved insert/update/delete with
+  // success, so a build without NEXT_PUBLIC_SUPABASE_* let users "save"
+  // payments, members and expenses that were never persisted.
+  const notConfigured = {
+    message: "Supabase is not configured (NEXT_PUBLIC_SUPABASE_URL / ANON_KEY missing)",
+    code: "SUPABASE_NOT_CONFIGURED",
+    details: "",
+    hint: "",
+  };
+  const readOnlyQuery: any = {
+    select: () => readOnlyQuery,
+    order: () => readOnlyQuery,
+    eq: () => readOnlyQuery,
+    gte: () => readOnlyQuery,
+    lte: () => readOnlyQuery,
+    limit: () => readOnlyQuery,
     single: () => Promise.resolve({ data: null, error: null }),
+    maybeSingle: () => Promise.resolve({ data: null, error: null }),
     then: (resolve: any) => resolve({ data: [], error: null }),
+  };
+  const writeRejected: any = {
+    select: () => writeRejected,
+    eq: () => writeRejected,
+    single: () => Promise.resolve({ data: null, error: notConfigured }),
+    maybeSingle: () => Promise.resolve({ data: null, error: notConfigured }),
+    then: (resolve: any) => resolve({ data: null, error: notConfigured }),
   };
   return {
     from: () => ({
-      select: () => mockQuery,
-      insert: () => Promise.resolve({ data: [], error: null }),
-      update: () => mockQuery,
-      delete: () => mockQuery,
-      eq: () => mockQuery,
+      select: () => readOnlyQuery,
+      insert: () => Promise.resolve({ data: null, error: notConfigured }),
+      update: () => writeRejected,
+      upsert: () => Promise.resolve({ data: null, error: notConfigured }),
+      delete: () => writeRejected,
+      eq: () => writeRejected,
     }),
+    rpc: () => Promise.resolve({ data: null, error: notConfigured }),
     auth: {
       signInWithPassword: () =>
-        Promise.resolve({ data: { user: null, session: null }, error: null }),
+        Promise.resolve({ data: { user: null, session: null }, error: notConfigured }),
       signUp: () =>
-        Promise.resolve({ data: { user: null, session: null }, error: null }),
+        Promise.resolve({ data: { user: null, session: null }, error: notConfigured }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
       signOut: () => Promise.resolve({ error: null }),
     },
   } as unknown as SupabaseClient<any, "public">;
@@ -51,14 +75,6 @@ export const getSupabase = (): SupabaseClient<any, "public"> => {
 
   _instance = createBrowserClient(supabaseUrl, supabaseAnonKey);
   return _instance;
-};
-
-/**
- * Invalidate the cached Supabase client.
- * Call this after sign-in / sign-up so the client re-reads fresh cookies.
- */
-export const invalidateSupabaseClient = () => {
-  _instance = null;
 };
 
 export type User = {

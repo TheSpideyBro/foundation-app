@@ -28,11 +28,13 @@ export default function SignupPage() {
       email: virtualEmail,
       password,
       options: {
+        // Only non-privileged profile fields. role / is_approved used to be
+        // sent here and were copied straight into public.users — anyone could
+        // register as an approved admin (BUG-012). The DB trigger and
+        // AuthProvider now hard-code them regardless.
         data: {
           name: name,
-          phone: phone,
-          role: 'member',
-          is_approved: false
+          phone: phone
         }
       }
     });

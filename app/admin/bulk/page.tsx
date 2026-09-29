@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { todayISO } from "@/lib/utils";
 import { 
   Download, Upload, FileText, ArrowLeft, 
   Database, CheckCircle2, AlertTriangle, 
@@ -9,10 +10,11 @@ import {
 import Link from "next/link";
 import * as XLSX from 'xlsx';
 import { useAuth } from "@/components/providers";
+import { isAdmin as hasAdminRole } from "@/lib/auth";
 
 export default function BulkManagementPage() {
   const { user, role } = useAuth();
-  const isAdmin = role === 'admin' || user?.email === 'saddamakash234@gmail.com';
+  const isAdmin = hasAdminRole(role, user?.email);
   
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
@@ -21,12 +23,14 @@ export default function BulkManagementPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/bulk?type=${type}`);
-      const data = await res.json();
-      
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+      if (!Array.isArray(data)) throw new Error("এক্সপোর্ট করার উপযুক্ত ডেটা পাওয়া যায়নি");
+
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, type);
-      XLSX.writeFile(wb, `${type}_backup_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(wb, `${type}_backup_${todayISO()}.xlsx`);
       
       setStatus({ type: 'success', msg: `${type} সফলভাবে এক্সপোর্ট করা হয়েছে।` });
     } catch (err) {
@@ -57,9 +61,8 @@ export default function BulkManagementPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type, items })
         });
-        const result = await res.json();
-        
-        if (result.error) throw new Error(result.error);
+        const result = await res.json().catch(() => ({}));
+        if (!res.ok || result.error) throw new Error(result.error || `HTTP ${res.status}`);
         setStatus({ type: 'success', msg: `সফলভাবে ${result.count} টি তথ্য ইম্পোর্ট করা হয়েছে।` });
       } catch (err: any) {
         setStatus({ type: 'error', msg: "ইম্পোর্ট করতে সমস্যা হয়েছে: " + err.message });
@@ -67,6 +70,13 @@ export default function BulkManagementPage() {
         setLoading(false);
         e.target.value = "";
       }
+    };
+    // Without onerror the full-screen "processing" overlay never clears if
+    // the file cannot be read (corrupted blob / permission denied).
+    reader.onerror = () => {
+      setLoading(false);
+      setStatus({ type: 'error', msg: "ফাইলটি পড়া যায়নি — অন্য ফাইল দিয়ে চেষ্টা করুন।" });
+      e.target.value = "";
     };
     reader.readAsBinaryString(file);
   };

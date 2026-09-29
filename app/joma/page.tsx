@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { todayISO, currentMonthStr } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Banknote, Calendar, CheckCircle2,
@@ -18,6 +19,7 @@ import {
   type AllocationResult,
 } from "@/lib/payment-ledger";
 import { useAuth } from "@/components/providers";
+import { isStaff as hasStaffRole } from "@/lib/auth";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -63,8 +65,8 @@ type AllocationRow = {
 const money = (v: number) => `৳${Math.round(v || 0).toLocaleString("bn-BD")}`;
 const monthLabel = (m: string) =>
   new Date(`${m}-01T00:00:00`).toLocaleDateString("bn-BD", { month: "long", year: "numeric" });
-const todayStr = () => new Date().toISOString().slice(0, 10);
-const currentMonth = () => new Date().toISOString().slice(0, 7);
+const todayStr = () => todayISO();
+const currentMonth = () => currentMonthStr();
 
 function generateReceiptNo(): string {
   return `R-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -75,8 +77,7 @@ function generateReceiptNo(): string {
 export default function JomaEntryPage() {
   const { user, role } = useAuth();
   const router = useRouter();
-  const isAdminEmail = user?.email === "saddamakash234@gmail.com";
-  const isStaff = role === "admin" || role === "treasurer" || isAdminEmail;
+  const isStaff = hasStaffRole(role, user?.email);
 
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [pledgeHistory, setPledgeHistory] = useState<PledgeHistoryItem[]>([]);
@@ -139,6 +140,7 @@ export default function JomaEntryPage() {
   useEffect(() => {
     async function load() {
       if (!isStaff) { setLoading(false); return; }
+      setError(null);
       try {
         const [{ data: membersData, error: mErr }, { data: pledgeData, error: pErr }, { data: userData, error: uErr }] =
           await Promise.all([
@@ -146,7 +148,10 @@ export default function JomaEntryPage() {
             supabase().from("member_pledge_history").select("member_id, monthly_amount, effective_from_month, note, created_at, members(name)").order("effective_from_month", { ascending: true }),
             supabase().from("users").select("id, name, phone, role").in("role", ["admin", "treasurer"]),
           ]);
-        if (mErr) throw mErr;
+        // pErr/uErr used to be destructured and dropped: a failed
+        // member_pledge_history read silently produced a preview that
+        // disagreed with what the server persists.
+        if (mErr || pErr || uErr) throw (mErr || pErr || uErr);
         setMembers((membersData || []) as MemberOption[]);
         setPledgeHistory((pledgeData || []).map((e: any) => ({
           member_id: e.member_id,
@@ -160,9 +165,11 @@ export default function JomaEntryPage() {
           name: u.name || "Unknown",
           phone: u.phone || "",
         })));
-        // Auto-select current user as collector if possible
+        // Seed the collector ONLY when empty. This effect re-runs on every
+        // auth event (token refresh ~hourly), which used to snap the dropdown
+        // back to the current user mid-entry and persist the wrong collector.
         if (user?.id) {
-          setForm((f) => ({ ...f, collectedBy: user.id }));
+          setForm((f) => (f.collectedBy ? f : { ...f, collectedBy: user.id }));
         }
       } catch (e: any) {
         console.error("Joma load error:", e);
@@ -172,7 +179,9 @@ export default function JomaEntryPage() {
       }
     }
     load();
-  }, [isStaff, user]);
+    // Depend on the id, not the user object: a new object identity per auth
+    // event re-fetched everything and reset the form.
+  }, [isStaff, user?.id]);
 
   // Live allocation preview
   const allocationPreview = useMemo<AllocationResult>(() => {
@@ -228,6 +237,31 @@ export default function JomaEntryPage() {
   // ─── Confirmation dialog ────────────────────────────────────────────────────
 
   function openConfirm() {
+    const amount = parseFloat(form.paymentAmount);
+    const extraAmount = form.extraAmount.trim() === "" ? 0 : parseFloat(form.extraAmount);
+    const endMonth = form.coverageMode === "range" ? form.coverageEndMonth : form.coverageStartMonth;
+
+    // There is no <form> element, so the `required` / `min` attributes on the
+    // inputs never run — every check has to happen here or at the server.
+    if (!form.memberId) { setError("সদস্য নির্বাচন করুন"); return; }
+    if (!Number.isFinite(amount) || amount <= 0) { setError("জমার পরিমাণ শূন্যের চেয়ে বেশি হতে হবে"); return; }
+    if (!Number.isFinite(extraAmount) || extraAmount < 0) { setError("অতিরিক্ত জমা ঋণাত্মক হতে পারে না"); return; }
+    if (!form.paymentDate) { setError("তারিখ নির্বাচন করুন"); return; }
+    if (!form.coverageStartMonth || !endMonth) { setError("কভারেজ মাস নির্বাচন করুন"); return; }
+    if (form.coverageStartMonth > endMonth) { setError("কভারেজের শুরুর মাস শেষ মাসের আগে হতে হবে"); return; }
+    if (!form.collectedBy) { setError("আদায়কারী নির্বাচন করুন"); return; }
+    if (form.pledgeChangeEnabled) {
+      const pledge = parseFloat(form.newPledgeAmount);
+      if (!Number.isFinite(pledge) || pledge <= 0) {
+        setError("নতুন মাসিক অঙ্গীকার শূন্যের চেয়ে বেশি পরিমাণ দিন");
+        return;
+      }
+      if (!form.pledgeEffectiveMonth) {
+        setError("অঙ্গীকার কার্যকর মাস নির্বাচন করুন");
+        return;
+      }
+    }
+    setError(null);
     setShowConfirm(true);
   }
 
@@ -255,14 +289,23 @@ export default function JomaEntryPage() {
           coverage_end_month: endMonth,
           collected_by: form.collectedBy,
           note: form.note || null,
-          pledge_change_amount: form.pledgeChangeEnabled ? (parseFloat(form.newPledgeAmount) || null) : null,
+          pledge_change_amount: form.pledgeChangeEnabled ? parseFloat(form.newPledgeAmount) : null,
           pledge_effective_month: form.pledgeChangeEnabled ? form.pledgeEffectiveMonth || null : null,
           pledge_change_note: form.pledgeChangeNote || null,
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "সেভ করতে সমস্যা হয়েছে");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const raw = String(data.error || "সেভ করতে সমস্যা হয়েছে");
+        if (/duplicate key|receipt_no/i.test(raw)) {
+          // Same receipt number => the earlier attempt almost certainly
+          // committed (timeout after write). Retrying blindly would either
+          // duplicate the payment or hit this again with a raw PG error.
+          throw new Error("এই রসিদ নম্বর ইতিমধ্যে ব্যবহৃত হয়েছে — সম্ভবত আগের এন্ট্রি সংরক্ষিত হয়ে গেছে। জমা তালিকা দেখে নিন।");
+        }
+        throw new Error(raw);
+      }
 
       setSuccessData({
         id: data.payment_id,
@@ -310,7 +353,7 @@ export default function JomaEntryPage() {
           <ShieldCheck className="w-16 h-16 text-rose-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 font-tiro mb-2">প্রবেশাধিকার সংরক্ষিত</h1>
           <p className="text-gray-500">এই পেজটি শুধুমাত্র স্টাফ সদস্যদের জন্য।</p>
-          <button onClick={handleCancel} className="mt-6 btn-emerald">ড্যাশবোর্ডে যান</button>
+          <button onClick={() => router.push("/dashboard")} className="mt-6 btn-emerald">ড্যাশবোর্ডে যান</button>
         </div>
       </div>
     );
@@ -369,7 +412,7 @@ export default function JomaEntryPage() {
               <a href={`/api/receipts/${successData.id}?download=1`} download={`Receipt-${successData.receipt}.jpg`} className="btn-outline">
                 <Download size={17} /> ডাউনলোড
               </a>
-              <button onClick={handleCancel} className="btn-emerald">
+              <button onClick={() => setSuccessData(null)} className="btn-emerald">
                 <Plus size={17} /> নতুন জমা
               </button>
               <button
@@ -417,6 +460,22 @@ export default function JomaEntryPage() {
                 <p className="font-black text-emerald-600 text-lg">{money(parseFloat(form.paymentAmount) || 0)}</p>
               </div>
             </div>
+
+            {/* Extra amount — persisted as an unallocated allocation row and
+                part of the cash handed over; it never appeared here before. */}
+            {(form.extraAmount.trim() !== "" && (parseFloat(form.extraAmount) || 0) > 0) && (
+              <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl">
+                <Banknote className="w-5 h-5 text-amber-600 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs text-amber-700 font-bold">অতিরিক্ত জমা</p>
+                  <p className="font-black text-amber-700">{money(parseFloat(form.extraAmount) || 0)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 font-bold">মোট নগদ</p>
+                  <p className="font-black text-gray-900">{money((parseFloat(form.paymentAmount) || 0) + (parseFloat(form.extraAmount) || 0))}</p>
+                </div>
+              </div>
+            )}
 
             {/* Coverage */}
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
@@ -541,7 +600,15 @@ export default function JomaEntryPage() {
                     type="text"
                     placeholder="সদস্যের নাম বা ফোন নম্বর লিখুন..."
                     value={memberSearch}
-                    onChange={(e) => { setMemberSearch(e.target.value); setShowMemberDropdown(true); }}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setMemberSearch(value);
+                      setShowMemberDropdown(true);
+                      // Editing the box no longer matches the chosen member:
+                      // keep them in sync or the donation is saved for the
+                      // previously clicked member while the box shows another.
+                      if (selectedMember && value !== selectedMember.name) set("memberId", "");
+                    }}
                     onFocus={() => setShowMemberDropdown(true)}
                     onBlur={() => setTimeout(() => setShowMemberDropdown(false), 200)}
                     className="w-full pl-9 pr-3 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"

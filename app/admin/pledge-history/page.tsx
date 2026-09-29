@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, Shield, TrendingDown, TrendingUp, Minus, RefreshCw } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
+import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
 type PledgeEntry = {
   id: string;
@@ -17,7 +18,7 @@ type PledgeEntry = {
 
 export default function AdminPledgeHistoryPage() {
   const { user, role } = useAuth();
-  const isStaff = role === "admin" || role === "treasurer" || user?.email === "saddamakash234@gmail.com";
+  const isStaff = hasStaffRole(role, user?.email);
   const [entries, setEntries] = useState<PledgeEntry[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
