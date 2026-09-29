@@ -59,6 +59,45 @@
 
 ---
 
+## 201e602 — fix(ci): unblock the E2E job and let Playwright own the dev-server lifecycle
+
+**Date:** 2026-09-30  
+**Author:** AI Assistant (opencode)  
+**Branch:** main  
+**Files changed:** `.github/workflows/ci.yml`, `playwright.config.ts`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| CI status | every run since 2026-09-14 failed: first on `npm ci` with no `package-lock.json` (run 36603435061), then on `ERROR: .next/static not found` in the E2E job | run `36613578576`: **Lint ✓ Build ✓ E2E ✓** — first green run in the repo's history |
+| E2E job | `prepare:standalone` before any `build`; the standalone server was never used (Playwright starts its own) | browser install → `playwright test` |
+| `playwright.config.ts` webServer | `npm run dev -- --port 3001` (npm in a pnpm-only repo); the wrapper exited on teardown and orphaned `next dev`, so Playwright waited forever for the port | `exec ./node_modules/.bin/next dev --port 3001` — Playwright signals the server process directly |
+
+### Why
+
+The E2E job could never pass (dead `prepare:standalone` step), and after removing that
+step the local reproduction showed the run hanging *after* all tests finished —
+Playwright never got its port back because the `pnpm`/`npm` wrapper it signalled was
+not the process holding port 3001.
+
+### Tests Run
+
+- [x] Local run with CI-equivalent env (`NEXT_PUBLIC_SUPABASE_URL=…placeholder…`): `3 passed, 6 skipped (17.3s)`, self-exit in ~40s, `ps` shows no leftover `next-server`
+- [x] `pnpm exec tsc --noEmit`, `pnpm lint` — clean
+- [x] GitHub Actions run `36613578576` — all three jobs green
+
+### Related
+
+- Follow-up to `5f7c86f` (which switched CI from `npm ci` to pnpm)
+
+### Known Risks / Follow-ups
+
+- The6 authenticated E2E tests skip in CI (no `TEST_EMAIL`/`TEST_PASSWORD` secrets). Adding them as repository secrets would give real coverage.
+- Runner annotations warn that `actions/checkout@v4` / `setup-node@v4` / `pnpm/action-setup@v4` are Node-20-targeted actions; harmless today but worth refreshing to v5 when convenient.
+
+---
+
 ## 5f7c86f — chore(repo): remove 35 dead files, 8 unused deps and fix the pnpm CI
 
 **Date:** 2026-09-30  
