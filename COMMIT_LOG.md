@@ -59,6 +59,52 @@
 
 ---
 
+## 5f7c86f — chore(repo): remove 35 dead files, 8 unused deps and fix the pnpm CI
+
+**Date:** 2026-09-30  
+**Author:** AI Assistant (opencode)  
+**Branch:** main  
+**Files changed:** 35 deleted (`components/ui/*`, `scripts/*` one-offs, `tests/*` one-offs, `public/*.svg` boilerplate, `HIGH_PRIORITY_FIXES.md`, `VERIFICATION_REPORT.md`, `docs/sheets/*.xlsx`, `lib/sheets-auto.ts`, `components.json`), `package.json`, `pnpm-lock.yaml`, `.github/workflows/ci.yml`, README/AGENTS/SYSTEM/CONTRIBUTING/FEATURE_MAP/CHANGELOG
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Dead source files | 15 unused shadcn components + `lib/sheets-auto.ts` + 6 one-off `scripts/` + 4 one-off `tests/` + 5 boilerplate SVGs + 2 stale root reports + an unreferenced xlsx — none referenced anywhere | 35 files removed; `components/` is just `providers.tsx` + `layout.tsx`, `scripts/` is `prepare-standalone.js` + `dump-supabase-schema.py`, `tests/` is `payment-ledger.test.ts` + `e2e/` + `verify-fixes.js` |
+| Dependencies | `@base-ui/react`, `framer-motion`, `recharts`, `html-to-image`, `date-fns`, `class-variance-authority`, `tw-animate-css`, `shadcn` in the tree with **zero** importers; `playwright` shipped in `dependencies` | 8 packages dropped; `playwright` moved to `devDependencies` (lockfile −~250 lines) |
+| CI | `.github/workflows/ci.yml` ran `npm ci` — impossible since `package-lock.json` was deleted; ledger tests not run in CI | pnpm + Node 22 in all 3 jobs, `pnpm test:ledger` added to the lint job |
+| `package.json` scripts | `start` / `test:verify` shelled out to `npm run` | invoke `node scripts/prepare-standalone.js` directly |
+| Docs | SYSTEM.md file tree still listed `lib/audit.ts`, `lib/supabase/client.ts`, `sheets-auto.ts`, `ui/ (15)`, "migrations (10)"; README/AGENTS/CONTRIBUTING/FEATURE_MAP mentioned shadcn | trees and mentions match the repo; CHANGELOG gained a `### Removed` section |
+
+### Why
+
+Verification sweep after the audit fixes: grep showed every deleted file had zero
+importers/references, and every dropped dependency had zero imports anywhere in
+`app/`, `lib/`, `components/`, `tests/`. The CI workflow was left broken by the
+earlier removal of `package-lock.json`.
+
+### Tests Run
+
+- [x] `pnpm install` — clean, removes the 8 packages
+- [x] `pnpm exec tsc --noEmit` — clean
+- [x] `pnpm lint` — clean
+- [x] `pnpm build` — exit 0
+- [x] `pnpm test:ledger` — 28/28
+- [x] Final repo-wide grep: no reference to any deleted filename (only historical docs: ADR-005, TECH_DEBT TD-007, SECURITY, `docs/audits/*`)
+
+### Related
+
+- Tech Debt: closes the "dead code" tail of the repository audit (TD-001…TD-011 are unaffected)
+- Note: `reference/full-app-design.jsx` still imports `recharts` — it is a static design mock, never compiled (`.jsx` is outside tsconfig's include), and is kept because README/CLAUDE/CONTRIBUTING link to it
+
+### Known Risks / Follow-ups
+
+- Re-adding shadcn later is `pnpm dlx shadcn@latest init` + `add <component>` (user decision: leave it removed).
+- CI now actually runs; the first push will exercise pnpm/Node 22 — watch the `Lint, Type Check & Unit Tests` job.
+- Push required the `workflow` scope on the GitHub token (`gh auth refresh -h github.com -s workflow`).
+
+---
+
 ## 7f712c1 — fix(db): harden RPCs and views, restore zero-sum backfill, add Test migrations
 
 **Date:** 2026-09-29  
