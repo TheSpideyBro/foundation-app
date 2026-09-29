@@ -87,9 +87,6 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Build standalone
-        run: pnpm run prepare:standalone
-
       - name: Run E2E tests
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co

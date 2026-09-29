@@ -16,7 +16,7 @@ export default defineConfig({
   webServer: process.env.BASE_URL
     ? undefined
     : {
-        command: "npm run dev -- --port 3001",
+        command: "exec ./node_modules/.bin/next dev --port 3001",
         url: "http://127.0.0.1:3001/login",
         reuseExistingServer: false,
         timeout: 120_000,
