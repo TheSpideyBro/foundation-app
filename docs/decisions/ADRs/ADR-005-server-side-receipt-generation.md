@@ -28,6 +28,6 @@ Receipts are rendered server-side as JPEG images using **node-canvas** (`canvas`
 
 ## Alternatives Considered
 
-- **Client-side HTML→Image (html-to-image)**: The donation page uses this for the receipt preview/share; heavier and less deterministic than the server canvas version.
+- **Client-side HTML→Image (html-to-image)**: previously used by the donation page for receipt preview/share; heavier and less deterministic than the server canvas version. The package was removed as a dependency in the 2026-09-30 cleanup (zero importers).
 - **jsPDF (client)**: Used for the report PDF export; not suitable for the premium styled image receipt.
 - **Python/Pillow**: Rejected — broke deployment; removed dependency.

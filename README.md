@@ -1,7 +1,7 @@
 # দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন — হিসাব খাতা
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/TheSpideyBro/foundation-app/dev/public/icons/icon-512.png" alt="Foundation Logo" width="120" />
+  <img src="https://raw.githubusercontent.com/TheSpideyBro/foundation-app/main/public/icons/icon-512.png" alt="Foundation Logo" width="120" />
 </p>
 
 <p align="center">
@@ -17,9 +17,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/TheSpideyBro/foundation-app/actions"><img src="https://img.shields.io/github/actions/workflow/status/TheSpideyBro/foundation-app/ci.yml?branch=dev&style=for-the-badge" alt="CI" /></a>
+  <a href="https://github.com/TheSpideyBro/foundation-app/actions"><img src="https://img.shields.io/github/actions/workflow/status/TheSpideyBro/foundation-app/ci.yml?branch=main&style=for-the-badge" alt="CI" /></a>
   <a href="https://github.com/TheSpideyBro/foundation-app/issues"><img src="https://img.shields.io/github/issues/TheSpideyBro/foundation-app?style=for-the-badge" alt="Issues" /></a>
-  <a href="https://github.com/TheSpideyBro/foundation-app/blob/dev/LICENSE"><img src="https://img.shields.io/github/license/TheSpideyBro/foundation-app?style=for-the-badge" alt="License" /></a>
+  <a href="https://github.com/TheSpideyBro/foundation-app/blob/main/LICENSE"><img src="https://img.shields.io/github/license/TheSpideyBro/foundation-app?style=for-the-badge" alt="License" /></a>
 </p>
 
 ---
@@ -41,9 +41,9 @@
 ## 🚀 Quick Start
 
 ```bash
-npm install
+pnpm install
 cp .env.example .env.local          # fill in Supabase URL + anon key
-npm run dev
+pnpm dev                            # http://localhost:3000
 ```
 
 Full setup (Supabase schema, env vars, first admin account, deployment) → [SETUP.md](SETUP.md)
@@ -60,7 +60,8 @@ Full setup (Supabase schema, env vars, first admin account, deployment) → [SET
 | 💰 Accounting domain model | [docs/architecture/ACCOUNTING_DOMAIN.md](docs/architecture/ACCOUNTING_DOMAIN.md) |
 | 🔄 Data flows (Mermaid diagrams) | [docs/architecture/DATA_FLOW.md](docs/architecture/DATA_FLOW.md) |
 | 🔐 Security & auth model | [docs/architecture/SECURITY.md](docs/architecture/SECURITY.md) |
-| 🗄️ Database schema & migration guide | [docs/database/SCHEMA.md](docs/database/MIGRATIONS.md) |
+| 🗄️ Database schema | [docs/database/SCHEMA.md](docs/database/SCHEMA.md) |
+| 🛣️ Migrations & how to apply them | [docs/database/MIGRATIONS.md](docs/database/MIGRATIONS.md) |
 | 🧑‍💻 Contributing & dev guide | [docs/development/CONTRIBUTING.md](docs/development/CONTRIBUTING.md) |
 | 👥 Roles & permissions matrix | [docs/development/ROLES.md](docs/development/ROLES.md) |
 | 🤖 AI-agent engineering rules | [AGENTS.md](AGENTS.md) |
@@ -78,10 +79,13 @@ Full setup (Supabase schema, env vars, first admin account, deployment) → [SET
 
 ```
 app/                     Next.js App Router (pages + API routes)
-lib/                     Shared TS libs (payment-ledger, supabase, utils, integrations)
+lib/                     Shared TS libs (payment-ledger, auth, supabase, utils, integrations)
 components/              React components (AuthProvider, layout shell)
-supabase/migrations/     SQL migrations (chronological, applied to live DB)
-tests/                   Allocation-engine unit tests (28 cases)
+supabase/migrations/     SQL migrations — Main project (mlnzxhuozuyidpxepxex)
+supabase/migrations-test/ SQL migrations — Test project (pvfdgrdvvoytsfmjyvde)
+supabase/schema.sql      GENERATED from the live catalog (never edit by hand)
+scripts/                 prepare-standalone.js, dump-supabase-schema.py
+tests/                   Allocation-engine unit tests (28 cases) + Playwright specs
 docs/                    Documentation system
 reference/               Design reference files (full-app-design, receipt-design)
 public/                  Static assets, Bengali fonts, PWA icons
@@ -93,12 +97,13 @@ public/                  Static assets, Bengali fonts, PWA icons
 
 | Command | Purpose |
 |---------|---------|
-| `npm run dev` | Development server |
-| `npm run build` | Production build (standalone) |
-| `npm run start` | Production server |
-| `npm run lint` | ESLint |
-| `npm run test:ledger` | **Canonical allocation engine tests** (28 cases) |
-| `npm run test:e2e` | Playwright E2E (dashboard, reports) |
+| `pnpm dev` | Development server |
+| `pnpm build` | Production build (type-checked — no `ignoreBuildErrors`) |
+| `pnpm start` | Production server (standalone) |
+| `pnpm lint` | ESLint |
+| `pnpm test:ledger` | **Canonical allocation engine tests** (28 cases) |
+| `pnpm test:e2e` | Playwright E2E (dashboard, reports) |
+| `pnpm test:verify` | Standalone-server smoke test |
 
 ---
 

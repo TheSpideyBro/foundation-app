@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 18+ (recommended: 20+)
+- Node.js 20+ (Next.js 16 requirement)
 - pnpm (package manager)
 - Git
 - Supabase account (for live database)
