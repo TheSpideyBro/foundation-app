@@ -85,7 +85,7 @@ Follow `CLAUDE.md` and `app/globals.css` `@theme`:
 - **Pages**: `app/<route>/page.tsx`
 - **API Routes**: `app/api/<route>/route.ts`
 - **Shared Libraries**: `lib/<module>.ts`
-- **Components**: `components/<name>.tsx` (or `components/ui/<name>.tsx` for shadcn)
+- **Components**: `components/<name>.tsx` (plain React + Tailwind; no component-library wrapper)
 - **Tests**: `tests/<name>.test.ts`
 - **Migrations**: `supabase/migrations/YYYYMMDD_description.sql`
 

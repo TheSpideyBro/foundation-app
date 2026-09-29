@@ -63,7 +63,7 @@
 | UI Library | React | 19.2.4 |
 | Language | TypeScript | ~5 |
 | Styling | Tailwind CSS | 4.0+ |
-| Components | shadcn/ui | 15 components |
+| Icons | lucide-react | 20+ pages |
 | Database | PostgreSQL (Supabase) | — |
 | Auth | Supabase Auth | @supabase/ssr |
 | ORM/Client | Supabase JS | @supabase/supabase-js |
@@ -176,30 +176,30 @@ foundation-app/
 │           ├── pending-pledges/ # Overdue alerts
 │           └── reset-password/  # Password reset
 ├── lib/                    # Shared libraries
-│   ├── supabase-client.ts  # Browser Supabase client (singleton)
-│   ├── supabase/
-│   │   ├── client.ts       # Browser client (alternative)
-│   │   └── server.ts       # Server client (cookie-based)
-│   ├── utils.ts            # cn(), Bengali formatting, money formatting
+│   ├── supabase-client.ts  # Browser Supabase client (singleton + mock fallback)
+│   ├── supabase/server.ts  # Server client (cookie-based)
+│   ├── auth.ts             # FOUNDER_EMAIL + isStaff/isAdmin/isApproved
+│   ├── server-auth.ts      # requireAuth() for API routes
+│   ├── utils.ts            # cn(), Bengali formatting, money formatting, local dates
 │   ├── payment-ledger.ts   # ★ Canonical allocation engine
-│   ├── audit.ts            # Audit log helper
 │   ├── whatsapp.ts         # WhatsApp Cloud API client
-│   ├── sheets-sync.ts      # Google Sheets sync
-│   └── sheets-auto.ts      # Google Sheets auto-backup
+│   └── sheets-sync.ts      # Google Sheets sync
 ├── components/             # Shared components
-│   ├── providers.tsx       # AuthProvider (user, role, memberId)
-│   ├── layout.tsx          # App shell (sidebar, bottom nav, drawer)
-│   └── ui/                 # shadcn/ui components (15)
+│   ├── providers.tsx       # AuthProvider (user, role, memberId, isApproved)
+│   └── layout.tsx          # App shell (sidebar, bottom nav, drawer)
 ├── public/                 # Static assets
 │   ├── fonts/              # Bengali fonts (HindSiliguri, TiroBangla, MainakBuniyadi, JetBrainsMono)
 │   ├── sw.js               # Service worker
 │   └── manifest.json       # PWA manifest
 ├── supabase/
-│   ├── migrations/         # SQL migration files (10)
-│   └── schema.sql          # Full schema reference
+│   ├── migrations/         # SQL migrations — Main project
+│   ├── migrations-test/    # SQL migrations — Test project (signatures differ)
+│   └── schema.sql          # GENERATED from the live catalog (never edit by hand)
 ├── tests/
-│   └── payment-ledger.test.ts  # 28 allocation engine tests
-├── scripts/                # Build/deploy scripts
+│   ├── payment-ledger.test.ts  # 28 allocation engine tests
+│   ├── e2e/                # Playwright specs
+│   └── verify-fixes.js     # Standalone-server smoke test (pnpm test:verify)
+├── scripts/                # prepare-standalone.js, dump-supabase-schema.py
 ├── docs/                   # Documentation (this system)
 ├── CLAUDE.md               # Design system rules
 ├── SETUP.md                # Setup guide

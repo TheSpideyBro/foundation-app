@@ -79,7 +79,7 @@ Full setup (Supabase schema, env vars, first admin account, deployment) → [SET
 ```
 app/                     Next.js App Router (pages + API routes)
 lib/                     Shared TS libs (payment-ledger, supabase, utils, integrations)
-components/              React components (AuthProvider, layout shell, shadcn/ui)
+components/              React components (AuthProvider, layout shell)
 supabase/migrations/     SQL migrations (chronological, applied to live DB)
 tests/                   Allocation-engine unit tests (28 cases)
 docs/                    Documentation system

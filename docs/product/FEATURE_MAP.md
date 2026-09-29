@@ -114,7 +114,7 @@ Complete feature inventory with route, role access, and implementation status.
 ### 17. Google Sheets Sync
 - **Route**: `/api/sync-sheets` (POST), `/api/restore-sheets` (POST)
 - **Roles**: admin
-- **Implementation**: `lib/sheets-sync.ts`, `lib/sheets-auto.ts`, `app/api/sync-sheets/route.ts`, `app/api/restore-sheets/route.ts`
+- **Implementation**: `lib/sheets-sync.ts`, `app/api/sync-sheets/route.ts`, `app/api/restore-sheets/route.ts`
 - **Description**: Two-way sync with Google Sheets via Service Account OAuth. Backup all data to a Google Spreadsheet with per-tab organization (সদস্য, জমা, খরচ, সারসংক্ষেপ)
 
 ### 18. WhatsApp Notifications

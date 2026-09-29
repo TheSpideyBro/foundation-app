@@ -34,11 +34,11 @@ See [docs/decisions/ADRs/ADR-001-canonical-payment-allocation.md](docs/decisions
 ```
 app/                    Next.js App Router pages + API routes
 lib/                    Shared TS libraries (CANONICAL engine, supabase clients, utils, integrations)
-components/             React components (AuthProvider, layout shell, shadcn/ui)
+components/             React components (AuthProvider, layout shell)
 supabase/migrations/    SQL migrations for the Main project (chronological, applied to live DB)
 supabase/migrations-test/  SQL migrations for the Test project only (signatures differ)
 supabase/schema.sql     GENERATED from the live catalog — never edit by hand
-scripts/                Node/Python utilities (standalone build, schema dump, sheet sync)
+scripts/                Node/Python utilities (standalone build, schema dump)
 tests/                  Unit tests (node --experimental-strip-types --test)
 docs/                   Documentation system (source of truth for design + engineering docs)
 public/                 Static assets, Bengali fonts, PWA

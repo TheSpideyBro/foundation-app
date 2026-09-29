@@ -15,6 +15,12 @@ All notable changes to this project are documented here. The format follows [Kee
 - `scripts/dump-supabase-schema.py`: regenerates `supabase/schema.sql` as executable DDL from the live catalog (tables, constraints, FKs, indexes, RLS, verbatim policies/functions with their EXECUTE grants, triggers, views, grants) — the hand-written file had drifted badly (TD-008).
 - `supabase/migrations-test/`: separate migration folder for the Test project — its `save_payment_entry`/`reallocate_payment` signatures differ from Main, so replaying Main's files there would create broken overloads (TD-011).
 
+### Removed
+- **34 dead files**: unreferenced one-off tooling (`scripts/capture-*.cjs`, `fix-env-google.js`, `live-fullsync.js`, `receipt_generator.py`, `verify-member-actions.cjs`), superseded smoke tests (`tests/e2e-full.js`, `live-sheets-test.js`, `validate-full-schema.js`, `verify-clean.js`), Next.js boilerplate SVGs (`public/next.svg`, `vercel.svg`, `window.svg`, `globe.svg`, `file.svg`), root-level work reports (`HIGH_PRIORITY_FIXES.md`, `VERIFICATION_REPORT.md` — superseded by CHANGELOG/COMMIT_LOG), the unused Google Sheet sample (`docs/sheets/*.xlsx`), and `lib/sheets-auto.ts` (no importers).
+- **`components/ui/*` (15 shadcn components) + `components.json`** — nothing imported them; the UI is plain React + Tailwind + lucide-react.
+- **8 unused dependencies**: `@base-ui/react`, `framer-motion`, `recharts`, `html-to-image`, `date-fns`, `class-variance-authority`, `tw-animate-css`, `shadcn`; `playwright` moved from `dependencies` to `devDependencies`.
+- **CI fixed**: `.github/workflows/ci.yml` ran `npm ci`, which can no longer work since `package-lock.json` was dropped — now pnpm on Node 22, and it runs `pnpm test:ledger`.
+
 ### Security
 - **BUG-015**: `save_payment_entry()` / `reallocate_payment()` / `backfill_payment_allocations()` are `SECURITY DEFINER` with no internal auth check and were executable by `anon` (and `authenticated` on Main); all summary views — including `audit_log_view` on Test — granted `SELECT` to `anon`, exposing member/pledge data and the audit trail with no session. Write RPCs are now `service_role`-only and `anon` has no view access, on **both** Supabase projects (Main `mlnzxhuozuyidpxepxex`, Test `pvfdgrdvvoytsfmjyvde`).
 - **BUG-017**: `generate_receipt_no()` had no lock and `lpad()` truncated the sequence (`991783` → `R-9917`), guaranteeing a UNIQUE collision. Now takes `pg_advisory_xact_lock` and pads only when needed (both projects).
