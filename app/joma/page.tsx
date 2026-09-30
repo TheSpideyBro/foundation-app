@@ -14,6 +14,7 @@ import {
   calculatePaymentAllocation,
   pledgeBreakdown,
   monthRange,
+  resolvePledgeForMonth,
   type PledgeHistoryEntry,
   type AllocationResult,
 } from "@/lib/payment-ledger";
@@ -180,6 +181,23 @@ export default function JomaEntryPage() {
     ? pendingPledgeChange.amount
     : selectedMember?.monthly_pledge ?? 0;
 
+  // members.monthly_pledge is only the FALLBACK for months with no history
+  // row — a later-effective history entry always wins, so the raw field can
+  // disagree with what the engine charges (BUG-031: history said
+  // 2026-09 → ৳1,000 while the card showed ৳100). Every "current pledge"
+  // label must show the RESOLVED value, or the card and the allocation
+  // preview next to it print two different numbers for the same member.
+  const currentMonthPledge = useMemo(
+    () => resolvePledgeForMonth(curMonth, Number(effectiveMonthlyPledge) || 0, effectivePledgeHistory),
+    [curMonth, effectiveMonthlyPledge, effectivePledgeHistory],
+  );
+  // 1x/2x/3x চাঁদা set the amount for the COVERAGE month, not for today —
+  // back-paying a cheaper month must not quote the current month's pledge.
+  const coveragePledge = useMemo(
+    () => resolvePledgeForMonth(form.coverageStartMonth || curMonth, Number(effectiveMonthlyPledge) || 0, effectivePledgeHistory),
+    [form.coverageStartMonth, curMonth, effectiveMonthlyPledge, effectivePledgeHistory],
+  );
+
   // Extra cash handed over — never part of the month allocations, but always
   // part of the total handed over (its own allocation row + its own card).
   const extraValue = form.extraAmount.trim() === "" ? 0 : Math.max(0, parseFloat(form.extraAmount) || 0);
@@ -286,7 +304,9 @@ export default function JomaEntryPage() {
   }
 
   function quickAmountMultiplier(multiplier: number) {
-    const pledge = Number(effectiveMonthlyPledge) || 0;
+    // The coverage month's pledge, resolved through history — not the raw
+    // members.monthly_pledge (BUG-031).
+    const pledge = Number(coveragePledge) || 0;
     set("paymentAmount", String(pledge * multiplier));
   }
 
@@ -615,7 +635,7 @@ export default function JomaEntryPage() {
               <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
                 <p className="text-xs text-amber-700 font-bold mb-2">মাসিক অঙ্গীকার পরিবর্তন</p>
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-500">{selectedMember ? money(Number(selectedMember.monthly_pledge) || 0) : "—"}</span>
+                  <span className="text-gray-500">{selectedMember ? money(currentMonthPledge) : "—"}</span>
                   <TrendingDown className="w-4 h-4 text-amber-500" />
                   <span className="font-bold text-emerald-600">{money(parseFloat(form.newPledgeAmount) || 0)}</span>
                   <span className="text-gray-400 text-xs">থেকে {monthLabel(form.pledgeEffectiveMonth)}</span>
@@ -738,7 +758,7 @@ export default function JomaEntryPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs text-emerald-600 font-bold">বর্তমান মাসিক অঙ্গীকার</p>
-                      <p className="text-lg font-black text-emerald-700">{money(Number(selectedMember.monthly_pledge) || 0)}</p>
+                      <p className="text-lg font-black text-emerald-700">{money(currentMonthPledge)}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-emerald-600 font-bold">মাসিক চাঁদা</p>
@@ -985,7 +1005,7 @@ export default function JomaEntryPage() {
                   {selectedMember && (
                     <div className="p-3 bg-gray-50 rounded-xl">
                       <p className="text-xs text-gray-400 font-bold">বর্তমান চাঁদা</p>
-                      <p className="text-lg font-black text-gray-900">{money(Number(selectedMember.monthly_pledge) || 0)}</p>
+                      <p className="text-lg font-black text-gray-900">{money(currentMonthPledge)}</p>
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-3">

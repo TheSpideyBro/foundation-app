@@ -9,6 +9,7 @@ import {
   Plus, X, Save, Calendar
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
+import { resolvePledgeForMonth, type PledgeHistoryEntry } from "@/lib/payment-ledger";
 import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
@@ -18,6 +19,7 @@ export default function MembersPage() {
   const isStaff = hasStaffRole(role, user?.email);
   
   const [members, setMembers] = useState<any[]>([]);
+  const [pledgeHistory, setPledgeHistory] = useState<PledgeHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
@@ -45,7 +47,14 @@ export default function MembersPage() {
       const query = isStaff
         ? supabase().from("members").select("*")
         : supabase().from("member_directory").select("*");
-      const { data } = await query.order("name");
+      const [{ data }, { data: history, error: historyError }] = await Promise.all([
+        query.order("name"),
+        supabase().from("member_pledge_history").select("member_id, monthly_amount, effective_from_month").order("effective_from_month", { ascending: true }),
+      ]);
+      // History decides the "মাসিক অঙ্গীকার" label (BUG-031); a denied read
+      // must not break the list — it just falls back to members.monthly_pledge.
+      if (historyError) console.warn("Pledge history unavailable:", historyError.message);
+      setPledgeHistory((history || []) as PledgeHistoryEntry[]);
       setMembers(data || []);
 
     } catch (err) {
@@ -54,6 +63,12 @@ export default function MembersPage() {
       setLoading(false);
     }
   };
+
+  // What the engine will actually charge THIS month — members.monthly_pledge
+  // is only the fallback for months with no history row, so a member can sit
+  // on ৳১০০ in the table while the ledger charges ৳১,০০০ (BUG-031).
+  const effectivePledgeOf = (member: any) =>
+    resolvePledgeForMonth(currentMonthStr(), Number(member.monthly_pledge) || 0, pledgeHistory.filter((h) => h.member_id === member.id));
 
   const handleOpenModal = (member: any = null) => {
     if (member) {
@@ -283,7 +298,7 @@ export default function MembersPage() {
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">মাসিক অঙ্গীকার</span>
-                  <span className="text-base font-bold text-emerald-600 font-tiro">৳{Number(member.monthly_pledge || 0).toLocaleString("bn-BD")}</span>
+                  <span className="text-base font-bold text-emerald-600 font-tiro">৳{effectivePledgeOf(member).toLocaleString("bn-BD")}</span>
                 </div>
               </div>
             </div>

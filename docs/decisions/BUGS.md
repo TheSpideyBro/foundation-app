@@ -795,3 +795,42 @@ Stuck UI on a network hiccup, misleading navigation, and easier mis-selection of
 ### Verification
 
 eslint + `pnpm build` + Playwright (3 passed, 6 skipped, the 6 need live credentials).
+
+---
+
+## BUG-031: "Current Pledge" Labels Print members.monthly_pledge, Which the Engine May Never Charge
+
+**Status:** fixed
+**Fixed:** 2026-10-01
+**Found:** 2026-10-01
+**Region:** app
+
+### Description
+
+`members.monthly_pledge` is only the **fallback** for months with no `member_pledge_history` row. The canonical rule (ADR-001) is *latest applicable history entry (`effective_from_month <= month`) → `members.monthly_pledge` → 0*, so a history row with a later effective month always wins — and `monthly_pledge` can disagree with it.
+
+Live example (Main, member `a40ef6db…`, সাদ্দাম হোসেন আকাশ):
+
+| row | effective | amount | inserted |
+|-----|-----------|--------|----------|
+| 1 | `2026-08` | ৳100 | 2026-09-15 |
+| 2 | `2026-09` | ৳1,000 | 2026-09-08 |
+
+`monthly_pledge` = ৳100 (the newer change), but Sep/Oct/Nov all resolve to **৳1,000**. Every "current pledge" label printed the raw field: the Joma card "বর্তমান মাসিক অঙ্গীকার ৳১০০", "বর্তমান চাঁদা", the sidebar pledge-change arrow, the `1x/2x/3x চাঁদা` buttons (৳100/200/300), the `/admin/members/[id]` header, the `/members` list card and Reports' "মাসিক pledge" column — while the allocation preview inches away allocated at ৳1,000/month.
+
+### Impact
+
+Two different numbers for the same member on the same screen: a user who trusts the card expects ৳1,000 / ৳100 / ৳100 for Sep–Nov and instead sees `1000 / 300 / 0` (৳1,300 entry), and the quick-amount buttons quote a month of the wrong pledge.
+
+### Fix
+
+One rule, applied everywhere a "current pledge" is *shown*:
+
+- **Joma**: `currentMonthPledge` = `resolvePledgeForMonth(curMonth, effectiveMonthlyPledge, effectivePledgeHistory)` feeds the card, "বর্তমান চাঁদা" and the sidebar arrow (a pledge change pending in the form is reflected live). `coveragePledge` (resolved for `form.coverageStartMonth`) feeds `1x/2x/3x চাঁদা`.
+- **`/admin/members/[id]`** header, **`/members`** list card (now also loads `member_pledge_history`; a denied read degrades to the old raw value) and **Reports** members column/CSV/PDF all resolve for the current month.
+
+The engine fallback argument is deliberately untouched: `effectiveMonthlyPledge` / `members.monthly_pledge` is still what `calculatePaymentAllocation()` receives, because the SQL twin reads that same field — only the *labels* were wrong.
+
+### Verification
+
+tsc + eslint + `pnpm build` clean, `pnpm test:ledger` 28/28, Playwright 3 passed / 6 skipped. For the reported member every label now resolves to ৳1,000 for `2026-09`…`2026-11` (the `2026-09 → ৳1,000` row wins), matching the preview and `calculate_payment_allocation()` (`1200 → 1000/200/0`, `1300 → 1000/300/0`).
