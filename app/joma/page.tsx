@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { todayISO, currentMonthStr } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import {
@@ -13,7 +13,6 @@ import { getSupabase as supabase } from "@/lib/supabase-client";
 import {
   calculatePaymentAllocation,
   pledgeBreakdown,
-  formatMonth,
   monthRange,
   type PledgeHistoryEntry,
   type AllocationResult,
@@ -68,6 +67,14 @@ const monthLabel = (m: string) =>
 const todayStr = () => todayISO();
 const currentMonth = () => currentMonthStr();
 
+/**
+ * Longest coverage window the form will submit. Both canonical engines must
+ * agree: monthRange() stops at 121 rows, the SQL engine loops the whole
+ * range, so anything longer would be previewed one way and stored another.
+ * Mirrors MAX_COVERAGE_MONTHS in app/api/payments/route.ts (BUG-022).
+ */
+const MAX_COVERAGE_MONTHS = 120;
+
 function generateReceiptNo(): string {
   return `R-${Math.floor(100000 + Math.random() * 900000)}`;
 }
@@ -75,7 +82,7 @@ function generateReceiptNo(): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function JomaEntryPage() {
-  const { user, role } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const router = useRouter();
   const isStaff = hasStaffRole(role, user?.email);
 
@@ -109,19 +116,27 @@ export default function JomaEntryPage() {
   const [memberSearch, setMemberSearch] = useState("");
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<{ id: string; receipt: string; amount: number; extraAmount: number; allocatedAmount: number; unallocatedAmount: number } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Filtered members for search
   const filteredMembers = useMemo(() => {
-    if (!memberSearch.trim()) return members;
-    const q = memberSearch.toLowerCase();
-    return members.filter(
-      (m) =>
-        m.name.toLowerCase().includes(q) ||
-        m.phone?.toLowerCase().includes(q) ||
-        m.id.toLowerCase().includes(q),
+    const q = memberSearch.trim().toLowerCase();
+    const matched = q
+      ? members.filter(
+          (m) =>
+            m.name.toLowerCase().includes(q) ||
+            m.phone?.toLowerCase().includes(q) ||
+            m.id.toLowerCase().includes(q),
+        )
+      : members;
+    // Inactive members stay selectable (a final settlement is still paid),
+    // but they must not sit where an active member is expected. Array.sort
+    // is stable, so names keep their order inside each group (BUG-030).
+    return [...matched].sort(
+      (a, b) => Number(b.status !== "inactive") - Number(a.status !== "inactive"),
     );
   }, [members, memberSearch]);
 
@@ -135,6 +150,39 @@ export default function JomaEntryPage() {
     () => pledgeHistory.filter((h) => h.member_id === form.memberId).sort((a, b) => a.effective_from_month.localeCompare(b.effective_from_month)),
     [pledgeHistory, form.memberId],
   );
+
+  // Is the pledge-change block valid right now?
+  const pendingPledgeChange = useMemo(() => {
+    if (!form.pledgeChangeEnabled || !form.memberId) return null;
+    const amount = parseFloat(form.newPledgeAmount);
+    const effective = form.pledgeEffectiveMonth;
+    if (!Number.isFinite(amount) || amount <= 0 || !effective) return null;
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(effective)) return null;
+    return { amount, effective };
+  }, [form.pledgeChangeEnabled, form.memberId, form.newPledgeAmount, form.pledgeEffectiveMonth]);
+
+  // The pledge history the SERVER will see while allocating this payment:
+  // save_payment_entry() writes the new history row (and the current pledge)
+  // before it runs calculate_payment_allocation(), so months on/after the
+  // effective month are priced at the new amount — and, because the engine
+  // falls back to members.monthly_pledge for months with no history row, so
+  // is the fallback (BUG-021). The preview must model exactly that or the
+  // confirmation dialog and the stored rows disagree.
+  const effectivePledgeHistory = useMemo<PledgeHistoryItem[]>(() => {
+    if (!pendingPledgeChange) return memberPledgeHistory;
+    return [
+      ...memberPledgeHistory.filter((h) => h.effective_from_month !== pendingPledgeChange.effective),
+      { member_id: form.memberId, monthly_amount: pendingPledgeChange.amount, effective_from_month: pendingPledgeChange.effective },
+    ].sort((a, b) => a.effective_from_month.localeCompare(b.effective_from_month));
+  }, [memberPledgeHistory, pendingPledgeChange, form.memberId]);
+
+  const effectiveMonthlyPledge = pendingPledgeChange
+    ? pendingPledgeChange.amount
+    : selectedMember?.monthly_pledge ?? 0;
+
+  // Extra cash handed over — never part of the month allocations, but always
+  // part of the total handed over (its own allocation row + its own card).
+  const extraValue = form.extraAmount.trim() === "" ? 0 : Math.max(0, parseFloat(form.extraAmount) || 0);
 
   // Load data
   useEffect(() => {
@@ -165,10 +213,14 @@ export default function JomaEntryPage() {
           name: u.name || "Unknown",
           phone: u.phone || "",
         })));
-        // Seed the collector ONLY when empty. This effect re-runs on every
-        // auth event (token refresh ~hourly), which used to snap the dropdown
-        // back to the current user mid-entry and persist the wrong collector.
-        if (user?.id) {
+        // Seed the collector ONLY when empty, and only when this account is
+        // actually one of the dropdown's options: seeding an id that has no
+        // <option> left the select blank while the value was already set, so
+        // a payment could be saved with a collector nobody ever saw (BUG-029).
+        // The effect re-runs on every auth event (token refresh ~hourly),
+        // which used to snap the dropdown back mid-entry — never overwrite.
+        const isCollectorOption = (userData || []).some((u: any) => u.id === user?.id);
+        if (user?.id && isCollectorOption) {
           setForm((f) => (f.collectedBy ? f : { ...f, collectedBy: user.id }));
         }
       } catch (e: any) {
@@ -183,6 +235,10 @@ export default function JomaEntryPage() {
     // event re-fetched everything and reset the form.
   }, [isStaff, user?.id]);
 
+  // Leaving the page mid-submit must not leave a request running behind a
+  // stale setState (BUG-030).
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   // Live allocation preview
   const allocationPreview = useMemo<AllocationResult>(() => {
     if (!form.memberId || !form.paymentAmount) return { allocations: [], allocatedAmount: 0, unallocatedAmount: 0 };
@@ -193,10 +249,10 @@ export default function JomaEntryPage() {
       amount,
       form.coverageStartMonth,
       endMonth,
-      selectedMember?.monthly_pledge ?? 0,
-      memberPledgeHistory,
+      effectiveMonthlyPledge,
+      effectivePledgeHistory,
     );
-  }, [form.memberId, form.paymentAmount, form.coverageStartMonth, form.coverageEndMonth, form.coverageMode, selectedMember, memberPledgeHistory]);
+  }, [form.memberId, form.paymentAmount, form.coverageStartMonth, form.coverageEndMonth, form.coverageMode, selectedMember, effectiveMonthlyPledge, effectivePledgeHistory]);
 
   // Allocation rows for preview table
   const allocationRows = useMemo<AllocationRow[]>(() => {
@@ -208,8 +264,8 @@ export default function JomaEntryPage() {
     const breakdown = pledgeBreakdown(
       form.coverageStartMonth,
       endMonth,
-      selectedMember?.monthly_pledge ?? 0,
-      memberPledgeHistory,
+      effectiveMonthlyPledge,
+      effectivePledgeHistory,
     );
     const byMonth = new Map(breakdown.map((b) => [b.month, b.expected]));
 
@@ -223,14 +279,14 @@ export default function JomaEntryPage() {
         allocationType: alloc?.allocationType || "pledge",
       };
     });
-  }, [form.memberId, form.paymentAmount, form.coverageStartMonth, form.coverageEndMonth, form.coverageMode, allocationPreview, selectedMember, memberPledgeHistory]);
+  }, [form.memberId, form.paymentAmount, form.coverageStartMonth, form.coverageEndMonth, form.coverageMode, allocationPreview, effectiveMonthlyPledge, effectivePledgeHistory]);
 
   function set(field: keyof JomaForm, value: any) {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
   function quickAmountMultiplier(multiplier: number) {
-    const pledge = selectedMember ? Number(selectedMember.monthly_pledge) || 0 : 0;
+    const pledge = Number(effectiveMonthlyPledge) || 0;
     set("paymentAmount", String(pledge * multiplier));
   }
 
@@ -249,6 +305,12 @@ export default function JomaEntryPage() {
     if (!form.paymentDate) { setError("তারিখ নির্বাচন করুন"); return; }
     if (!form.coverageStartMonth || !endMonth) { setError("কভারেজ মাস নির্বাচন করুন"); return; }
     if (form.coverageStartMonth > endMonth) { setError("কভারেজের শুরুর মাস শেষ মাসের আগে হতে হবে"); return; }
+    // monthRange() truncates past 121 rows while the SQL engine does not —
+    // a longer window would confirm one split and store another (BUG-022).
+    if (monthRange(form.coverageStartMonth, endMonth).length > MAX_COVERAGE_MONTHS) {
+      setError(`কভারেজের মাসসংখ্যা ${MAX_COVERAGE_MONTHS} মাসের বেশি হতে পারে না`);
+      return;
+    }
     if (!form.collectedBy) { setError("আদায়কারী নির্বাচন করুন"); return; }
     if (form.pledgeChangeEnabled) {
       const pledge = parseFloat(form.newPledgeAmount);
@@ -256,8 +318,15 @@ export default function JomaEntryPage() {
         setError("নতুন মাসিক অঙ্গীকার শূন্যের চেয়ে বেশি পরিমাণ দিন");
         return;
       }
-      if (!form.pledgeEffectiveMonth) {
-        setError("অঙ্গীকার কার্যকর মাস নির্বাচন করুন");
+      if (!form.pledgeEffectiveMonth || !/^\d{4}-(0[1-9]|1[0-2])$/.test(form.pledgeEffectiveMonth)) {
+        setError("অঙ্গীকারের কার্যকর মাস নির্বাচন করুন");
+        return;
+      }
+      // Backdating would rewrite months that are already reported — the
+      // summary view, member ledger and Reports all read pledge history
+      // from that month onward (BUG-023).
+      if (form.pledgeEffectiveMonth < form.coverageStartMonth) {
+        setError("অঙ্গীকারের কার্যকর মাস কভারেজের শুরুর মাসের আগে হতে পারে না");
         return;
       }
     }
@@ -270,8 +339,15 @@ export default function JomaEntryPage() {
     setSubmitting(true);
     setError(null);
 
+    // The dialog is already closed at this point, so a hung request used to
+    // leave the button on "সংরক্ষণ হচ্ছে..." with no way out (BUG-030).
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const timer = window.setTimeout(() => controller.abort(), 30000);
+
     try {
-                const amount = parseFloat(form.paymentAmount);
+      const amount = parseFloat(form.paymentAmount);
       const extraAmount = Math.max(0, parseFloat(form.extraAmount) || 0);
       const endMonth = form.coverageMode === "range" ? form.coverageEndMonth : form.coverageStartMonth;
 
@@ -293,27 +369,31 @@ export default function JomaEntryPage() {
           pledge_effective_month: form.pledgeChangeEnabled ? form.pledgeEffectiveMonth || null : null,
           pledge_change_note: form.pledgeChangeNote || null,
         }),
+        signal: controller.signal,
       });
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const raw = String(data.error || "সেভ করতে সমস্যা হয়েছে");
-        if (/duplicate key|receipt_no/i.test(raw)) {
+        if (data.code === "duplicate_receipt" || /duplicate key|receipt_no/i.test(raw)) {
           // Same receipt number => the earlier attempt almost certainly
           // committed (timeout after write). Retrying blindly would either
-          // duplicate the payment or hit this again with a raw PG error.
+          // duplicate the payment or hit this again.
           throw new Error("এই রসিদ নম্বর ইতিমধ্যে ব্যবহৃত হয়েছে — সম্ভবত আগের এন্ট্রি সংরক্ষিত হয়ে গেছে। জমা তালিকা দেখে নিন।");
         }
         throw new Error(raw);
       }
 
+      // Success numbers: the regular payment only. The extra amount is its
+      // own allocation row and its own card — folding it into "অবণ্টিত" made
+      // the preview, the confirmation and the receipt disagree (BUG-028).
       setSuccessData({
         id: data.payment_id,
         receipt: form.receiptNo,
         amount,
         extraAmount,
         allocatedAmount: allocationPreview.allocatedAmount,
-        unallocatedAmount: allocationPreview.unallocatedAmount + extraAmount,
+        unallocatedAmount: allocationPreview.unallocatedAmount,
       });
       // Reset form
       setForm({
@@ -333,18 +413,46 @@ export default function JomaEntryPage() {
         pledgeEffectiveMonth: curMonth,
         pledgeChangeNote: "",
       });
+      // The reset clears memberId but used to leave the previous member's
+      // name in the search box, so the next save failed against a box that
+      // looked filled (BUG-028).
+      setMemberSearch("");
+      setShowMemberDropdown(false);
     } catch (e: any) {
-      setError(e.message || "সেভ করতে সমস্যা হয়েছে");
+      if (e?.name === "AbortError") {
+        setError("সার্ভার থেকে সাড়া পাওয়া যায়নি — আবার চেষ্টা করুন");
+      } else {
+        setError(e.message || "সেভ করতে সমস্যা হয়েছে");
+      }
     } finally {
+      window.clearTimeout(timer);
+      if (abortRef.current === controller) abortRef.current = null;
       setSubmitting(false);
     }
   }
 
   function handleCancel() {
-    router.push("/donations");
+    // The control is labelled "ফিরে যান" (go back) — sending everyone to
+    // /donations was the wrong destination (BUG-030).
+    if (window.history.length > 1) router.back();
+    else router.push("/donations");
   }
 
   // ─── Loading / role gate ───────────────────────────────────────────────────
+
+  // auth gate FIRST: `role` is still null until the auth context resolves, so
+  // a staff user would otherwise be shown the access-denied screen on the
+  // first paint (BUG-027). One spinner covers auth bootstrap and data load.
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+          <p className="text-gray-500 font-bold">লোড হচ্ছে...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isStaff) {
     return (
@@ -354,17 +462,6 @@ export default function JomaEntryPage() {
           <h1 className="text-2xl font-bold text-gray-900 font-tiro mb-2">প্রবেশাধিকার সংরক্ষিত</h1>
           <p className="text-gray-500">এই পেজটি শুধুমাত্র স্টাফ সদস্যদের জন্য।</p>
           <button onClick={() => router.push("/dashboard")} className="mt-6 btn-emerald">ড্যাশবোর্ডে যান</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
-          <p className="text-gray-500 font-bold">লোড হচ্ছে...</p>
         </div>
       </div>
     );
@@ -396,12 +493,12 @@ export default function JomaEntryPage() {
                 <p className="font-bold text-emerald-600">{money(successData.amount + successData.extraAmount)}</p>
               </div>
               <div className="bg-amber-50 rounded-xl p-4">
-                <p className="text-xs text-amber-600 font-bold mb-1">Extra Amount</p>
+                <p className="text-xs text-amber-600 font-bold mb-1">অতিরিক্ত জমা</p>
                 <p className="font-bold text-amber-700">{money(successData.extraAmount)}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 col-span-2">
                 <p className="text-xs text-gray-400 font-bold mb-1">বরাদ্দ</p>
-                <p className="font-bold text-gray-900">৳{successData.allocatedAmount.toLocaleString("bn-BD")} বরাদ্দ • ৳{successData.unallocatedAmount.toLocaleString("bn-BD")} অবণ্টিত</p>
+                <p className="font-bold text-gray-900">{money(successData.allocatedAmount)} বরাদ্দ • {money(successData.unallocatedAmount)} অবণ্টিত</p>
               </div>
             </div>
 
@@ -502,7 +599,7 @@ export default function JomaEntryPage() {
                 ))}
                 {allocationPreview.unallocatedAmount > 0 && (
                   <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
-                    <span className="text-amber-600 font-bold">অবণ্টিত / অতিরিক্ত</span>
+                    <span className="text-amber-600 font-bold">অবণ্টিত</span>
                     <span className="font-bold text-amber-600">{money(allocationPreview.unallocatedAmount)}</span>
                   </div>
                 )}
@@ -706,7 +803,7 @@ export default function JomaEntryPage() {
 
               {/* Extra amount */}
               <div>
-                <label className="text-xs font-bold text-amber-700 mb-1 block">Extra Amount / অতিরিক্ত জমা</label>
+                <label className="text-xs font-bold text-amber-700 mb-1 block">অতিরিক্ত জমা</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500 font-bold">৳</span>
                   <input
@@ -853,6 +950,14 @@ export default function JomaEntryPage() {
                   <AlertCircle className="w-3.5 h-3.5" /> শেষ মাস শুরু মাসের আগের হতে পারে না
                 </p>
               )}
+              {/* monthRange() stops at 121 months, the SQL engine does not —
+                  beyond that the preview would not match the stored rows */}
+              {form.coverageMode === "range" &&
+                monthRange(form.coverageStartMonth, form.coverageEndMonth).length > MAX_COVERAGE_MONTHS && (
+                <p className="text-xs text-rose-600 font-bold flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" /> কভারেজের মাসসংখ্যা {MAX_COVERAGE_MONTHS} মাসের বেশি হতে পারে না
+                </p>
+              )}
 
             </div>
 
@@ -905,10 +1010,18 @@ export default function JomaEntryPage() {
                         type="month"
                         value={form.pledgeEffectiveMonth}
                         onChange={(e) => set("pledgeEffectiveMonth", e.target.value)}
+                        min={form.coverageStartMonth}
                         className="w-full px-3 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
                       />
                     </div>
                   </div>
+                  {/* A month before this payment's window would rewrite
+                      months that are already reported (BUG-023) */}
+                  {form.pledgeEffectiveMonth && form.pledgeEffectiveMonth < form.coverageStartMonth && (
+                    <p className="text-xs text-rose-600 font-bold flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" /> কার্যকর মাস কভারেজের শুরুর মাসের আগে হতে পারে না
+                    </p>
+                  )}
                   <div>
                     <label className="text-xs font-bold text-gray-500 mb-1 block">কারণ / নোট</label>
                     <textarea
@@ -931,12 +1044,25 @@ export default function JomaEntryPage() {
                 <Info className="w-4 h-4 text-emerald-600" /> বরাদ্দ পর্বীক্ষণ
               </h2>
 
-              {/* Payment summary */}
+              {/* Payment summary — the same three numbers the confirmation
+                  dialog and the success screen show: regular, extra, cash */}
               <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-xs text-emerald-700 font-bold">জমা</span>
                   <span className="text-lg font-black text-emerald-700">
                     {form.paymentAmount ? money(parseFloat(form.paymentAmount) || 0) : money(0)}
+                  </span>
+                </div>
+                {extraValue > 0 && (
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-amber-700 font-bold">অতিরিক্ত জমা</span>
+                    <span className="text-sm font-black text-amber-700">{money(extraValue)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-2 border-t border-emerald-100">
+                  <span className="text-xs text-emerald-700 font-bold">মোট নগদ</span>
+                  <span className="text-sm font-black text-emerald-700">
+                    {money((parseFloat(form.paymentAmount) || 0) + extraValue)}
                   </span>
                 </div>
               </div>
@@ -948,7 +1074,7 @@ export default function JomaEntryPage() {
                     <div key={row.month} className="flex justify-between items-center text-sm py-2 border-b border-gray-50 last:border-0">
                       <div>
                         <span className="text-gray-700 font-medium">{monthLabel(row.month)}</span>
-                        <span className="text-xs text-gray-400 ml-2">৳{row.expected}</span>
+                        <span className="text-xs text-gray-400 ml-2">{money(row.expected)}</span>
                       </div>
                       <span className={`font-bold ${
                         row.allocationType === "unallocated" ? "text-amber-600" : "text-emerald-600"
@@ -971,7 +1097,7 @@ export default function JomaEntryPage() {
                   </div>
                   {allocationPreview.unallocatedAmount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-amber-600 font-bold">অবণ্টিত / অতিরিক্ত</span>
+                      <span className="text-amber-600 font-bold">অবণ্টিত</span>
                       <span className="font-bold text-amber-600">{money(allocationPreview.unallocatedAmount)}</span>
                     </div>
                   )}
@@ -991,7 +1117,7 @@ export default function JomaEntryPage() {
                     {allocationPreview.unallocatedAmount === 0 && allocationPreview.allocatedAmount > 0
                       ? "✓ পেমেন্ট সম্পূর্ণ বরাদ্দ"
                       : allocationPreview.unallocatedAmount > 0
-                        ? `⚠ ৳${allocationPreview.unallocatedAmount.toLocaleString("bn-BD")} অবণ্টিত`
+                        ? `⚠ ${money(allocationPreview.unallocatedAmount)} অবণ্টিত`
                         : "পেমেন্ট প্রয়োজন"}
                   </div>
                 </div>

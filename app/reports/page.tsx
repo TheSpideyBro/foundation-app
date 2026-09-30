@@ -75,7 +75,10 @@ export default function ReportsPage() {
     // Cash-side fallbacks, used only when the summary view has no rows
     // (view missing / no data in range). Kept here rather than above because
     // the `filtered*` consts are declared after this memo.
-    const cashCollected = donations.reduce((a, d) => a + (inPeriod(d.date) ? Number(d.amount || 0) + Number(d.extra_amount || 0) : 0), 0);
+    // donations.amount ALREADY includes extra_amount (save_payment_entry
+    // stores p_amount + p_extra_amount) — adding it again counted every
+    // extra twice whenever this fallback ran.
+    const cashCollected = donations.reduce((a, d) => a + (inPeriod(d.date) ? Number(d.amount || 0) : 0), 0);
     const cashExpense = expenses.reduce((a, e) => a + (inPeriod(e.date) ? Number(e.amount || 0) : 0), 0);
     const hasSummary = periodRows.length > 0;
     // Single source: `monthly_collection_summary`. The "সংগ্রহ" card used the
