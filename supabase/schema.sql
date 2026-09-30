@@ -503,7 +503,30 @@ CREATE OR REPLACE FUNCTION public.reallocate_payment(p_payment_id uuid, p_amount
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
-AS $function$ DECLARE v_member_id UUID; v_actor_id UUID; v_pledge_history JSONB; allocation RECORD; BEGIN IF p_amount IS NULL OR p_amount <= 0 THEN RAISE EXCEPTION 'Payment amount must be positive'; END IF; IF p_extra_amount IS NULL OR p_extra_amount < 0 THEN RAISE EXCEPTION 'Extra amount cannot be negative'; END IF; SELECT member_id INTO v_member_id FROM public.donations WHERE id = p_payment_id FOR UPDATE; IF v_member_id IS NULL THEN RAISE EXCEPTION 'Payment not found'; END IF; v_actor_id := auth.uid(); SELECT COALESCE(jsonb_agg(jsonb_build_object('member_id', ph.member_id, 'monthly_amount', ph.monthly_amount, 'effective_from_month', ph.effective_from_month)), '[]'::jsonb) INTO v_pledge_history FROM public.member_pledge_history ph WHERE ph.member_id = v_member_id; UPDATE public.donations SET amount = p_amount + p_extra_amount, extra_amount = p_extra_amount, coverage_start_month = p_coverage_start, coverage_end_month = p_coverage_end, note = p_note WHERE id = p_payment_id; DELETE FROM public.payment_allocations WHERE payment_id = p_payment_id; FOR allocation IN SELECT * FROM public.calculate_payment_allocation(p_payment_id, v_member_id, p_amount, p_coverage_start, p_coverage_end, v_pledge_history) LOOP INSERT INTO public.payment_allocations(payment_id, member_id, month, amount, allocation_type, note, created_by) VALUES (p_payment_id, v_member_id, allocation.month, allocation.amount, allocation.allocation_type, p_note, v_actor_id); END LOOP; IF p_extra_amount > 0 THEN INSERT INTO public.payment_allocations(payment_id, member_id, month, amount, allocation_type, note, created_by) VALUES (p_payment_id, v_member_id, NULL, p_extra_amount, 'unallocated', 'Extra amount', v_actor_id); END IF; END; $function$;
+AS $function$
+DECLARE v_member_id UUID; v_actor_id UUID; v_pledge_history JSONB; allocation RECORD; v_month_span INT;
+BEGIN
+  IF p_amount IS NULL OR p_amount <= 0 THEN RAISE EXCEPTION 'Payment amount must be positive'; END IF;
+  IF p_extra_amount IS NULL OR p_extra_amount < 0 THEN RAISE EXCEPTION 'Extra amount cannot be negative'; END IF;
+  IF p_coverage_start IS NULL OR p_coverage_end IS NULL OR p_coverage_start > p_coverage_end THEN RAISE EXCEPTION 'Coverage month range is required'; END IF;
+  IF p_coverage_start !~ '^[0-9]{4}-(0[1-9]|1[0-2])$' OR p_coverage_end !~ '^[0-9]{4}-(0[1-9]|1[0-2])$' THEN
+    RAISE EXCEPTION 'Coverage months must be YYYY-MM';
+  END IF;
+  v_month_span := (split_part(p_coverage_end, '-', 1)::INT - split_part(p_coverage_start, '-', 1)::INT) * 12
+                + (split_part(p_coverage_end, '-', 2)::INT - split_part(p_coverage_start, '-', 2)::INT) + 1;
+  IF v_month_span < 1 OR v_month_span > 120 THEN RAISE EXCEPTION 'Coverage range must be between 1 and 120 months'; END IF;
+
+  SELECT member_id INTO v_member_id FROM public.donations WHERE id = p_payment_id FOR UPDATE;
+  IF v_member_id IS NULL THEN RAISE EXCEPTION 'Payment not found'; END IF;
+  v_actor_id := auth.uid();
+  SELECT COALESCE(jsonb_agg(jsonb_build_object('member_id', ph.member_id, 'monthly_amount', ph.monthly_amount, 'effective_from_month', ph.effective_from_month)), '[]'::jsonb) INTO v_pledge_history FROM public.member_pledge_history ph WHERE ph.member_id = v_member_id;
+  UPDATE public.donations SET amount = p_amount + p_extra_amount, extra_amount = p_extra_amount, coverage_start_month = p_coverage_start, coverage_end_month = p_coverage_end, note = p_note WHERE id = p_payment_id;
+  DELETE FROM public.payment_allocations WHERE payment_id = p_payment_id;
+  FOR allocation IN SELECT * FROM public.calculate_payment_allocation(p_payment_id, v_member_id, p_amount, p_coverage_start, p_coverage_end, v_pledge_history) LOOP
+    INSERT INTO public.payment_allocations(payment_id, member_id, month, amount, allocation_type, note, created_by) VALUES (p_payment_id, v_member_id, allocation.month, allocation.amount, allocation.allocation_type, p_note, v_actor_id);
+  END LOOP;
+  IF p_extra_amount > 0 THEN INSERT INTO public.payment_allocations(payment_id, member_id, month, amount, allocation_type, note, created_by) VALUES (p_payment_id, v_member_id, NULL, p_extra_amount, 'unallocated', 'Extra amount', v_actor_id); END IF;
+END; $function$;
 
 -- save_payment_entry: service_role=EXECUTE
 CREATE OR REPLACE FUNCTION public.save_payment_entry(p_member_id uuid, p_amount numeric, p_extra_amount numeric DEFAULT 0, p_date date DEFAULT CURRENT_DATE, p_method text DEFAULT 'cash'::text, p_receipt_no text DEFAULT NULL::text, p_coverage_start text DEFAULT NULL::text, p_coverage_end text DEFAULT NULL::text, p_collected_by uuid DEFAULT NULL::uuid, p_note text DEFAULT NULL::text, p_pledge_change_amount numeric DEFAULT NULL::numeric, p_pledge_effective_month text DEFAULT NULL::text, p_pledge_change_note text DEFAULT NULL::text)
@@ -512,27 +535,41 @@ CREATE OR REPLACE FUNCTION public.save_payment_entry(p_member_id uuid, p_amount 
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-DECLARE v_payment_id UUID; v_actor_id UUID; allocation RECORD; v_pledge_history JSONB;
+DECLARE v_payment_id UUID; v_actor_id UUID; allocation RECORD; v_pledge_history JSONB; v_month_span INT;
 BEGIN
   v_actor_id := auth.uid(); p_extra_amount := COALESCE(p_extra_amount, 0);
   IF p_amount IS NULL OR p_amount <= 0 THEN RAISE EXCEPTION 'Payment amount must be positive'; END IF;
   IF p_extra_amount < 0 THEN RAISE EXCEPTION 'Extra amount cannot be negative'; END IF;
   IF p_coverage_start IS NULL OR p_coverage_end IS NULL OR p_coverage_start > p_coverage_end THEN RAISE EXCEPTION 'Coverage month range is required'; END IF;
+  -- BUG-022: the TS preview truncates past 121 months, this engine does not.
+  IF p_coverage_start !~ '^[0-9]{4}-(0[1-9]|1[0-2])$' OR p_coverage_end !~ '^[0-9]{4}-(0[1-9]|1[0-2])$' THEN
+    RAISE EXCEPTION 'Coverage months must be YYYY-MM';
+  END IF;
+  v_month_span := (split_part(p_coverage_end, '-', 1)::INT - split_part(p_coverage_start, '-', 1)::INT) * 12
+                + (split_part(p_coverage_end, '-', 2)::INT - split_part(p_coverage_start, '-', 2)::INT) + 1;
+  IF v_month_span < 1 OR v_month_span > 120 THEN RAISE EXCEPTION 'Coverage range must be between 1 and 120 months'; END IF;
+  -- BUG-023: a backdated effective month restates months that are reported.
   IF p_pledge_change_amount IS NOT NULL AND p_pledge_change_amount <= 0 THEN RAISE EXCEPTION 'Pledge amount must be positive'; END IF;
   IF p_pledge_change_amount IS NOT NULL AND p_pledge_effective_month IS NULL THEN RAISE EXCEPTION 'Pledge effective month is required'; END IF;
+  IF p_pledge_change_amount IS NOT NULL AND p_pledge_effective_month !~ '^[0-9]{4}-(0[1-9]|1[0-2])$' THEN RAISE EXCEPTION 'Pledge effective month must be YYYY-MM'; END IF;
+  IF p_pledge_change_amount IS NOT NULL AND p_pledge_effective_month < p_coverage_start THEN RAISE EXCEPTION 'Pledge effective month cannot be before the coverage start month'; END IF;
+
+  -- BUG-021: the pledge change lands FIRST, so the history read below already
+  -- contains it and months on/after the effective month are priced at the new
+  -- amount. members.monthly_pledge is updated too because the engine falls
+  -- back to it for any month with no history row.
+  IF p_pledge_change_amount IS NOT NULL THEN
+    UPDATE public.members SET monthly_pledge = p_pledge_change_amount WHERE id = p_member_id;
+    INSERT INTO public.member_pledge_history(member_id, monthly_amount, effective_from_month, note, created_by)
+    VALUES (p_member_id, p_pledge_change_amount, p_pledge_effective_month, p_pledge_change_note, v_actor_id);
+  END IF;
+
   SELECT COALESCE(jsonb_agg(jsonb_build_object('member_id', ph.member_id, 'monthly_amount', ph.monthly_amount, 'effective_from_month', ph.effective_from_month)), '[]'::jsonb) INTO v_pledge_history FROM public.member_pledge_history ph WHERE ph.member_id = p_member_id;
   INSERT INTO public.donations(member_id, amount, extra_amount, date, method, receipt_no, coverage_start_month, coverage_end_month, note, collected_by, created_by) VALUES (p_member_id, p_amount + p_extra_amount, p_extra_amount, p_date, p_method, p_receipt_no, p_coverage_start, p_coverage_end, p_note, p_collected_by, v_actor_id) RETURNING id INTO v_payment_id;
   FOR allocation IN SELECT * FROM public.calculate_payment_allocation(v_payment_id, p_member_id, p_amount, p_coverage_start, p_coverage_end, v_pledge_history) LOOP
     INSERT INTO public.payment_allocations(payment_id, member_id, month, amount, allocation_type, note, created_by) VALUES (v_payment_id, p_member_id, allocation.month, allocation.amount, allocation.allocation_type, p_note, v_actor_id);
   END LOOP;
   IF p_extra_amount > 0 THEN INSERT INTO public.payment_allocations(payment_id, member_id, month, amount, allocation_type, note, created_by) VALUES (v_payment_id, p_member_id, NULL, p_extra_amount, 'unallocated', 'Extra amount', v_actor_id); END IF;
-  -- DB-011: was missing on live - the pledge change was validated by the API
-  -- and then thrown away. Mirror the /members page: current value + history.
-  IF p_pledge_change_amount IS NOT NULL THEN
-    UPDATE public.members SET monthly_pledge = p_pledge_change_amount WHERE id = p_member_id;
-    INSERT INTO public.member_pledge_history(member_id, monthly_amount, effective_from_month, note, created_by)
-    VALUES (p_member_id, p_pledge_change_amount, p_pledge_effective_month, p_pledge_change_note, v_actor_id);
-  END IF;
   RETURN v_payment_id;
 END; $function$;
 
