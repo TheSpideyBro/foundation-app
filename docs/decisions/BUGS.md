@@ -513,3 +513,285 @@ Applied `20260907_monthly_collection_summary_from_allocations.sql` to Main (Test
 ### Verification
 
 View definition contains `allocated_totals` (`payment_allocations`); reported months now match `SUM(payment_allocations) BY month`: 2026-08 = 500, 2026-09 = 3,000. **User-visible:** September's reported collection drops from 4,350 to 3,000 and August rises 400 → 500.
+
+---
+
+## BUG-021: save_payment_entry() Applies the Pledge Change AFTER It Allocates the Payment
+
+**Status:** fixed
+**Fixed:** 2026-09-30
+**Found:** 2026-09-30
+**Region:** database
+
+### Description
+
+`save_payment_entry()` (Main) reads `v_pledge_history`, inserts the donation, writes the `payment_allocations` rows and *only then* runs the `DB-011` pledge block (`UPDATE members` + `INSERT member_pledge_history`). The pledge change in the same entry therefore never influences that entry's own allocations, even for months `>= p_pledge_effective_month`.
+
+The client preview (`calculatePaymentAllocation()` in `app/joma/page.tsx`) is computed from the same stale history, so preview and database agree — consistently wrong.
+
+### Impact
+
+Payment ৳500 for `2026-09` with a pledge change 300 → 500 effective `2026-09` allocates only 300 (200 goes `unallocated`) while `member_pledge_history` immediately says 500 is due for that month. `members` ledger, `monthly_collection_summary` and Reports then disagree with `payment_allocations` for the month the user just recorded.
+
+Test project (`supabase/migrations-test/20260929_harden_test_project.sql`) has the same ordering defect.
+
+### Fix
+
+`supabase/migrations/20260930_pledge_change_before_allocation.sql` (Main) and `supabase/migrations-test/20260930_pledge_change_before_allocation.sql` (Test) move the pledge block to the **top** of both `save_payment_entry()` and `reallocate_payment()` — after the guards and before `v_pledge_history` is read — so the history read already contains the new row and months `>= p_pledge_effective_month` are priced at the new amount. `members.monthly_pledge` is still updated (the engine falls back to it for months with no history row).
+
+### Verification
+
+Applied to Main and Test. Live run (both projects, inside a rolled-back transaction): pledge 100 → 150 effective `2026-09`, payment ৳150 for `2026-09` → `sept_allocated = 150` (was 100 before the fix), `total_allocated = 150`, `member_pledge_after = 150`, `history_rows = 1`. Zero-sum unchanged: Main `7,850 = 7,850`, Test `7,442 = 7,442`.
+
+---
+
+## BUG-022: Coverage Windows Over 120 Months Diverge Between the TS Preview and the SQL Engine
+
+**Status:** fixed
+**Fixed:** 2026-09-30
+**Found:** 2026-09-30
+**Region:** code + database
+
+### Description
+
+`monthRange()` (`lib/payment-ledger.ts`) silently truncates at 121 months; `calculate_payment_allocation()` in SQL loops over the whole `generate_series` range with no cap. The Joma form's `<input type="month">` fields impose no span limit, so a window of 122+ months produces a confirmation dialog and success numbers that do not match what `save_payment_entry()` stores.
+
+### Impact
+
+Zero-sum still holds (allocations sum to the amount) but the month-by-month split the user confirmed is not the split that is saved — a silent, unreviewable divergence between the two canonical engines (AGENTS.md rule 1).
+
+### Fix
+
+One limit, enforced on both sides: `MAX_COVERAGE_MONTHS = 120` in `app/api/payments/route.ts` (the window is rejected with `{ code: "invalid_coverage" }`) and the same span computed from `p_coverage_start`/`p_coverage_end` in `save_payment_entry()` / `reallocate_payment()` (`RAISE EXCEPTION 'Coverage range must be between 1 and 120 months'`). The Joma confirmation dialog blocks the window before the request is sent, so the preview, the API and the SQL engine can no longer disagree.
+
+### Verification
+
+Live: coverage `2015-01 → 2030-12` (192 months) rejected by the SQL guard. eslint + `pnpm build` clean; `pnpm test:ledger` 28/28.
+
+---
+
+## BUG-023: pledge_effective_month Is Unvalidated — a Past Month Silently Restates Settled History
+
+**Status:** fixed
+**Fixed:** 2026-09-30
+**Found:** 2026-09-30
+**Region:** database + api
+
+### Description
+
+Neither the API nor `save_payment_entry()` validates `p_pledge_effective_month`. A user can pick an effective month years in the past, which rewrites the expected pledge for every month from there on — retrospectively changing dues, back-payment and collection totals for months that are already reported. There is no format check either: anything but `YYYY-MM` corrupts the `effective_from_month <= month` string comparisons in `resolvePledgeForMonth()`.
+
+### Impact
+
+One wrong dropdown selection restates months of history in `monthly_collection_summary`, member ledgers and Reports, with no warning anywhere in the flow.
+
+### Fix
+
+Two layers, both requiring `p_pledge_change_amount`:
+
+- API (`app/api/payments/route.ts`): `validatePledgeChange()` checks `YYYY-MM` format and `effective >= coverage_start`, returning `{ code: "invalid_pledge_effective_month" }`.
+- SQL (`20260930_pledge_change_before_allocation.sql`, Main + Test): the same two checks `RAISE EXCEPTION` before anything is written, so a non-API caller cannot bypass them.
+
+Backdating inside the coverage window is still allowed (a mid-coverage pledge change is a legitimate use); only months *before* the coverage start are rejected.
+
+### Verification
+
+Live (both projects): effective `2026-01` with coverage starting `2026-09` → `Pledge effective month cannot be before the coverage start month`; effective `2026-13` → `Pledge effective month must be YYYY-MM`; coverage `2026-1` → `Coverage months must be YYYY-MM`. Valid entries still succeed (see BUG-021 verification).
+
+---
+
+## BUG-024: Reports Cash Fallback Counts donations.amount AND extra_amount
+
+**Status:** fixed
+**Fixed:** 2026-09-30
+**Found:** 2026-09-30
+**Region:** app
+
+### Description
+
+`app/reports/page.tsx` computes the cash-side fallback as `Number(d.amount) + Number(d.extra_amount)`. `donations.amount` **already includes** the extra (`save_payment_entry()` stores `p_amount + p_extra_amount`), so the fallback counts the extra twice. `app/donations/page.tsx` carries an explicit comment stating this invariant.
+
+### Impact
+
+Used only when `monthly_collection_summary` returns no rows (view missing / out of range) — then "সংগ্রহ" is inflated by `SUM(extra_amount)`.
+
+### Fix
+
+`app/reports/page.tsx` sums `donations.amount` only in the cash fallback, with a comment restating the invariant that `amount` already includes `extra_amount` (`save_payment_entry()` stores `p_amount + p_extra_amount`).
+
+### Verification
+
+`pnpm build` + eslint clean. The fallback is only reached when `monthly_collection_summary` returns no rows; with rows present `collected` still comes from the view, so the normal reports path is unchanged.
+
+---
+
+## BUG-025: /api/payments Accepts an Arbitrary Method and a Non-Staff Collector
+
+**Status:** fixed
+**Fixed:** 2026-09-30
+**Found:** 2026-09-30
+**Region:** api
+
+### Description
+
+`POST /api/payments` validates that `method` and `collected_by` are *present*, nothing more:
+
+- `method` is free text — there is no CHECK on `donations.method`, so any string lands in the table and breaks the method filter/receipt/report assumptions (the app's own set is `cash|bkash|nagad|bank`).
+- `collected_by` only has to resolve to *some* row in `users` — a member's own account may be recorded as the collector of a staff payment. The RPC runs as `service_role`, so RLS does not catch it.
+- `date` is only checked for presence: no `YYYY-MM-DD` format check and no future-date check.
+
+### Impact
+
+Dirty rows in `donations`, unattributable collections, and future-dated cash inflating the current period in Reports/Dashboard.
+
+### Fix
+
+`app/api/payments/route.ts` now validates the whole payload:
+
+- `method` against the app's own whitelist (`cash|bkash|nagad|bank` — the same set as `lib/supabase-client.ts`)
+- `collected_by` must resolve to an **approved** `admin`/`treasurer` (or the founder email) — `403` otherwise, because the RPC runs as `service_role` and RLS never sees the caller
+- `date` must be a real `YYYY-MM-DD` date and at most one day ahead of the server clock (a UTC+ operator's "today" is still yesterday on the server, so a strict `<= today` would reject valid entries)
+- `receipt_no` length/whitespace, and coverage months as `YYYY-MM` with a ≤120-month window (BUG-022)
+
+### Verification
+
+eslint + `pnpm build` clean; rejections return `{ code, error }` and the UI shows `error` verbatim (Bengali).
+
+---
+
+## BUG-026: /api/payments Returns Raw Postgres Errors to the Browser
+
+**Status:** fixed
+**Fixed:** 2026-09-30
+**Found:** 2026-09-30
+**Region:** api
+
+### Description
+
+Both `POST` and `PUT` return `error.message` verbatim (`route.ts` catch blocks and the RPC error branch). Constraint names, column names and SQL fragments are rendered directly into the UI error banner. The only translated case is the duplicate receipt number, and that translation is matched with a `/duplicate key|receipt_no/i` regex against the raw text.
+
+### Impact
+
+Schema/SQL disclosure to any authenticated staff session, plus unstable user-facing messages that change whenever Postgres wording changes.
+
+### Fix
+
+Both handlers return `{ code, error }`: a stable machine `code` plus Bengali text. Known SQL messages are mapped through `SQL_ERRORS`; anything unknown is logged with `console.error` on the server and replaced by a generic message. The duplicate-receipt path keys off `code === "duplicate_receipt"` (the old `/duplicate key|receipt_no/i` regex is kept only as a fallback for a stale server).
+
+### Verification
+
+No `error.message` reaches `NextResponse.json` — grep shows the raw Postgres text only in `console.error`.
+
+---
+
+## BUG-027: Joma Entry Renders the Role Gate Before the Auth-Loading Gate
+
+**Status:** fixed
+**Fixed:** 2026-09-30
+**Found:** 2026-09-30
+**Region:** app
+
+### Description
+
+`app/joma/page.tsx` uses `const { user, role } = useAuth()` — it never reads `loading`. On a first render where the auth context has not resolved yet (`role === null`), `isStaff` is false and the page paints the "প্রবেশাধিকার সংরক্ষিত" screen for staff users, then swaps to the form. `app/layout-wrapper.tsx` normally covers this by holding the whole tree behind its own spinner, but the page itself has no guard and re-introduces the flash the moment that wrapper changes (and during any render where `role` is still `null`).
+
+### Impact
+
+Staff see a wrong, alarming access-denied screen briefly (or on any auth-timing regression), and the same pattern exists on `/donations` and `/expenses`.
+
+### Fix
+
+`app/joma/page.tsx` destructures `loading` from `useAuth()` and renders the spinner **before** the staff gate, so `isStaff` is never evaluated while `role` is still `null`.
+
+### Verification
+
+`pnpm build` + eslint clean. `app/layout-wrapper.tsx` already holds the whole tree behind its own spinner during auth bootstrap; the page now carries the same guard instead of depending on it.
+
+---
+
+## BUG-028: Joma Success Screen — Inconsistent Totals, English Label, Stale Member Search
+
+**Status:** fixed
+**Fixed:** 2026-09-30
+**Found:** 2026-09-30
+**Region:** app
+
+### Description
+
+Four separate defects in one flow:
+
+1. `memberSearch` is not cleared when the form resets — the box keeps the previous member's name while `memberId` is empty, so the next save fails with "সদস্য নির্বাচন করুন" against a box that *looks* filled.
+2. The same "অবণ্টিত / অতিরিক্ত" label shows three different numbers: the right-hand preview and confirm dialog show `unallocatedAmount` (regular only), the success screen shows `unallocatedAmount + extraAmount`.
+3. The success card labels the extra amount **"Extra Amount"** — English in a Bengali-first UI (AGENTS.md code style).
+4. `৳{row.expected}` in the pledge-breakdown row bypasses `money()`, so decimals/en-US separators leak through.
+
+### Impact
+
+Users cannot reconcile the preview against the confirmation against the receipt, and the form appears to remember a member it did not save.
+
+### Fix
+
+1. `memberSearch` and `showMemberDropdown` are cleared with the rest of the form on success.
+2. One label, one number: the confirm dialog, the preview panel and the success screen all show **অবণ্টিত** = the regular leftover only; the extra amount has its own row (confirm) / card (success) everywhere, and the preview panel gained an **অতিরিক্ত জমা** and a **মোট নগদ** line.
+3. Success numbers no longer fold `extraAmount` into `unallocatedAmount`.
+4. "Extra Amount" → "অতিরিক্ত জমা"; `৳{row.expected}` and the status badge go through `money()`.
+
+### Verification
+
+Reconciliation on one screen: `বরাদ্দকৃত + অবণ্টিত = জমা`, and `জমা + অতিরিক্ত = মোট নগদ`; the receipt shows `জমা + অতিরিক্ত` as পরিমাণ.
+
+---
+
+## BUG-029: Joma Seeds the Collector With an ID That Is Not in the Dropdown
+
+**Status:** fixed
+**Fixed:** 2026-09-30
+**Found:** 2026-09-30
+**Region:** app
+
+### Description
+
+`collectedBy` is seeded with `user.id` unconditionally, but the options are loaded with `.in("role", ["admin", "treasurer"])`. An account that passes `isStaff()` through the founder bypass while its `users.role` row is neither of those (or any user outside that list) gets a pre-filled value that has no `<option>`, so the select renders blank while validation passes and a payment is saved with a collector the operator never saw.
+
+### Impact
+
+Silently wrong `donations.collected_by`.
+
+### Fix
+
+The collector is seeded only when `users.id` is in the loaded `role IN ('admin','treasurer')` list; otherwise the select keeps the placeholder and `openConfirm()` asks for one.
+
+### Verification
+
+eslint/build clean, and `POST /api/payments` independently rejects a `collected_by` that is not an approved staff account (BUG-025) — the UI seed is a convenience, the API is the guarantee.
+
+---
+
+## BUG-030: Joma Entry — No Abort Handling, Dead Import, Wrong Back Navigation, Unsorted Member List
+
+**Status:** fixed
+**Fixed:** 2026-09-30
+**Found:** 2026-09-30
+**Region:** app
+
+### Description
+
+- The submit `fetch()` has no `AbortController`/timeout: if the request hangs the button is stuck on "সংরক্ষণ হচ্ছে..." forever with no retry path (the confirm dialog is already closed).
+- `formatMonth` is imported from `lib/payment-ledger.ts` and never used (`monthLabel` is the one in use).
+- `handleCancel()` navigates to `/donations` even though the control is labelled "ফিরে যান" (go back).
+- The member dropdown lists members in raw name order, so `status === "inactive"` members sit among active ones with only a small tag.
+
+### Impact
+
+Stuck UI on a network hiccup, misleading navigation, and easier mis-selection of an inactive member.
+
+### Fix
+
+- Submit runs through an `AbortController` with a 30 s timeout, aborted on unmount; `AbortError` shows "সার্ভার থেকে সাড়া পাওয়া যায়নি — আবার চেষ্টা করুন" instead of a stuck button.
+- Unused `formatMonth` import dropped.
+- `handleCancel()` → `router.back()` (falls back to `/donations` when there is no history), matching the "ফিরে যান" label.
+- Member dropdown sorts active members first — inactive stay selectable for a final settlement, and the stable sort keeps the name order inside each group.
+
+### Verification
+
+eslint + `pnpm build` + Playwright (3 passed, 6 skipped, the 6 need live credentials).

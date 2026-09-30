@@ -153,8 +153,8 @@ on any view (BUG-015); `authenticated` and `service_role` do.
 | Function | Executed by | Notes |
 |----------|-------------|-------|
 | `calculate_payment_allocation(p_payment_id, p_member_id, p_payment_amount, p_coverage_start, p_coverage_end, p_pledge_history)` | authenticated, service_role | Canonical allocation engine (SQL twin of `lib/payment-ledger.ts`, ADR-001). Returns `TABLE(month, amount, allocation_type)`. |
-| `save_payment_entry(...)` | **service_role only** | 13 args on Main (incl. `p_extra_amount`), 12 on Test. Inserts the donation, writes allocations, and — since BUG-016 — applies the pledge change to `members.monthly_pledge` **and** `member_pledge_history`. |
-| `reallocate_payment(...)` | **service_role only** | 6 args on Main (persists extra + coverage), 5 on Test. Deletes and regenerates a payment's allocations; Test now persists the coverage window too. |
+| `save_payment_entry(...)` | **service_role only** | 13 args on Main (incl. `p_extra_amount`), 12 on Test. Applies guards (positive amount, `YYYY-MM` coverage, span 1–120, pledge effective format/bound), then applies the pledge change to `members.monthly_pledge` **and** `member_pledge_history` **before** reading the history and inserting the donation + allocations (BUG-021/022/023). |
+| `reallocate_payment(...)` | **service_role only** | 6 args on Main (persists extra + coverage), 5 on Test. Deletes and regenerates a payment's allocations with the same coverage guards; the pledge block also runs before the history read (BUG-021). |
 | `backfill_payment_allocations()` | **service_role only** | Regenerates allocations for every donation that has none. Restored to Main by `20260929_backfill_legacy_donations.sql`. |
 | `generate_receipt_no()` | all (read-only, owner-rights) | Advisory lock + no `lpad` truncation (BUG-017). |
 | `admin_delete_user(target_user_id)` | authenticated, service_role | Internally checks admin/founder; refuses self-delete. |
@@ -185,7 +185,9 @@ on any view (BUG-015); `authenticated` and `service_role` do.
 | 12 | `20260929_harden_handle_new_user_role.sql` | 2026-09-29 | BUG-012: signup can no longer set role/approval — **Main + Test** |
 | 13 | `20260929_harden_definer_rpcs.sql` | 2026-09-29 | BUG-015/016/017/018: RPC revokes, pledge block, receipt lock, member guard, constraints, indexes — **Main** |
 | 14 | `20260929_backfill_legacy_donations.sql` | 2026-09-29 | BUG-019: restore `backfill_payment_allocations()`, pin coverage, backfill, assert zero-sum — **Main** |
+| 15 | `20260930_pledge_change_before_allocation.sql` | 2026-09-30 | BUG-021/022/023: pledge block moved before the history read + allocation in `save_payment_entry()`/`reallocate_payment()`, coverage span ≤120 months, pledge effective format/bound checks, zero-sum assertion — **Main + Test** |
 | — | `supabase/migrations-test/20260929_harden_test_project.sql` | 2026-09-29 | The same hardening for the **Test** project (different RPC signatures) |
+| — | `supabase/migrations-test/20260930_pledge_change_before_allocation.sql` | 2026-09-30 | Row 15 for the **Test** project (12-arg `save_payment_entry`, no `extra_amount`) |
 
 The `supabase_migrations.schema_migrations` ledger on Main stops at `20260907194636`, so it is
 **not** a reliable record of what has been applied (see TD-011). Verify against the catalog
