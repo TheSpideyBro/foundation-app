@@ -59,6 +59,94 @@
 
 ---
 
+## 261f4d5 — fix(migrations): apply the pledge change before allocating (BUG-021/022/023)
+
+**Date:** 2026-09-30  
+**Author:** AI Assistant (opencode)  
+**Branch:** main  
+**Files changed:** `supabase/migrations/20260930_pledge_change_before_allocation.sql`, `supabase/migrations-test/20260930_pledge_change_before_allocation.sql`, `supabase/schema.sql`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Pledge block position in `save_payment_entry()` / `reallocate_payment()` | *after* `v_pledge_history` was read and the allocations written (Main byte offsets: pledge 2249 > allocate 1430 > insert 1068) — a same-entry pledge change never priced that entry's own months | *before* the history read (pledge 2132 < insert 2772) — the read already contains the new row, so months ≥ the effective month are allocated at the new amount |
+| Coverage span | uncapped `generate_series` in SQL vs `monthRange()` truncated at 121 rows in TS — a 122+ month window saved a different split than the one confirmed | span computed from `p_coverage_start`/`p_coverage_end`, `1..120` enforced in SQL (same limit the API and confirm dialog now enforce) |
+| `p_pledge_effective_month` | unvalidated — a past month restated settled history, non-`YYYY-MM` corrupted `resolvePledgeForMonth()` string comparisons | format + `>= coverage start` checked before anything is written |
+| Zero-sum | not asserted by the function | `RAISE EXCEPTION` if `SUM(payment_allocations) != SUM(donations)` aborts the transaction |
+
+### Why
+
+The Joma Entry review (BUG-021/022/023) found the pledge change being applied
+*after* the allocation it was supposed to influence, and two silent divergence
+paths between the TS preview and the SQL engine. Both were live on Main and Test.
+
+### Tests Run
+
+- [x] Applied to Main (`mlnzxhuozuyidpxepxex`) and Test (`pvfdgrdvvoytsfmjyvde`)
+- [x] Manual verification (both projects, rolled back): pledge 100 → 150 effective `2026-09`, ৳150 payment → `sept_allocated = 150` (was 100), `member_pledge_after = 150`, `history_rows = 1`
+- [x] Guard probes: 192-month window → `Coverage range must be between 1 and 120 months`; effective `2026-01` with coverage from `2026-09` → `Pledge effective month cannot be before the coverage start month`; effective `2026-13` / coverage `2026-1` → `... must be YYYY-MM`
+- [x] Zero-sum: Main `7,850 = 7,850`, Test `7,442 = 7,442` (unchanged, 30/40 donations)
+- [x] No test rows left behind (rolled back; `receipt_no LIKE 'ZZ-%'` = 0 on both)
+- [x] `supabase/schema.sql` regenerated — diff limited to the two function bodies
+
+### Related
+
+- Bug: BUG-021, BUG-022, BUG-023
+- Migration: `supabase/migrations/20260930_pledge_change_before_allocation.sql`, `supabase/migrations-test/20260930_pledge_change_before_allocation.sql`
+
+### Known Risks / Follow-ups
+
+- Main's `supabase_migrations.schema_migrations` ledger still stops at `20260907194636` (TD-011) — the catalog, not the ledger, is the record of what is applied.
+- `enforce_member_self_update()` rejects the pledge update unless the caller's JWT role is `service_role`/admin/treasurer; the app path (service-role client in `/api/payments`) is unaffected, but a future caller without that claim will hit the BUG-018 guard.
+
+---
+
+## 9d1f168 — fix(payments): validate payment payloads end-to-end and repair the Joma flow
+
+**Date:** 2026-09-30  
+**Author:** AI Assistant (opencode)  
+**Branch:** main  
+**Files changed:** `app/api/payments/route.ts`, `app/joma/page.tsx`, `app/reports/page.tsx`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| `POST/PUT /api/payments` `method` | any string (no CHECK on `donations.method`) | `cash\|bkash\|nagad\|bank` whitelist |
+| `collected_by` | any existing `users` row — a member could be the recorded collector (RPC runs as `service_role`, RLS never saw it) | approved `admin`/`treasurer` or the founder, else `403` |
+| `date` | presence only | real `YYYY-MM-DD`, at most server-today + 1 day |
+| Coverage / pledge effective | presence only | `YYYY-MM`, span ≤ 120 months, effective ≥ coverage start |
+| Error surface | raw `error.message` (constraint/column names, SQL fragments) in the UI banner | `{ code, error }` — Bengali text via `SQL_ERRORS`, raw SQL only in `console.error` |
+| Reports cash fallback | `Number(d.amount) + Number(d.extra_amount)` → extra counted twice | `Number(d.amount)` only (amount already includes extra) |
+| Joma role gate | staff gate evaluated while `role` was still `null` → flashed "প্রবেশাধিকার সংরক্ষিত" | auth-loading spinner renders first |
+| Joma submit | no abort/timeout — button stuck on "সংরক্ষণ হচ্ছে..." forever | `AbortController` + 30 s timeout, aborted on unmount, Bengali retry message |
+| Joma cancel / search / labels | `handleCancel()` → `/donations`; member search kept after save; three numbers under "অবণ্টিত"; English "Extra Amount"; `৳{row.expected}` bypassed `money()` | `router.back()` (fallback `/donations`); search cleared on success; one number per label + অতিরিক্ত জমা / মোট নগদ rows; `money()` everywhere; collector seeded only if in the loaded list |
+
+### Why
+
+Joma Entry review found the API trusting the client for every field it could
+validate server-side, and the page's own UI inconsistent between preview,
+confirmation and receipt — so users could not reconcile what they confirmed
+against what was saved.
+
+### Tests Run
+
+- [x] `tsc --noEmit`, `eslint .`, `pnpm build` — clean
+- [x] `pnpm test:ledger` — 28/28 (allocation engine untouched)
+- [x] `playwright test` — 3 passed, 6 skipped (the 6 need live credentials)
+
+### Related
+
+- Bug: BUG-024, BUG-025, BUG-026, BUG-027, BUG-028, BUG-029, BUG-030
+
+### Known Risks / Follow-ups
+
+- The ≤120-month and collector-role limits are also enforced in SQL (`261f4d5`), so a stale server cannot be bypassed — but an older client against a newer API gets the API's message, not the SQL one.
+- `/donations` and `/expenses` still lack the auth-loading spinner gate (only Joma was in scope for BUG-027).
+
+---
+
 ## 201e602 — fix(ci): unblock the E2E job and let Playwright own the dev-server lifecycle
 
 **Date:** 2026-09-30  
