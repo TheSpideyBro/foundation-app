@@ -59,6 +59,46 @@
 
 ---
 
+## 7768ab1 — fix(joma): show the resolved pledge everywhere "current pledge" is displayed
+
+**Date:** 2026-10-01  
+**Author:** AI Assistant (opencode)  
+**Branch:** main  
+**Files changed:** `app/joma/page.tsx`, `app/admin/members/[id]/page.tsx`, `app/members/page.tsx`, `app/reports/page.tsx`, `docs/decisions/BUGS.md`, `CHANGELOG.md`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Joma card "বর্তমান মাসিক অঙ্গীকার" / "বর্তমান চাঁদা" / sidebar change arrow | raw `members.monthly_pledge` | `currentMonthPledge` = `resolvePledgeForMonth(curMonth, …)` (a pledge change pending in the form shows live) |
+| `1x/2x/3x চাঁদা` quick buttons | `members.monthly_pledge` × multiplier | `coveragePledge` = resolved for `form.coverageStartMonth` (prices the month being paid, not today) |
+| `/admin/members/[id]` header | raw `member.monthly_pledge` | resolved for the current month |
+| `/members` list card | raw field; no history loaded | resolved; `fetchMembers()` now also reads `member_pledge_history` (a denied read degrades to the old raw value) |
+| Reports members column + CSV/PDF | raw `m.monthly_pledge` | `effectivePledgeOf(m)` (history was already loaded there) |
+| Engine fallback argument | `members.monthly_pledge` | **unchanged** — the SQL twin reads that field, so parity holds |
+
+### Why
+
+Live report (member `a40ef6db…`, Main): history `2026-08 → ৳100` (inserted 15 Sep) and `2026-09 → ৳1,000` (inserted 8 Sep) → `monthly_pledge = ৳100` while Sep/Oct/Nov resolve to ৳1,000. The card showed ৳100 next to a confirmation dialog allocating `1000/300/0` for a ৳1,300 entry, so the user expected `1000/100/100`. Only the labels were wrong — the preview, the SQL engine and the stored rows already agreed.
+
+### Tests Run
+
+- [x] `tsc --noEmit`, `eslint .`, `pnpm build` — clean
+- [x] `pnpm test:ledger` — 28/28 (engine untouched; needed the official Node build under `/tmp/opencode/node-v22.22.1-linux-x64`)
+- [x] `playwright test` — 3 passed, 6 skipped (the 6 need live credentials)
+- [x] Cross-checked both engines against the live history: `1200 → 1000/200/0`, `1300 → 1000/300/0` (TS and SQL identical)
+
+### Related
+
+- Bug: BUG-031
+
+### Known Risks / Follow-ups
+
+- `/members` now issues one extra read (`member_pledge_history`) per fetch; on a denied read it logs a warning and keeps the old raw value.
+- The Members **edit form** still prefills the raw `monthly_pledge` — correct, since that is the field being edited — but saving a change with an effective month earlier than an existing row still silently lets the later row win (BUG-031's data half). A save-time warning was proposed and not chosen yet.
+
+---
+
 ## 261f4d5 — fix(migrations): apply the pledge change before allocating (BUG-021/022/023)
 
 **Date:** 2026-09-30  
