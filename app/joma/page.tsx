@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { todayISO, currentMonthStr } from "@/lib/utils";
+import { todayISO, currentMonthStr, formatMoney } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Banknote, Calendar, CheckCircle2,
@@ -61,7 +61,7 @@ type AllocationRow = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const money = (v: number) => `৳${Math.round(v || 0).toLocaleString("bn-BD")}`;
+// formatMoney from lib/utils.ts is the shared money formatter (bn-BD digits).
 const monthLabel = (m: string) =>
   new Date(`${m}-01T00:00:00`).toLocaleDateString("bn-BD", { month: "long", year: "numeric" });
 const todayStr = () => todayISO();
@@ -84,7 +84,7 @@ function generateReceiptNo(): string {
 export default function JomaEntryPage() {
   const { user, role, loading: authLoading } = useAuth();
   const router = useRouter();
-  const isStaff = hasStaffRole(role, user?.email);
+  const isStaff = hasStaffRole(role);
 
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [pledgeHistory, setPledgeHistory] = useState<PledgeHistoryItem[]>([]);
@@ -196,6 +196,20 @@ export default function JomaEntryPage() {
     [form.coverageStartMonth, curMonth, effectiveMonthlyPledge, effectivePledgeHistory],
   );
 
+  // Save button gating: the single "মোট নগদ" input must be positive, and a
+  // member + collector must be chosen. The hint tells the user why the button
+  // is disabled instead of leaving them guessing.
+  const totalCash = parseFloat(form.paymentAmount) || 0;
+  const saveDisabled = submitting || !form.memberId || totalCash <= 0 || !form.collectedBy;
+  const saveHint = submitting
+    ? null
+    : !form.memberId
+      ? "প্রথমে সদস্য নির্বাচন করুন"
+      : totalCash <= 0
+        ? "জমার পরিমাণ দিন"
+        : !form.collectedBy
+          ? "আদায়কারী নির্বাচন করুন"
+          : null;
   // Load data
   useEffect(() => {
     async function load() {
@@ -250,6 +264,54 @@ export default function JomaEntryPage() {
   // Leaving the page mid-submit must not leave a request running behind a
   // stale setState (BUG-030).
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  // Confirm dialog UX: Escape closes it, focus moves into the dialog on open
+  // and returns to the trigger on close, and Tab cycles inside it.
+  // Lightweight — no new dependency, just a keydown listener while open.
+  const confirmDialogRef = useRef<HTMLDivElement | null>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!showConfirm) return;
+    lastFocusedRef.current = document.activeElement as HTMLElement | null;
+    confirmDialogRef.current?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setShowConfirm(false);
+        return;
+      }
+      if (e.key === "Tab") {
+        const dialog = confirmDialogRef.current;
+        if (!dialog) return;
+        const focusables = Array.from(
+          dialog.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => el.offsetParent !== null);
+        if (focusables.length === 0) {
+          e.preventDefault();
+          return;
+        }
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      lastFocusedRef.current?.focus();
+    };
+  }, [showConfirm]);
 
   // Live allocation preview
   const allocationPreview = useMemo<AllocationResult>(() => {
@@ -322,12 +384,20 @@ export default function JomaEntryPage() {
 
   // ─── Confirmation dialog ────────────────────────────────────────────────────
 
+  // Enter anywhere in the entry form submits exactly like the Save button
+  // (the form is noValidate, so the manual checks in openConfirm still run).
+  function handleFormSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    openConfirm();
+  }
+
   function openConfirm() {
     const amount = parseFloat(form.paymentAmount);
     const endMonth = form.coverageMode === "range" ? form.coverageEndMonth : form.coverageStartMonth;
 
-    // There is no <form> element, so the `required` / `min` attributes on the
-    // inputs never run — every check has to happen here or at the server.
+    // The form uses noValidate: native constraint validation never runs, so
+    // every check has to happen here or at the server — the Bengali messages
+    // below stay the single source of truth for validation.
     if (!form.memberId) { setError("সদস্য নির্বাচন করুন"); return; }
     if (!Number.isFinite(amount) || amount <= 0) { setError("জমার পরিমাণ শূন্যের চেয়ে বেশি হতে হবে"); return; }
     if (!form.paymentDate) { setError("তারিখ নির্বাচন করুন"); return; }
@@ -519,15 +589,15 @@ export default function JomaEntryPage() {
               </div>
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-gray-400 font-bold mb-1">মোট নগদ</p>
-                <p className="font-bold text-emerald-600">{money(successData.amount + successData.extraAmount)}</p>
+                <p className="font-bold text-emerald-600">{formatMoney(successData.amount + successData.extraAmount)}</p>
               </div>
               <div className="bg-amber-50 rounded-xl p-4">
                 <p className="text-xs text-amber-600 font-bold mb-1">অতিরিক্ত জমা</p>
-                <p className="font-bold text-amber-700">{money(successData.extraAmount)}</p>
+                <p className="font-bold text-amber-700">{formatMoney(successData.extraAmount)}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 col-span-2">
                 <p className="text-xs text-gray-400 font-bold mb-1">বরাদ্দ</p>
-                <p className="font-bold text-gray-900">{money(successData.allocatedAmount)}</p>
+                <p className="font-bold text-gray-900">{formatMoney(successData.allocatedAmount)}</p>
               </div>
             </div>
 
@@ -538,7 +608,7 @@ export default function JomaEntryPage() {
               <a href={`/api/receipts/${successData.id}?download=1`} download={`Receipt-${successData.receipt}.jpg`} className="btn-outline">
                 <Download size={17} /> ডাউনলোড
               </a>
-              <button onClick={() => setSuccessData(null)} className="btn-emerald">
+              <button onClick={() => setSuccessData(null)} className="btn-outline">
                 <Plus size={17} /> নতুন জমা
               </button>
               <button
@@ -563,7 +633,14 @@ export default function JomaEntryPage() {
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-        <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div
+          ref={confirmDialogRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-label="জমা এন্ট্রি নিশ্চিত করুন"
+          className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
+        >
           <div className="bg-emerald-600 p-6 text-white">
             <h2 className="text-xl font-black font-tiro">জমা এন্ট্রি নিশ্চিত করুন</h2>
             <p className="text-emerald-100 text-sm mt-1">বরাদ্দ তথ্য পরীক্ষা করুন</p>
@@ -583,7 +660,7 @@ export default function JomaEntryPage() {
               <Banknote className="w-5 h-5 text-emerald-600 shrink-0" />
               <div>
                 <p className="text-xs text-gray-400 font-bold">মোট নগদ</p>
-                <p className="font-black text-emerald-600 text-lg">{money(parseFloat(form.paymentAmount) || 0)}</p>
+                <p className="font-black text-emerald-600 text-lg">{formatMoney(parseFloat(form.paymentAmount) || 0)}</p>
               </div>
             </div>
 
@@ -594,11 +671,11 @@ export default function JomaEntryPage() {
                 <Banknote className="w-5 h-5 text-amber-600 shrink-0" />
                 <div className="flex-1">
                   <p className="text-xs text-amber-700 font-bold">অতিরিক্ত জমা</p>
-                  <p className="font-black text-amber-700">{money(autoExtra)}</p>
+                  <p className="font-black text-amber-700">{formatMoney(autoExtra)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-gray-500 font-bold">বরাদ্দ</p>
-                  <p className="font-black text-gray-900">{money(autoAllocatable)}</p>
+                  <p className="font-black text-gray-900">{formatMoney(autoAllocatable)}</p>
                 </div>
               </div>
             )}
@@ -623,18 +700,18 @@ export default function JomaEntryPage() {
                 {allocationRows.map((row) => (
                   <div key={row.month} className="flex justify-between text-sm">
                     <span className="text-gray-600">{monthLabel(row.month)}</span>
-                    <span className="font-bold text-gray-900">{money(row.allocated)}</span>
+                    <span className="font-bold text-gray-900">{formatMoney(row.allocated)}</span>
                   </div>
                 ))}
                 {autoExtra > 0 && (
                   <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
                     <span className="text-amber-600 font-bold">অতিরিক্ত জমা</span>
-                    <span className="font-bold text-amber-600">{money(autoExtra)}</span>
+                    <span className="font-bold text-amber-600">{formatMoney(autoExtra)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm font-black pt-2 border-t-2 border-gray-200">
                   <span>মোট বরাদ্দ</span>
-                  <span className="text-emerald-600">{money(autoAllocatable)}</span>
+                  <span className="text-emerald-600">{formatMoney(autoAllocatable)}</span>
                 </div>
               </div>
             </div>
@@ -644,9 +721,9 @@ export default function JomaEntryPage() {
               <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
                 <p className="text-xs text-amber-700 font-bold mb-2">মাসিক অঙ্গীকার পরিবর্তন</p>
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-500">{selectedMember ? money(currentMonthPledge) : "—"}</span>
+                  <span className="text-gray-500">{selectedMember ? formatMoney(currentMonthPledge) : "—"}</span>
                   <TrendingDown className="w-4 h-4 text-amber-500" />
-                  <span className="font-bold text-emerald-600">{money(parseFloat(form.newPledgeAmount) || 0)}</span>
+                  <span className="font-bold text-emerald-600">{formatMoney(parseFloat(form.newPledgeAmount) || 0)}</span>
                   <span className="text-gray-400 text-xs">থেকে {monthLabel(form.pledgeEffectiveMonth)}</span>
                 </div>
               </div>
@@ -663,7 +740,7 @@ export default function JomaEntryPage() {
             <button
               type="button"
               onClick={() => setShowConfirm(false)}
-              className="flex-1 px-4 py-3 bg-gray-100 text-gray-600 rounded-2xl text-sm font-bold hover:bg-gray-200 transition-all"
+              className="flex-1 btn-outline text-sm"
             >
               বাতিল
             </button>
@@ -671,7 +748,7 @@ export default function JomaEntryPage() {
               type="button"
               onClick={handleConfirm}
               disabled={submitting}
-              className="flex-[2] px-4 py-3 bg-emerald-600 text-white rounded-2xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-[2] btn-emerald text-sm disabled:opacity-50"
             >
               {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> সংরক্ষণ হচ্ছে...</> : <><CheckCircle2 className="w-4 h-4" /> নিশ্চিত করুন</>}
             </button>
@@ -699,7 +776,7 @@ export default function JomaEntryPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <form noValidate onSubmit={handleFormSubmit} className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         {error && (
           <div className="bg-rose-50 text-rose-700 p-4 rounded-2xl text-sm font-medium flex items-center gap-3 border border-rose-100">
             <AlertCircle className="w-5 h-5 shrink-0" />
@@ -724,6 +801,10 @@ export default function JomaEntryPage() {
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="text"
+                    role="combobox"
+                    aria-expanded={showMemberDropdown}
+                    aria-autocomplete="list"
+                    aria-controls="member-listbox"
                     placeholder="সদস্যের নাম বা ফোন নম্বর লিখুন..."
                     value={memberSearch}
                     onChange={(e) => {
@@ -740,12 +821,15 @@ export default function JomaEntryPage() {
                     className="w-full pl-9 pr-3 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   />
                 </div>
-                {showMemberDropdown && filteredMembers.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-                    {filteredMembers.map((m) => (
+                {showMemberDropdown && (
+                  <div id="member-listbox" role="listbox" aria-label="সদস্য তালিকা" className="absolute z-50 w-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                    {filteredMembers.length > 0 ? (
+                      filteredMembers.map((m) => (
                       <button
                         key={m.id}
                         type="button"
+                        role="option"
+                        aria-selected={form.memberId === m.id}
                         onClick={() => {
                           set("memberId", m.id);
                           setMemberSearch(m.name);
@@ -756,7 +840,10 @@ export default function JomaEntryPage() {
                         <p className="font-bold text-gray-900 text-sm">{m.name}</p>
                         <p className="text-xs text-gray-400">{m.phone || "ফোন নেই"} · {m.status === "inactive" ? "নিষ্ক্রিয়" : "সক্রিয়"}</p>
                       </button>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="px-4 py-3 text-sm text-gray-400 font-medium">কোনো সদস্য পাওয়া যায়নি</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -767,7 +854,7 @@ export default function JomaEntryPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs text-emerald-600 font-bold">বর্তমান মাসিক অঙ্গীকার</p>
-                      <p className="text-lg font-black text-emerald-700">{money(currentMonthPledge)}</p>
+                      <p className="text-lg font-black text-emerald-700">{formatMoney(currentMonthPledge)}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-emerald-600 font-bold">মাসিক চাঁদা</p>
@@ -781,7 +868,7 @@ export default function JomaEntryPage() {
                         {memberPledgeHistory.map((h, i) => (
                           <div key={i} className="flex justify-between text-gray-600">
                             <span>{monthLabel(h.effective_from_month)}</span>
-                            <span className="font-bold">{money(Number(h.monthly_amount))}</span>
+                            <span className="font-bold">{formatMoney(Number(h.monthly_amount))}</span>
                           </div>
                         ))}
                       </div>
@@ -797,6 +884,7 @@ export default function JomaEntryPage() {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">৳</span>
                   <input
                     type="number"
+                    inputMode="decimal"
                     min="0.01"
                     step="0.01"
                     placeholder="0.00"
@@ -835,7 +923,7 @@ export default function JomaEntryPage() {
               <div>
                 <label className="text-xs font-bold text-amber-700 mb-1 block">অতিরিক্ত জমা (স্বয়ংক্রিয়)</label>
                 <div className="w-full px-3 py-3 bg-amber-50 border border-amber-100 rounded-xl text-sm font-black text-amber-700">
-                  {money(autoExtra)}
+                  {formatMoney(autoExtra)}
                 </div>
                 <p className="text-[11px] text-gray-400 mt-1">জমার পরিমাণ থেকে কভারেজ যতটুকু নেয় না, বাকিটুকু এখানে চলে আসে; মাসিক বরাদ্দে যাবে না, রসিদে আলাদাভাবে দেখানো হবে।</p>
               </div>
@@ -997,7 +1085,7 @@ export default function JomaEntryPage() {
                       : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                   }`}
                 >
-                  {form.pledgeChangeEnabled ? "ON" : "OFF"}
+                  {form.pledgeChangeEnabled ? "চালু" : "বন্ধ"}
                 </button>
               </div>
 
@@ -1006,7 +1094,7 @@ export default function JomaEntryPage() {
                   {selectedMember && (
                     <div className="p-3 bg-gray-50 rounded-xl">
                       <p className="text-xs text-gray-400 font-bold">বর্তমান চাঁদা</p>
-                      <p className="text-lg font-black text-gray-900">{money(currentMonthPledge)}</p>
+                      <p className="text-lg font-black text-gray-900">{formatMoney(currentMonthPledge)}</p>
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-3">
@@ -1016,6 +1104,7 @@ export default function JomaEntryPage() {
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">৳</span>
                         <input
                           type="number"
+                          inputMode="decimal"
                           min="0"
                           step="0.01"
                           value={form.newPledgeAmount}
@@ -1071,7 +1160,7 @@ export default function JomaEntryPage() {
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-xs text-emerald-700 font-bold">মোট নগদ</span>
                   <span className="text-lg font-black text-emerald-700">
-                    {form.paymentAmount ? money(parseFloat(form.paymentAmount) || 0) : money(0)}
+                    {form.paymentAmount ? formatMoney(parseFloat(form.paymentAmount) || 0) : formatMoney(0)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center mb-2">
@@ -1081,7 +1170,7 @@ export default function JomaEntryPage() {
                 {autoExtra > 0 && (
                   <div className="flex justify-between items-center pt-2 border-t border-emerald-100">
                     <span className="text-xs text-amber-700 font-bold">অতিরিক্ত জমা</span>
-                    <span className="text-sm font-black text-amber-700">{money(autoExtra)}</span>
+                    <span className="text-sm font-black text-amber-700">{formatMoney(autoExtra)}</span>
                   </div>
                 )}
               </div>
@@ -1093,12 +1182,12 @@ export default function JomaEntryPage() {
                     <div key={row.month} className="flex justify-between items-center text-sm py-2 border-b border-gray-50 last:border-0">
                       <div>
                         <span className="text-gray-700 font-medium">{monthLabel(row.month)}</span>
-                        <span className="text-xs text-gray-400 ml-2">{money(row.expected)}</span>
+                        <span className="text-xs text-gray-400 ml-2">{formatMoney(row.expected)}</span>
                       </div>
                       <span className={`font-bold ${
                         row.allocationType === "unallocated" ? "text-amber-600" : "text-emerald-600"
                       }`}>
-                        {money(row.allocated)}
+                        {formatMoney(row.allocated)}
                       </span>
                     </div>
                   ))}
@@ -1111,7 +1200,6 @@ export default function JomaEntryPage() {
                   above, one label per number (BUG-028). An extra amount is the
                   normal result of handing over more cash than the coverage
                   window can absorb, so it is not a warning. */}
-              {allocationPreview.allocations.length > 0 && (
                 <div className={`mt-3 p-3 rounded-xl text-center text-sm font-bold ${
                   autoExtra === 0 && autoAllocatable > 0
                     ? "bg-emerald-100 text-emerald-700"
@@ -1122,24 +1210,27 @@ export default function JomaEntryPage() {
                   {autoExtra === 0 && autoAllocatable > 0
                     ? "✓ পেমেন্ট সম্পূর্ণ বরাদ্দ"
                     : autoExtra > 0
-                      ? `${money(autoAllocatable)} বরাদ্দ • ${money(autoExtra)} অতিরিক্ত জমা`
+                      ? `${formatMoney(autoAllocatable)} বরাদ্দ • ${formatMoney(autoExtra)} অতিরিক্ত জমা`
                       : "পেমেন্ট প্রয়োজন"}
                 </div>
               )}
 
-              {/* Save button */}
+              {/* Save button — a real submit button inside the <form>, so Enter
+                  anywhere in the form runs the same flow as clicking it. */}
               <button
-                type="button"
-                onClick={openConfirm}
-                disabled={submitting || !form.memberId || !form.paymentAmount || !form.collectedBy}
+                type="submit"
+                disabled={saveDisabled}
                 className="w-full mt-5 btn-emerald py-3.5 text-sm font-black flex items-center justify-center gap-2 disabled:opacity-40"
               >
                 {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> সংরক্ষণ হচ্ছে...</> : <><CheckCircle2 className="w-4 h-4" /> জমা এন্ট্রি সংরক্ষণ করুন</>}
               </button>
+              {saveHint && (
+                <p className="text-[11px] text-gray-400 text-center mt-2 font-medium">{saveHint}</p>
+              )}
             </div>
           </div>
         </div>
-      </div>
+      </form>
 
       {/* Confirmation dialog */}
       {renderConfirmDialog()}
