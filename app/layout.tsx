@@ -100,6 +100,26 @@ const abuJmAkkas = localFont({
   display: "swap",
 });
 
+// Lipighor "Li Shadhinata 2.0" — custom Bengali font supplied by Akash,
+// used for the receipt masthead (replaces Sabbir Sorolota). See app/fonts/
+// (Unicode TTFs only; ANSI variants not for web use).
+const shadhinata = localFont({
+  src: [
+    {
+      path: "./fonts/LiShadhinata2Unicode-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "./fonts/LiShadhinata2Unicode-Italic.ttf",
+      weight: "400",
+      style: "italic",
+    },
+  ],
+  variable: "--font-shadhinata",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://daulkharfoundation.vercel.app"),
   title: {
@@ -155,7 +175,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable} ${anekBangla.variable} ${sabbirSorolota.variable} ${alinurNakkhatra.variable} ${abuJmAkkas.variable}`}>
+    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable} ${anekBangla.variable} ${sabbirSorolota.variable} ${alinurNakkhatra.variable} ${abuJmAkkas.variable} ${shadhinata.variable}`}>
       <body className="antialiased font-hind">
         <AuthProvider>
           <LayoutWrapper>{children}</LayoutWrapper>
