@@ -59,6 +59,36 @@
 
 ---
 
+## 5205a00 — feat(receipt): Li Chayana Teesta for gratitude + signature
+
+**Date:** 2026-10-02  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/fonts/LiChayanaTeestaUnicode-Regular.ttf, app/fonts/LiChayanaTeestaUnicode-Italic.ttf (new), app/layout.tsx, app/globals.css, app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Gratitude "জাযাকাল্লাহু খাইরান" | Galada (`font-galada`) | **Li Chayana Teesta** (`font-teesta`) |
+| Collector signature name | Galada (`font-galada`) | **Li Chayana Teesta** (`font-teesta`) |
+
+### Why
+
+Akash supplied `ChayanaTeesta.zip` and asked to use it for these two spots. Straight swap — sizes (24px / 20px) unchanged.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green; `@font-face{font-family:chayanaTeesta}` emitted, variable chain verified
+
+### Known Risks / Follow-ups
+
+- Same Lipighor licensing: webfont use needs `admin@lipighor.com` permission + footer backlink; TTFs must not be redistributed. Branch stays local, nothing pushed.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## 083ac3d — feat(receipt): Li Shadhinata 2.0 for masthead
 
 **Date:** 2026-10-02  
