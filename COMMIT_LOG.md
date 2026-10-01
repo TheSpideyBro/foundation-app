@@ -59,6 +59,36 @@
 
 ---
 
+## 0ad5eb6 — feat(receipt): QR and signature side by side, tighter page
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| QR card + signature | Stacked full-width rows | One 2-column row: QR card left, signature right (stacks below 420px) |
+| Gratitude position | Between QR card and signature | Above the row, so signature stays last |
+| Density | Roomy | Tightened throughout (container pt/pb 8→6, smaller meta/amount/details/gratitude/footer gaps) |
+
+### Why
+
+Akash: make the page more compact and put QR + signature পাশাপাশি.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green (one transient Turbopack font-fetch failure on first attempt; clean on retry)
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## 6c6a207 — feat(receipt): remove office seal, tighten signature spacing
 
 **Date:** 2026-10-01  
