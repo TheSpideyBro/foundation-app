@@ -38,7 +38,6 @@ type CoverageMode = "single" | "range";
 type JomaForm = {
   memberId: string;
   paymentAmount: string;
-  extraAmount: string;
   paymentDate: string;
   paymentMethod: string;
   receiptNo: string;
@@ -98,7 +97,6 @@ export default function JomaEntryPage() {
   const [form, setForm] = useState<JomaForm>({
     memberId: "",
     paymentAmount: "",
-    extraAmount: "",
     paymentDate: today,
     paymentMethod: "cash",
     receiptNo: generateReceiptNo(),
@@ -119,7 +117,7 @@ export default function JomaEntryPage() {
   const [submitting, setSubmitting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [successData, setSuccessData] = useState<{ id: string; receipt: string; amount: number; extraAmount: number; allocatedAmount: number; unallocatedAmount: number } | null>(null);
+  const [successData, setSuccessData] = useState<{ id: string; receipt: string; amount: number; extraAmount: number; allocatedAmount: number } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Filtered members for search
@@ -198,10 +196,6 @@ export default function JomaEntryPage() {
     [form.coverageStartMonth, curMonth, effectiveMonthlyPledge, effectivePledgeHistory],
   );
 
-  // Extra cash handed over — never part of the month allocations, but always
-  // part of the total handed over (its own allocation row + its own card).
-  const extraValue = form.extraAmount.trim() === "" ? 0 : Math.max(0, parseFloat(form.extraAmount) || 0);
-
   // Load data
   useEffect(() => {
     async function load() {
@@ -272,6 +266,22 @@ export default function JomaEntryPage() {
     );
   }, [form.memberId, form.paymentAmount, form.coverageStartMonth, form.coverageEndMonth, form.coverageMode, selectedMember, effectiveMonthlyPledge, effectivePledgeHistory]);
 
+  // Auto-split of the cash handed over: the জমা field is the TOTAL, the
+  // coverage window absorbs what it can and the rest becomes the extra
+  // amount — derived here, never typed by hand. The API receives
+  // `amount` (= allocatable) + `extra_amount` (= leftover), which is exactly
+  // what the manual split used to send, so `donations.amount` still equals
+  // total cash and the SQL engine still stores the extra as its own
+  // unallocated row (parity with TS, ADR-001).
+  const autoExtra = allocationPreview.unallocatedAmount;
+  const autoAllocatable = allocationPreview.allocatedAmount;
+  // A member whose coverage months are all ৳0 pledge can absorb nothing, and
+  // save_payment_entry() rejects amount <= 0 — send the whole cash as the
+  // regular amount so the engine parks it in the unallocated row (identical
+  // rows; donations.extra_amount just stays 0 in this one edge case).
+  const submitAmount = autoAllocatable > 0 ? autoAllocatable : (parseFloat(form.paymentAmount) || 0);
+  const submitExtra = autoAllocatable > 0 ? autoExtra : 0;
+
   // Allocation rows for preview table
   const allocationRows = useMemo<AllocationRow[]>(() => {
     if (!form.memberId || !form.paymentAmount) return [];
@@ -314,14 +324,12 @@ export default function JomaEntryPage() {
 
   function openConfirm() {
     const amount = parseFloat(form.paymentAmount);
-    const extraAmount = form.extraAmount.trim() === "" ? 0 : parseFloat(form.extraAmount);
     const endMonth = form.coverageMode === "range" ? form.coverageEndMonth : form.coverageStartMonth;
 
     // There is no <form> element, so the `required` / `min` attributes on the
     // inputs never run — every check has to happen here or at the server.
     if (!form.memberId) { setError("সদস্য নির্বাচন করুন"); return; }
     if (!Number.isFinite(amount) || amount <= 0) { setError("জমার পরিমাণ শূন্যের চেয়ে বেশি হতে হবে"); return; }
-    if (!Number.isFinite(extraAmount) || extraAmount < 0) { setError("অতিরিক্ত জমা ঋণাত্মক হতে পারে না"); return; }
     if (!form.paymentDate) { setError("তারিখ নির্বাচন করুন"); return; }
     if (!form.coverageStartMonth || !endMonth) { setError("কভারেজ মাস নির্বাচন করুন"); return; }
     if (form.coverageStartMonth > endMonth) { setError("কভারেজের শুরুর মাস শেষ মাসের আগে হতে হবে"); return; }
@@ -367,8 +375,11 @@ export default function JomaEntryPage() {
     const timer = window.setTimeout(() => controller.abort(), 30000);
 
     try {
-      const amount = parseFloat(form.paymentAmount);
-      const extraAmount = Math.max(0, parseFloat(form.extraAmount) || 0);
+      // Auto-split: `amount` is only what the coverage window can absorb,
+      // `extra_amount` is the leftover — one number typed by the operator,
+      // the two fields are derived from the same preview.
+      const amount = submitAmount;
+      const extraAmount = submitExtra;
       const endMonth = form.coverageMode === "range" ? form.coverageEndMonth : form.coverageStartMonth;
 
       const res = await fetch("/api/payments", {
@@ -404,22 +415,20 @@ export default function JomaEntryPage() {
         throw new Error(raw);
       }
 
-      // Success numbers: the regular payment only. The extra amount is its
-      // own allocation row and its own card — folding it into "অবণ্টিত" made
-      // the preview, the confirmation and the receipt disagree (BUG-028).
+      // Success numbers: the cash handed over, the allocatable part and the
+      // derived extra — one label per number, so the preview, the dialog and
+      // the receipt cannot disagree (BUG-028).
       setSuccessData({
         id: data.payment_id,
         receipt: form.receiptNo,
         amount,
         extraAmount,
         allocatedAmount: allocationPreview.allocatedAmount,
-        unallocatedAmount: allocationPreview.unallocatedAmount,
       });
       // Reset form
       setForm({
         memberId: "",
         paymentAmount: "",
-        extraAmount: "",
         paymentDate: today,
         paymentMethod: "cash",
         receiptNo: generateReceiptNo(),
@@ -509,7 +518,7 @@ export default function JomaEntryPage() {
                 <p className="font-bold text-gray-900">{successData.receipt}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs text-gray-400 font-bold mb-1">পরিমাণ</p>
+                <p className="text-xs text-gray-400 font-bold mb-1">মোট নগদ</p>
                 <p className="font-bold text-emerald-600">{money(successData.amount + successData.extraAmount)}</p>
               </div>
               <div className="bg-amber-50 rounded-xl p-4">
@@ -518,7 +527,7 @@ export default function JomaEntryPage() {
               </div>
               <div className="bg-gray-50 rounded-xl p-4 col-span-2">
                 <p className="text-xs text-gray-400 font-bold mb-1">বরাদ্দ</p>
-                <p className="font-bold text-gray-900">{money(successData.allocatedAmount)} বরাদ্দ • {money(successData.unallocatedAmount)} অবণ্টিত</p>
+                <p className="font-bold text-gray-900">{money(successData.allocatedAmount)}</p>
               </div>
             </div>
 
@@ -569,27 +578,27 @@ export default function JomaEntryPage() {
               </div>
             </div>
 
-            {/* Payment */}
+            {/* Payment — the cash handed over; the split below derives from it */}
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
               <Banknote className="w-5 h-5 text-emerald-600 shrink-0" />
               <div>
-                <p className="text-xs text-gray-400 font-bold">পরিশোধের পরিমাণ</p>
+                <p className="text-xs text-gray-400 font-bold">মোট নগদ</p>
                 <p className="font-black text-emerald-600 text-lg">{money(parseFloat(form.paymentAmount) || 0)}</p>
               </div>
             </div>
 
-            {/* Extra amount — persisted as an unallocated allocation row and
-                part of the cash handed over; it never appeared here before. */}
-            {(form.extraAmount.trim() !== "" && (parseFloat(form.extraAmount) || 0) > 0) && (
+            {/* Extra amount — derived from what the coverage window cannot
+                absorb (auto-split), persisted as its own allocation row. */}
+            {autoExtra > 0 && (
               <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl">
                 <Banknote className="w-5 h-5 text-amber-600 shrink-0" />
                 <div className="flex-1">
                   <p className="text-xs text-amber-700 font-bold">অতিরিক্ত জমা</p>
-                  <p className="font-black text-amber-700">{money(parseFloat(form.extraAmount) || 0)}</p>
+                  <p className="font-black text-amber-700">{money(autoExtra)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-500 font-bold">মোট নগদ</p>
-                  <p className="font-black text-gray-900">{money((parseFloat(form.paymentAmount) || 0) + (parseFloat(form.extraAmount) || 0))}</p>
+                  <p className="text-xs text-gray-500 font-bold">বরাদ্দ</p>
+                  <p className="font-black text-gray-900">{money(autoAllocatable)}</p>
                 </div>
               </div>
             )}
@@ -617,15 +626,15 @@ export default function JomaEntryPage() {
                     <span className="font-bold text-gray-900">{money(row.allocated)}</span>
                   </div>
                 ))}
-                {allocationPreview.unallocatedAmount > 0 && (
+                {autoExtra > 0 && (
                   <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
-                    <span className="text-amber-600 font-bold">অবণ্টিত</span>
-                    <span className="font-bold text-amber-600">{money(allocationPreview.unallocatedAmount)}</span>
+                    <span className="text-amber-600 font-bold">অতিরিক্ত জমা</span>
+                    <span className="font-bold text-amber-600">{money(autoExtra)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm font-black pt-2 border-t-2 border-gray-200">
                   <span>মোট বরাদ্দ</span>
-                  <span className="text-emerald-600">{money(allocationPreview.allocatedAmount)}</span>
+                  <span className="text-emerald-600">{money(autoAllocatable)}</span>
                 </div>
               </div>
             </div>
@@ -783,7 +792,7 @@ export default function JomaEntryPage() {
 
               {/* Payment amount */}
               <div>
-                <label className="text-xs font-bold text-gray-500 mb-1 block">জমার পরিমাণ *</label>
+                <label className="text-xs font-bold text-gray-500 mb-1 block">মোট নগদ *</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">৳</span>
                   <input
@@ -821,22 +830,14 @@ export default function JomaEntryPage() {
                 )}
               </div>
 
-              {/* Extra amount */}
+              {/* Extra amount — derived, never typed: whatever the coverage
+                  window cannot absorb becomes donations.extra_amount. */}
               <div>
-                <label className="text-xs font-bold text-amber-700 mb-1 block">অতিরিক্ত জমা</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500 font-bold">৳</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={form.extraAmount}
-                    onChange={(e) => set("extraAmount", e.target.value)}
-                    className="w-full pl-8 pr-3 py-3 bg-amber-50 border border-amber-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all font-bold"
-                  />
+                <label className="text-xs font-bold text-amber-700 mb-1 block">অতিরিক্ত জমা (স্বয়ংক্রিয়)</label>
+                <div className="w-full px-3 py-3 bg-amber-50 border border-amber-100 rounded-xl text-sm font-black text-amber-700">
+                  {money(autoExtra)}
                 </div>
-                <p className="text-[11px] text-gray-400 mt-1">এই অংশটি মাসিক বরাদ্দে যাবে না; রশিদে আলাদাভাবে দেখানো হবে।</p>
+                <p className="text-[11px] text-gray-400 mt-1">জমার পরিমাণ থেকে কভারেজ যতটুকু নেয় না, বাকিটুকু এখানে চলে আসে; মাসিক বরাদ্দে যাবে না, রসিদে আলাদাভাবে দেখানো হবে।</p>
               </div>
 
               {/* Payment date */}
@@ -1065,26 +1066,24 @@ export default function JomaEntryPage() {
               </h2>
 
               {/* Payment summary — the same three numbers the confirmation
-                  dialog and the success screen show: regular, extra, cash */}
+                  dialog and the success screen show: cash, allocated, extra */}
               <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 mb-4">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs text-emerald-700 font-bold">জমা</span>
+                  <span className="text-xs text-emerald-700 font-bold">মোট নগদ</span>
                   <span className="text-lg font-black text-emerald-700">
                     {form.paymentAmount ? money(parseFloat(form.paymentAmount) || 0) : money(0)}
                   </span>
                 </div>
-                {extraValue > 0 && (
-                  <div className="flex justify-between items-center mb-2">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs text-emerald-700 font-bold">বরাদ্দ</span>
+                  <span className="text-sm font-black text-emerald-700">{money(autoAllocatable)}</span>
+                </div>
+                {autoExtra > 0 && (
+                  <div className="flex justify-between items-center pt-2 border-t border-emerald-100">
                     <span className="text-xs text-amber-700 font-bold">অতিরিক্ত জমা</span>
-                    <span className="text-sm font-black text-amber-700">{money(extraValue)}</span>
+                    <span className="text-sm font-black text-amber-700">{money(autoExtra)}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-center pt-2 border-t border-emerald-100">
-                  <span className="text-xs text-emerald-700 font-bold">মোট নগদ</span>
-                  <span className="text-sm font-black text-emerald-700">
-                    {money((parseFloat(form.paymentAmount) || 0) + extraValue)}
-                  </span>
-                </div>
               </div>
 
               {/* Allocation table */}
@@ -1108,38 +1107,23 @@ export default function JomaEntryPage() {
                 <p className="text-xs text-gray-400 text-center py-6">সদস্য ও জমার পরিমাণ নির্বাচন করুন</p>
               )}
 
-              {/* Totals */}
+              {/* Status — মোট নগদ / বরাদ্দ / অতিরিক্ত জমা are in the summary
+                  above, one label per number (BUG-028). An extra amount is the
+                  normal result of handing over more cash than the coverage
+                  window can absorb, so it is not a warning. */}
               {allocationPreview.allocations.length > 0 && (
-                <div className="space-y-2 pt-3 border-t border-gray-100">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500 font-bold">বরাদ্দকৃত</span>
-                    <span className="font-bold text-emerald-600">{money(allocationPreview.allocatedAmount)}</span>
-                  </div>
-                  {allocationPreview.unallocatedAmount > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-amber-600 font-bold">অবণ্টিত</span>
-                      <span className="font-bold text-amber-600">{money(allocationPreview.unallocatedAmount)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-sm pt-2 border-t border-gray-100">
-                    <span className="text-gray-900 font-black">জমা</span>
-                    <span className="font-black text-emerald-700">{money(parseFloat(form.paymentAmount) || 0)}</span>
-                  </div>
-
-                  {/* Status badge */}
-                  <div className={`mt-3 p-3 rounded-xl text-center text-sm font-bold ${
-                    allocationPreview.unallocatedAmount === 0 && allocationPreview.allocatedAmount > 0
-                      ? "bg-emerald-100 text-emerald-700"
-                      : allocationPreview.unallocatedAmount > 0
-                        ? "bg-amber-100 text-amber-700"
-                        : "bg-gray-100 text-gray-500"
-                  }`}>
-                    {allocationPreview.unallocatedAmount === 0 && allocationPreview.allocatedAmount > 0
-                      ? "✓ পেমেন্ট সম্পূর্ণ বরাদ্দ"
-                      : allocationPreview.unallocatedAmount > 0
-                        ? `⚠ ${money(allocationPreview.unallocatedAmount)} অবণ্টিত`
-                        : "পেমেন্ট প্রয়োজন"}
-                  </div>
+                <div className={`mt-3 p-3 rounded-xl text-center text-sm font-bold ${
+                  autoExtra === 0 && autoAllocatable > 0
+                    ? "bg-emerald-100 text-emerald-700"
+                    : autoExtra > 0
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-gray-100 text-gray-500"
+                }`}>
+                  {autoExtra === 0 && autoAllocatable > 0
+                    ? "✓ পেমেন্ট সম্পূর্ণ বরাদ্দ"
+                    : autoExtra > 0
+                      ? `${money(autoAllocatable)} বরাদ্দ • ${money(autoExtra)} অতিরিক্ত জমা`
+                      : "পেমেন্ট প্রয়োজন"}
                 </div>
               )}
 

@@ -9,7 +9,8 @@ flowchart TD
     A[Member pays ৳1000] --> B{Joma Entry Form}
     B --> C[Client: calculatePaymentAllocation]
     C --> D[Real-time Preview]
-    D --> E[User clicks Save]
+    D --> D2[Auto-split: amount = capacity, extra_amount = leftover]
+    D2 --> E[User clicks Save]
     E --> F[POST /api/payments]
     F --> G{Auth Check}
     G -->|No Session| H[401 Unauthorized]

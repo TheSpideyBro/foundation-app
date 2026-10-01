@@ -18,6 +18,7 @@ Complete feature inventory with route, role access, and implementation status.
 - **Implementation**: `app/joma/page.tsx`
 - **Description**: Advanced payment entry form with member selection, amount, date, payment method (cash/bkash/nagad/bank), receipt number, coverage month range selector, optional pledge change, real-time allocation preview
 - **Allocation Preview**: Uses `calculatePaymentAllocation` from `lib/payment-ledger.ts` to show how the payment will be split before saving
+- **Auto extra amount**: the জমা field is the **total cash handed over**; whatever the coverage window cannot absorb is derived (read-only, never typed) as অতিরিক্ত জমা and sent as `extra_amount`, so `donations.amount` = total and the extra becomes its own `unallocated` allocation row
 - **Backend**: `app/api/payments/route.ts` → calls `save_payment_entry` RPC (atomic insert + reallocate)
 - **Edit Mode**: Supports `PUT` for reallocating existing payments via `reallocate_payment` RPC
 

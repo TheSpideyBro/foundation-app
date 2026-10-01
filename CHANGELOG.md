@@ -12,6 +12,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ## [Unreleased]
 
 ### Added
+- **Joma Entry auto-splits the cash handed over** — the জমা field is now the *total* (মোট নগদ): whatever the coverage window cannot absorb is derived as অতিরিক্ত জমা (read-only box, never typed) and sent as `extra_amount`, so `amount` = what the engine may allocate, `donations.amount` still equals the cash handed over and the zero-sum invariant is untouched. Before, the operator had to compute and type the split by hand — a ৳1,400 entry over a ৳1,300 window left ৳100 as an anonymous "অবণ্টিত" row with `extra_amount = 0`. Preview, confirm dialog, success screen and receipt now show the same three numbers (মোট নগদ / বরাদ্দ / অতিরিক্ত জমা), the amber "⚠ অবণ্টিত" warning became a normal extra-amount line, and the receipt/donation labels are Bengali instead of "Extra Amount"/"extra".
 - `scripts/dump-supabase-schema.py`: regenerates `supabase/schema.sql` as executable DDL from the live catalog (tables, constraints, FKs, indexes, RLS, verbatim policies/functions with their EXECUTE grants, triggers, views, grants) — the hand-written file had drifted badly (TD-008).
 - `supabase/migrations-test/`: separate migration folder for the Test project — its `save_payment_entry`/`reallocate_payment` signatures differ from Main, so replaying Main's files there would create broken overloads (TD-011).
 

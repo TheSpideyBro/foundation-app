@@ -15,7 +15,9 @@ The Foundation uses a **modified cash-basis accounting** system with **pledge-ba
 ### Donation (জমা)
 - **Table**: `donations`
 - **Represents**: A single payment received from a member
-- **Key Fields**: `id`, `member_id`, `amount`, `date`, `method`, `receipt_no`, `received_by`, `created_by`, `coverage_start_month`, `coverage_end_month`, `batch_id`
+- **Key Fields**: `id`, `member_id`, `amount`, `extra_amount`, `date`, `method`, `receipt_no`, `received_by`, `created_by`, `coverage_start_month`, `coverage_end_month`, `batch_id`
+- `amount`: the **cash handed over** — it already includes `extra_amount` (`save_payment_entry()` stores `p_amount + p_extra_amount`), so the two must never be added together (BUG-024)
+- `extra_amount`: the part of that cash the coverage window cannot absorb (Main only). Joma derives it automatically from the entered total (auto-split) instead of asking for it, and it is stored as an `unallocated` allocation row with `month = NULL`
 - `method`: 'cash', 'bkash', 'nagad', 'bank'
 - `coverage_start_month` / `coverage_end_month`: The month range this payment covers (YYYY-MM format)
 - `batch_id`: Groups multi-month donations together
@@ -67,6 +69,25 @@ For each month in [coverage_start, coverage_end]:
 If remaining > 0 after all months:
   Record allocation row (amount, type='unallocated', month=NULL)
 ```
+
+#### Cash Split Before the Algorithm (Joma Entry)
+
+The operator types ONE number: the **total cash handed over**. The client derives
+the split from the same preview that drives the table:
+
+```
+capacity   = sum of resolved pledges for the coverage months   (allocationPreview.allocatedAmount)
+extra      = max(0, total - capacity)                          (allocationPreview.unallocatedAmount)
+send       amount = capacity,  extra_amount = extra
+```
+
+`amount + extra_amount` is always the total, so `donations.amount` keeps meaning
+"cash handed over" and the zero-sum invariant is untouched. The leftover becomes
+its own `unallocated` row — it is never pushed into a later month (no silent
+auto-advance). Edge case: when every coverage month resolves to ৳0 pledge the
+capacity is 0 and `save_payment_entry()` would reject `amount = 0`, so the whole
+cash goes as `amount` with `extra_amount = 0` — the engine parks it in the same
+unallocated row; only `donations.extra_amount` stays 0 in that case.
 
 ### Allocation Types
 
