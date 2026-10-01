@@ -43,7 +43,7 @@ export default function ReceiptPaper({
   ];
 
   const signatureBlock = (
-    <div className="flex flex-col justify-center px-2 text-center">
+    <div className="min-w-[200px] px-2 text-center">
       <p className="-mb-4 font-galada text-[26px] leading-tight text-[#022C22]">{collectorName}</p>
       <div className="border-b border-stone-400/70 pb-6" aria-hidden="true" />
       <p className="mt-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-stone-500">
@@ -144,10 +144,10 @@ export default function ReceiptPaper({
           </p>
         </div>
 
-        {/* verify + signature side by side */}
+        {/* verify + signature — QR left, signature right, spread apart */}
         {verifyUrl ? (
-          <div className="mx-auto mt-5 grid max-w-lg grid-cols-1 gap-5 min-[420px]:grid-cols-2">
-            <div className="rounded-lg border border-[#022C22]/10 bg-white p-4 text-center shadow-[0_10px_30px_rgba(2,44,34,0.07)]">
+          <div className="mx-auto mt-5 flex max-w-lg flex-col items-center gap-6 min-[420px]:flex-row min-[420px]:items-end min-[420px]:justify-between">
+            <div className="text-center">
               <div className="mx-auto w-fit rounded-md bg-white p-1.5 shadow-[0_6px_18px_rgba(6,78,59,0.12)] ring-1 ring-[#C9A227]/70">
                 <Image
                   src={`/api/qr?text=${encodeURIComponent(verifyUrl)}`}
@@ -158,12 +158,9 @@ export default function ReceiptPaper({
                   unoptimized
                 />
               </div>
-              <p className="mt-2.5 flex items-center justify-center gap-1.5 text-[13px] font-bold text-[#064E3B]">
-                <BadgeCheck size={15} className="shrink-0 text-[#C9A227]" />
+              <p className="mt-2 flex items-center justify-center gap-1 text-[11px] font-bold text-[#064E3B]">
+                <BadgeCheck size={13} className="shrink-0 text-[#C9A227]" />
                 স্ক্যান করে যাচাই করুন
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-stone-500">
-                এই QR স্ক্যান করলে রসিদের সত্যতা যাচাই করা যাবে
               </p>
             </div>
             {signatureBlock}
