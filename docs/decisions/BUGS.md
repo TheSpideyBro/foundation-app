@@ -803,7 +803,7 @@ eslint + `pnpm build` + Playwright (3 passed, 6 skipped, the 6 need live credent
 **Status:** fixed
 **Fixed:** 2026-10-01
 **Found:** 2026-10-01
-**Region:** app
+**Region:** app + data
 
 ### Description
 
@@ -831,6 +831,10 @@ One rule, applied everywhere a "current pledge" is *shown*:
 
 The engine fallback argument is deliberately untouched: `effectiveMonthlyPledge` / `members.monthly_pledge` is still what `calculatePaymentAllocation()` receives, because the SQL twin reads that same field — only the *labels* were wrong.
 
+**Data half.** The labels were wrong, but the member's history was also wrong: the ৳100 change had been saved with `effective_from_month = 2026-08`, so it only ever covered August while September onward kept charging ৳1,000. Operator confirmed on 2026-10-01: **September stays ৳1,000, October onward is ৳100.** Migration `20261001_pledge_history_akash_october.sql` inserts the missing row (idempotent) and asserts both resolutions plus `members.monthly_pledge`; it changes no existing history row, donation or allocation.
+
 ### Verification
 
 tsc + eslint + `pnpm build` clean, `pnpm test:ledger` 28/28, Playwright 3 passed / 6 skipped. For the reported member every label now resolves to ৳1,000 for `2026-09`…`2026-11` (the `2026-09 → ৳1,000` row wins), matching the preview and `calculate_payment_allocation()` (`1200 → 1000/200/0`, `1300 → 1000/300/0`).
+
+After `20261001_pledge_history_akash_october.sql` ran on Main: three history rows (`2026-08 → 100`, `2026-09 → 1000`, `2026-10 → 100`), the ADR-001 rule resolves `2026-08 → 100`, `2026-09 → 1000`, `2026-10`/`2026-11`/`2026-12 → 100`, `members.monthly_pledge` = 100 (agrees with the newest row), and the zero-sum invariant is untouched: `SUM(donations) = SUM(payment_allocations) = 7,850` (30 donations, 77 allocations).

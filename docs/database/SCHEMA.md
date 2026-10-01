@@ -105,6 +105,11 @@ Tracks pledge amount changes over time.
 | created_by | UUID FK | |
 | created_at | TIMESTAMPTZ | |
 
+**Resolution rule (ADR-001):** for month `M`, the latest row with `effective_from_month <= M`
+wins → otherwise `members.monthly_pledge` (the fallback) → otherwise `0`. `members.monthly_pledge`
+must agree with the newest effective row, or every "current pledge" label disagrees with the
+ledger (BUG-031, fixed by `20261001_pledge_history_akash_october.sql`).
+
 ### expenses
 Foundation expenditures: `id`, `category`, `amount` (CHECK > 0), `date`, `description`,
 `proof_url`, `created_by` FK, `created_at`. Index `idx_expenses_created_by`.
@@ -186,6 +191,7 @@ on any view (BUG-015); `authenticated` and `service_role` do.
 | 13 | `20260929_harden_definer_rpcs.sql` | 2026-09-29 | BUG-015/016/017/018: RPC revokes, pledge block, receipt lock, member guard, constraints, indexes — **Main** |
 | 14 | `20260929_backfill_legacy_donations.sql` | 2026-09-29 | BUG-019: restore `backfill_payment_allocations()`, pin coverage, backfill, assert zero-sum — **Main** |
 | 15 | `20260930_pledge_change_before_allocation.sql` | 2026-09-30 | BUG-021/022/023: pledge block moved before the history read + allocation in `save_payment_entry()`/`reallocate_payment()`, coverage span ≤120 months, pledge effective format/bound checks, zero-sum assertion — **Main + Test** |
+| 16 | `20261001_pledge_history_akash_october.sql` | 2026-10-01 | BUG-031 (data): pledge row `2026-10 → ৳100` for member `a40ef6db` (Sep stays ৳1,000); asserts the resolution and `members.monthly_pledge`, no allocation touched — **Main** |
 | — | `supabase/migrations-test/20260929_harden_test_project.sql` | 2026-09-29 | The same hardening for the **Test** project (different RPC signatures) |
 | — | `supabase/migrations-test/20260930_pledge_change_before_allocation.sql` | 2026-09-30 | Row 15 for the **Test** project (12-arg `save_payment_entry`, no `extra_amount`) |
 
