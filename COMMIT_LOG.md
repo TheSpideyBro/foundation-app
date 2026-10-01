@@ -59,6 +59,40 @@
 
 ---
 
+## 7f771fe — feat(receipt): stylish fonts and compact layout per feedback
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, app/layout.tsx, app/globals.css, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Display font | Tiro Bangla serif for masthead + amount | **Baloo Da 2** (bold, rounded) for foundation name + amount hero |
+| Gratitude line | Tiro Bangla bold | **Galada** calligraphic script for "জাযাকাল্লাহু খাইরান" |
+| দান রসিদ eyebrow | `tracking-[0.42em]` — looked gappy/broken in Bengali | `tracking-[0.12em]` (same fix for other Bengali eyebrow labels) |
+| QR card | Raw verify URL text under the title | URL line removed; title + caption only |
+| Density | ~1250px tall paper, lots of scroll | Tightened throughout (48px seal, 42–50px amount, 88px QR, reduced paddings) |
+
+### Why
+
+Akash's design feedback on the v1 preview: wanted a more stylish Bengali font, the wide-tracked "দান রসিদ" looked broken, the URL next to the QR was clutter, and the receipt needed to fit with less scrolling.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm lint` — 0 errors (140 pre-existing warnings)
+- `pnpm build` — green (fonts download at build time, no errors)
+
+### Known Risks / Follow-ups
+
+- Baloo Da 2 / Galada are new global font payloads (bengali subsets only) — negligible size impact, display=swap.
+- Awaiting Akash's visual approval on v2 preview before push/PR.
+
+---
+
 ## 82f966d — feat(receipt): premium paper receipt redesign with QR verification card
 
 **Date:** 2026-10-01  
