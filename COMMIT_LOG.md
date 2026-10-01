@@ -59,6 +59,34 @@
 
 ---
 
+## c4a0831 — feat(receipt): straight Sabbir Sorolota swap on masthead
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Masthead | 26/30px, no bold (my tweak) | Back to 23/26px + font-bold — only `font-baloo` → `font-sabbir` changed |
+
+### Why
+
+Akash: the real font wasn't showing (preview bug — the static preview has no next/font runtime, so `--font-sabbir` fell back to the `@theme` value `"Li Sabbir Sorolota Unicode"` while the embedded `@font-face` declared `sabbirSorolota`; names now match). And: apply the font with no other modifications.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- Font-chain verified: app runtime (`sabbirSorolota` var + @font-face) and static preview (`Li Sabbir Sorolota Unicode` fallback + embedded face) both resolve
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## d06efa7 — feat(receipt): masthead in Li Sabbir Sorolota (custom font)
 
 **Date:** 2026-10-01  
