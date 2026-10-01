@@ -131,7 +131,7 @@ export default function SignupPage() {
 
           <form onSubmit={handleSignup} className="space-y-5 sm:space-y-6">
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">পূর্ণ নাম (বাংলায়)</label>
+              <label className="text-[11px] font-bold text-gray-400 ml-1">পূর্ণ নাম (বাংলায়)</label>
               <div className="relative group">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
                 <input 
@@ -146,7 +146,7 @@ export default function SignupPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">মোবাইল নম্বর</label>
+              <label className="text-[11px] font-bold text-gray-400 ml-1">মোবাইল নম্বর</label>
               <div className="relative group">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
                 <input 
@@ -163,7 +163,7 @@ export default function SignupPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">পাসওয়ার্ড</label>
+                <label className="text-[11px] font-bold text-gray-400 ml-1">পাসওয়ার্ড</label>
                 <div className="relative group">
                   <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
                   <input 
@@ -187,7 +187,7 @@ export default function SignupPage() {
                 <p className="text-xs text-gray-400 font-medium ml-1">কমপক্ষে ৬ অক্ষর</p>
               </div>
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">নিশ্চিত করুন</label>
+                <label className="text-[11px] font-bold text-gray-400 ml-1">নিশ্চিত করুন</label>
                 <div className="relative group">
                   <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
                   <input 

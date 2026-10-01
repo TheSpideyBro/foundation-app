@@ -103,7 +103,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-emerald-200">
             <Leaf size={18} fill="currentColor" />
           </div>
-          <span className="text-base font-bold text-gray-900 font-shadhinata tracking-tight">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span>
+          <span className="text-base font-bold text-gray-900 font-shadhinata">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -126,14 +126,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Leaf size={24} fill="currentColor" />
             </div>
             <div>
-              <span className="text-xl font-bold text-gray-900 tracking-tight font-shadhinata">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল</span>
-              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">ফাউন্ডেশন</p>
+              <span className="text-xl font-bold text-gray-900 font-shadhinata">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল</span>
+              <p className="text-[10px] font-bold text-emerald-600">ফাউন্ডেশন</p>
             </div>
           </Link>
         </div>
 
         <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto pt-4 pb-10">
-          <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">মেনু</p>
+          <p className="px-4 text-[11px] font-bold text-gray-400 mb-4">মেনু</p>
           {visibleMenuItems.map((item) => (
             <Link
               key={item.path}
@@ -146,14 +146,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               }`}
             >
               <item.icon size={20} className={isActive(item.path) ? "text-white" : "text-gray-400 group-hover:text-emerald-600"} />
-              <span className="font-bold text-[15px] tracking-tight">{item.name}</span>
+              <span className="font-bold text-[15px]">{item.name}</span>
             </Link>
           ))}
 
           {/* Admin Section in Sidebar */}
           {visibleAdminItems.length > 0 && (
             <>
-              <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-10 mb-4">অ্যাডমিন কন্ট্রোল</p>
+              <p className="px-4 text-[11px] font-bold text-gray-400 mt-10 mb-4">অ্যাডমিন কন্ট্রোল</p>
               {visibleAdminItems.map((item) => (
                 <Link
                   key={item.path}
@@ -166,7 +166,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   }`}
                 >
                   <item.icon size={20} className={isSectionActive(item.path) ? "text-white" : "text-gray-400 group-hover:text-gray-900"} />
-                  <span className="font-bold text-[15px] tracking-tight">{item.name}</span>
+                  <span className="font-bold text-[15px]">{item.name}</span>
                 </Link>
               ))}
             </>
@@ -180,7 +180,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900 truncate">{user?.email?.split('@')[0]}</p>
-              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{isStaff ? 'অ্যাডমিন' : 'সদস্য'}</p>
+              <p className="text-[10px] font-bold text-emerald-600">{isStaff ? 'অ্যাডমিন' : 'সদস্য'}</p>
             </div>
           </div>
           <button
@@ -229,7 +229,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           
           <nav className="flex-1 space-y-1.5">
-            <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">মেনু</p>
+            <p className="px-4 text-[11px] font-bold text-gray-400 mb-4">মেনু</p>
             {visibleMenuItems.map((item) => (
               <Link
                 key={item.path}
@@ -250,7 +250,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Admin Section in Mobile Drawer */}
             {visibleAdminItems.length > 0 && (
               <>
-                <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-8 mb-4">অ্যাডমিন কন্ট্রোল</p>
+                <p className="px-4 text-[11px] font-bold text-gray-400 mt-8 mb-4">অ্যাডমিন কন্ট্রোল</p>
                 {visibleAdminItems.map((item) => (
                   <Link
                     key={item.path}
@@ -278,7 +278,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
               <div>
                 <p className="text-sm font-bold text-gray-900 truncate max-w-[150px]">{user?.email?.split('@')[0]}</p>
-                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{isStaff ? 'অ্যাডমিন' : 'সদস্য'}</p>
+                <p className="text-[10px] font-bold text-emerald-600">{isStaff ? 'অ্যাডমিন' : 'সদস্য'}</p>
               </div>
             </div>
             <button

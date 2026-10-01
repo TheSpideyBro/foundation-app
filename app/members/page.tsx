@@ -246,7 +246,7 @@ export default function MembersPage() {
                   {member.name[0]}
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${member.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
+                  <div className={`px-3 py-1 rounded-full text-[10px] font-bold ${member.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
                     {member.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                   </div>
                   {isStaff && (
@@ -306,7 +306,7 @@ export default function MembersPage() {
               </div>
               
               <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors font-shadhinata">{member.name}</h3>
-              <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-4">{member.role || 'সদস্য'}</p>
+              <p className="text-[11px] text-gray-400 font-bold mb-4">{member.role || 'সদস্য'}</p>
               
               <div className="space-y-3 pt-4 border-t border-gray-50">
                 <div className="flex items-center gap-3 text-sm text-gray-600 font-medium">
@@ -322,7 +322,7 @@ export default function MembersPage() {
                   <span className="line-clamp-1">{isStaff ? (member.address || 'ঠিকানা নেই') : 'পাবলিক নয়'}</span>
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">মাসিক অঙ্গীকার</span>
+                  <span className="text-[10px] text-gray-400 font-bold">মাসিক অঙ্গীকার</span>
                   <span className="text-base font-bold text-emerald-600 font-baloo">৳{effectivePledgeOf(member).toLocaleString("bn-BD")}</span>
                 </div>
               </div>

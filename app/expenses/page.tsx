@@ -247,7 +247,7 @@ export default function ExpensesPage() {
                         <span className="flex items-center gap-1.5 text-[11px] text-gray-500 font-medium bg-gray-50 px-2 py-0.5 rounded-md">
                           <Calendar size={12} className="text-rose-600" /> {e.date ? formatDateBengali(e.date) : ""}
                         </span>
-                        <span className="px-2 py-0.5 bg-rose-50 text-rose-600 text-[9px] font-bold uppercase rounded-lg tracking-widest border border-rose-100">
+                        <span className="px-2 py-0.5 bg-rose-50 text-rose-600 text-[9px] font-bold rounded-lg border border-rose-100">
                           {e.category}
                         </span>
                       </div>
