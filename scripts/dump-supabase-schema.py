@@ -92,7 +92,8 @@ Q = {
         ORDER BY 1, 2;
     """,
     "views": """
-        SELECT c.relname AS viewname, pg_get_viewdef(c.oid, true) AS body
+        SELECT c.relname AS viewname, pg_get_viewdef(c.oid, true) AS body,
+               COALESCE(array_to_string(c.reloptions, ','), '') AS options
         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = 'public' AND c.relkind = 'v' ORDER BY 1;
     """,
@@ -240,13 +241,12 @@ def build(token, ref) -> str:
         out.append(row["definition"].rstrip().rstrip(";") + ";")
     out.append("")
 
-    out.append("-- 9. Views")
-    out.append("--    NOTE: no security_invoker is set, so views run with owner rights")
-    out.append("--    (RLS on the base tables does NOT apply). anon has no SELECT on any")
-    out.append("--    view - authenticated and service_role only.")
+    out.append("-- 9. Views (security_invoker is emitted per-view where set)")
     for row in data["views"]:
         out.append(f"CREATE OR REPLACE VIEW public.{ident(row['viewname'])} AS")
         out.append(row["body"].rstrip().rstrip(";") + ";")
+        if "security_invoker=true" in row["options"].split(","):
+            out.append(f"ALTER VIEW public.{ident(row['viewname'])} SET (security_invoker = true);")
     out.append("")
 
     out.append("-- 10. Grants")
