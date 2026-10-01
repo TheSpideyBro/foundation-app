@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
-import { UserPlus, Phone, Key, ShieldCheck, Heart, ArrowRight, LogIn, User, Loader2 } from "lucide-react";
+import { UserPlus, Phone, Key, ShieldCheck, Heart, ArrowRight, LogIn, User, Loader2, Eye, EyeOff, CircleX, CircleCheck } from "lucide-react";
 import Link from "next/link";
 
 export default function SignupPage() {
@@ -11,20 +11,45 @@ export default function SignupPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const router = useRouter();
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    };
+  }, []);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+    setError(null);
+    setSuccess(null);
+
+    // M14: validate Bangladeshi mobile number before hitting the API.
+    const trimmedPhone = phone.trim();
+    if (!/^01[3-9]\d{8}$/.test(trimmedPhone)) {
+      setError("সঠিক মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)।");
+      return;
+    }
+    if (password.length < 6) {
+      setError("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।");
+      return;
+    }
     if (password !== confirmPassword) {
-      alert("পাসওয়ার্ড দুটি মেলেনি!");
+      setError("পাসওয়ার্ড দুটি মেলেনি!");
       return;
     }
     setLoading(true);
     
-    const virtualEmail = `${phone}@foundation.app`;
+    const virtualEmail = `${trimmedPhone}@foundation.app`;
     
-    const { data, error } = await supabase().auth.signUp({
+    const { error: signUpError } = await supabase().auth.signUp({
       email: virtualEmail,
       password,
       options: {
@@ -34,17 +59,27 @@ export default function SignupPage() {
         // AuthProvider now hard-code them regardless.
         data: {
           name: name,
-          phone: phone
+          phone: trimmedPhone
         }
       }
     });
 
-    if (error) alert("সাইন-আপ ব্যর্থ: " + error.message);
-    else {
-      alert("অ্যাকাউন্ট তৈরি সফল হয়েছে! অ্যাডমিন অ্যাপ্রুভ করলে আপনি লগইন করতে পারবেন।");
-      router.push("/login");
+    if (signUpError) {
+      const msg: string = signUpError.message || "";
+      if (msg.includes("User already registered")) {
+        setError("এই নম্বর দিয়ে ইতিমধ্যে অ্যাকাউন্ট আছে।");
+      } else if (msg.toLowerCase().includes("password")) {
+        setError("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।");
+      } else {
+        // Never surface raw English error.message to the user.
+        setError("রেজিস্ট্রেশন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+      }
+      setLoading(false);
+    } else {
+      setSuccess("অ্যাকাউন্ট তৈরি সফল হয়েছে! অ্যাডমিন অ্যাপ্রুভ করলে আপনি লগইন করতে পারবেন।");
+      // Keep loading=true so the button stays disabled until the redirect.
+      redirectTimer.current = setTimeout(() => router.push("/login"), 2500);
     }
-    setLoading(false);
   };
 
   return (
@@ -117,6 +152,7 @@ export default function SignupPage() {
                 <input 
                   type="text" 
                   required 
+                  inputMode="tel"
                   value={phone} 
                   onChange={e => setPhone(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-bold text-gray-900"
@@ -131,30 +167,63 @@ export default function SignupPage() {
                 <div className="relative group">
                   <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
                   <input 
-                    type="password" 
+                    type={showPassword ? "text" : "password"} 
                     required 
                     value={password} 
                     onChange={e => setPassword(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-bold text-gray-900"
+                    className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-bold text-gray-900"
                     placeholder="••••••••"
                   />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
+                    aria-pressed={showPassword}
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
+                <p className="text-xs text-gray-400 font-medium ml-1">কমপক্ষে ৬ অক্ষর</p>
               </div>
               <div className="space-y-2">
                 <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">নিশ্চিত করুন</label>
                 <div className="relative group">
                   <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
                   <input 
-                    type="password" 
+                    type={showConfirmPassword ? "text" : "password"} 
                     required 
                     value={confirmPassword} 
                     onChange={e => setConfirmPassword(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-bold text-gray-900"
+                    className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-[15px] outline-none focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-bold text-gray-900"
                     placeholder="••••••••"
                   />
+                  <button
+                    type="button"
+                    aria-label={showConfirmPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
+                    aria-pressed={showConfirmPassword}
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
             </div>
+
+            {error && (
+              <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-sm font-bold animate-shake">
+                <CircleX size={18} className="shrink-0" />
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 text-emerald-700 text-sm font-bold">
+                <CircleCheck size={18} className="shrink-0" />
+                {success}
+              </div>
+            )}
 
             <button 
               type="submit" 
@@ -179,6 +248,17 @@ export default function SignupPage() {
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        .animate-shake {
+          animation: shake 0.3s ease-in-out;
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { todayISO, currentMonthStr } from "@/lib/utils";
 import { 
   Users, UserPlus, Search, Filter, 
@@ -14,9 +15,9 @@ import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
 export default function MembersPage() {
-  const { user, role } = useAuth();
-  const isAdmin = hasAdminRole(role, user?.email);
-  const isStaff = hasStaffRole(role, user?.email);
+  const { role } = useAuth();
+  const isAdmin = hasAdminRole(role);
+  const isStaff = hasStaffRole(role);
   
   const [members, setMembers] = useState<any[]>([]);
   const [pledgeHistory, setPledgeHistory] = useState<PledgeHistoryEntry[]>([]);
@@ -187,8 +188,21 @@ export default function MembersPage() {
   );
 
   if (loading) return (
-    <div className="min-h-[400px] flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+    <div className="p-4 sm:p-8 space-y-8" aria-hidden="true">
+      <div className="h-10 w-56 bg-gray-100 rounded-xl animate-pulse" />
+      <div className="card-premium overflow-hidden">
+        <div className="p-6 border-b border-gray-100 bg-white/50"><div className="h-10 max-w-md bg-gray-100 rounded-xl animate-pulse" /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 sm:p-6 bg-gray-50/50">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white p-6 rounded-3xl border border-emerald-50/50 space-y-3">
+              <div className="flex items-start justify-between"><div className="w-14 h-14 rounded-2xl bg-gray-100 animate-pulse" /><div className="h-6 w-20 bg-gray-100 rounded-full animate-pulse" /></div>
+              <div className="h-5 bg-gray-100 rounded-lg w-2/3 animate-pulse" />
+              <div className="h-3 bg-gray-100 rounded-lg w-full animate-pulse" />
+              <div className="h-3 bg-gray-100 rounded-lg w-full animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 
@@ -241,6 +255,7 @@ export default function MembersPage() {
                         onClick={() => handleOpenModal(member)}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all active:scale-90"
                         title="এডিট"
+                        aria-label="এডিট"
                       >
                         <Edit2 size={16} />
                       </button>
@@ -249,6 +264,7 @@ export default function MembersPage() {
                           onClick={() => handleDelete(member.id)}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all active:scale-90"
                           title="ডিলিট"
+                          aria-label="ডিলিট"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -272,9 +288,18 @@ export default function MembersPage() {
                         }}
                         className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all active:scale-90"
                         title="কিউআর কোড"
+                        aria-label="কিউআর কোড"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
                       </button>
+                      <Link
+                        href={`/admin/members/${member.id}`}
+                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all active:scale-90 inline-flex"
+                        title="বিস্তারিত দেখুন"
+                        aria-label="বিস্তারিত দেখুন"
+                      >
+                        <ChevronRight size={16} />
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -318,7 +343,7 @@ export default function MembersPage() {
                 <h2 className="text-xl font-bold font-tiro">{editingMember ? 'সদস্য এডিট করুন' : 'নতুন সদস্য যোগ করুন'}</h2>
                 <p className="text-emerald-100 text-xs mt-1">সঠিক তথ্য প্রদান করে সেভ করুন</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors" aria-label="বন্ধ">
                 <X size={24} />
               </button>
             </div>
@@ -419,14 +444,14 @@ export default function MembersPage() {
                 <button 
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-6 py-3.5 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all active:scale-95"
+                  className="btn-outline flex-1"
                 >
                   বাতিল
                 </button>
                 <button 
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 px-6 py-3.5 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="btn-emerald flex-1 disabled:opacity-50"
                 >
                   {submitting ? (
                     <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>

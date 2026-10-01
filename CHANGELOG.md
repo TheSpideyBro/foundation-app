@@ -15,6 +15,13 @@ All notable changes to this project are documented here. The format follows [Kee
 - **Joma Entry auto-splits the cash handed over** — the জমা field is now the *total* (মোট নগদ): whatever the coverage window cannot absorb is derived as অতিরিক্ত জমা (read-only box, never typed) and sent as `extra_amount`, so `amount` = what the engine may allocate, `donations.amount` still equals the cash handed over and the zero-sum invariant is untouched. Before, the operator had to compute and type the split by hand — a ৳1,400 entry over a ৳1,300 window left ৳100 as an anonymous "অবণ্টিত" row with `extra_amount = 0`. Preview, confirm dialog, success screen and receipt now show the same three numbers (মোট নগদ / বরাদ্দ / অতিরিক্ত জমা), the amber "⚠ অবণ্টিত" warning became a normal extra-amount line, and the receipt/donation labels are Bengali instead of "Extra Amount"/"extra".
 - `scripts/dump-supabase-schema.py`: regenerates `supabase/schema.sql` as executable DDL from the live catalog (tables, constraints, FKs, indexes, RLS, verbatim policies/functions with their EXECUTE grants, triggers, views, grants) — the hand-written file had drifted badly (TD-008).
 - `supabase/migrations-test/`: separate migration folder for the Test project — its `save_payment_entry`/`reallocate_payment` signatures differ from Main, so replaying Main's files there would create broken overloads (TD-011).
+- **Receipt verification (public)**: new `/verify/[receipt_no]` page — the QR code printed on every receipt now resolves to a branded "যাচাইকৃত রসিদ" check (masked donor name, amount in Bengali digits + words, month, date, collector); unknown numbers get a branded "রসিদ পাওয়া যায়নি" card. Whitelisted in `middleware.ts`.
+- **HTML receipt view**: new staff-gated `/donations/[id]/receipt` page — accessible alternative to the JPEG receipt (screen-reader readable, copyable text) with a print button and scoped `@media print` stylesheet.
+- **Bulk import UX**: per-section template download, file validation (5 MB cap, extension/MIME), parse preview (Bengali row count + first-5-rows table) with a "নিশ্চিত করুন" confirm step before POST, 500-row cap, per-row `{row, error}` reporting, progress text with `role="status"`.
+- **Auth UX**: login honors `?callbackUrl=` (same-origin validated); password visibility toggles on all three password fields; signup uses inline Bengali banners (no more `alert()`), maps Supabase errors to Bengali, validates phone `^01[3-9]\d{8}$`, shows the 6-char password hint; `inputMode="tel"` on phone inputs.
+- **App shell a11y**: mobile drawer with Escape-to-close, focus trap, `role="dialog"`/`aria-modal`; `aria-current="page"` on nav; branded Bengali `not-found.tsx` + `error.tsx` (retry); safe-area padding; 44px touch targets; role-aware bottom nav (staff see "জমা"); shared `AdminBackLink` component.
+- **Bengali-first sweep**: reports/donations/expenses/members/member-detail labels, dates (`formatDateBengali`), numerals (`toBengaliNumber`/`formatMoney`), and methods (`methodLabels`) — no more "Cash Received"/"Search..."/raw ISO dates.
+- List pages (donations, expenses, members) show skeleton rows while loading instead of bare spinners.
 
 ### Removed
 - **34 dead files**: unreferenced one-off tooling (`scripts/capture-*.cjs`, `fix-env-google.js`, `live-fullsync.js`, `receipt_generator.py`, `verify-member-actions.cjs`), superseded smoke tests (`tests/e2e-full.js`, `live-sheets-test.js`, `validate-full-schema.js`, `verify-clean.js`), Next.js boilerplate SVGs (`public/next.svg`, `vercel.svg`, `window.svg`, `globe.svg`, `file.svg`), root-level work reports (`HIGH_PRIORITY_FIXES.md`, `VERIFICATION_REPORT.md` — superseded by CHANGELOG/COMMIT_LOG), the unused Google Sheet sample (`docs/sheets/*.xlsx`), and `lib/sheets-auto.ts` (no importers).
@@ -33,6 +40,12 @@ All notable changes to this project are documented here. The format follows [Kee
 - **BUG-014**: `POST /api/notify/whatsapp` had no auth at all; `/admin/members/[id]` had no role gate; admin tiles were visible to every role. Every API route now goes through `requireAuth("staff"|"admin")` (`lib/server-auth.ts`), which also enforces `is_approved === true`.
 - New `lib/auth.ts`: single `FOUNDER_EMAIL` constant + `isStaff`/`isAdmin`/`isApproved` — the 16 inlined founder-email literals are gone. `isApproved()` now fails closed (`=== true`), which the new `NOT NULL` constraint makes safe.
 - `lib/supabase-client.ts`: mock client now throws `SUPABASE_NOT_CONFIGURED` on writes instead of silently no-oping.
+- **BUG-034**: founder email bypass removed — `FOUNDER_EMAIL`/`isFounder()` deleted from `lib/auth.ts`; `isAdmin()`/`isStaff()` are purely `users.role`-based. ⚠️ Deploy only after confirming the founder's `users.role = 'admin'` in the live DB (TD-001 → resolved).
+- **BUG-033**: `xlsx@0.18.5` (unmaintained, known prototype-pollution/ReDoS) replaced with `@e965/xlsx@0.20.3` drop-in (patched CVEs); bulk import additionally gets strict file validation (5 MB, extension/MIME) and a 500-row cap enforced client + server (413).
+- **BUG-035**: Content-Security-Policy enabled in `next.config.ts` (adapted to Next.js + Tailwind v4 + Google Fonts + Supabase); `X-Frame-Options: DENY` → `SAMEORIGIN` so the same-origin receipt preview iframe works; deprecated `X-XSS-Protection` dropped.
+- **BUG-039**: bulk import API validates every row against a per-table column allow-list + type checks before insert (fail-closed: nothing inserts if any row errors); export endpoint paginated (`limit`/`offset`).
+- **BUG-040**: `GET /api/sync-sheets` (revealed Sheets-backup status with no auth) now requires `requireAuth("admin")`.
+- **BUG-041**: middleware no longer skips the auth gate when Supabase env vars are missing — fails closed (protected routes redirect to `/login`).
 
 ### Fixed
 - **BUG-031 (data)**: সাদ্দাম হোসেন আকাশ's ledger charged ৳1,000/month from September onward while every label said ৳100 — his ৳100 change had been saved with `effective_from_month = 2026-08`, so it only covered August. Confirmed with the operator: **September stays ৳1,000, October onward is ৳100** → migration `supabase/migrations/20261001_pledge_history_akash_october.sql` adds the missing `2026-10 → ৳100` row (idempotent, asserts both resolved months and `members.monthly_pledge`). No existing history row, donation or allocation changed; zero-sum still `7,850 = 7,850`.
@@ -65,12 +78,22 @@ All notable changes to this project are documented here. The format follows [Kee
 - Receipt route: shared `numberToWordsBengali` from `lib/utils.ts` — the local copy printed `undefined হাজার` for amounts ≥ 10,000.
 - `next.config.ts`: `ignoreBuildErrors` removed (TD-002) — the build type-checks again.
 - Dropped unused `exceljs` and stale `package-lock.json`; deleted unused `lib/supabase/client.ts`; `.env.example` documents `NEXT_SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `WHATSAPP_*`.
+- **BUG-032**: receipt QR codes pointed at `/verify/{receipt_no}`, a route that didn't exist — every printed receipt's QR landed on a 404. New public `/verify/[receipt_no]` page restores the trust feature; QR payload is now env-driven (`NEXT_PUBLIC_SITE_URL`, request-origin fallback) with a "স্ক্যান করে যাচাই করুন" caption.
+- **BUG-036**: `X-Frame-Options: DENY` blocked the same-origin receipt preview iframe on `/donations` (blank preview) — now `SAMEORIGIN`.
+- **BUG-037**: login ignored `?callbackUrl=` and always landed on `/dashboard` — now honors it after a same-origin check.
+- **BUG-038**: expenses used native `alert()` for all errors and accepted negative amounts — now inline Bengali banners, `amount <= 0` rejected (matches DB `CHECK`), `min="0.01"` + `inputMode="decimal"`; dead `proof_url` state removed.
+- **BUG-042**: audit log page loaded the entire `audit_log` table — now paginated (50/page, "আরো দেখুন").
+- **Joma form**: real `<form>` (Enter submits), `inputMode="decimal"` on amounts, combobox a11y (`role=listbox/option`, empty-state message), disabled-save hints, confirm dialog with Escape + focus trap, extra-only validation, "চালু"/"বন্ধ" toggle, shared `formatMoney`, button hierarchy via design-system classes.
+- **Signup**: inline banners instead of `alert()`, Bengali error mapping (raw English `error.message` never shown), phone regex + 6-char hint.
+- **Mobile shell**: drawer a11y (Escape, focus trap, `role="dialog"`), `aria-current="page"`, safe-area `pb-[env(safe-area-inset-bottom)]`, 44px touch targets, branded Bengali 404 + error pages, manifest colors aligned (`#059669`/`#FDFDFC`), dead `--font-inter` token removed, dead footer `href="#"` links unwrapped (no number invented).
+- **Labels**: orphan `/admin/members/[id]` linked from the members list ("বিস্তারিত দেখুন"); donations share fallback now shares the public verify link instead of a 401-ing API URL; "Workflow / /joma only" dev card replaced with "এই মাসের জমা"; icon buttons across the app gained Bengali `aria-label`s; ad-hoc buttons migrated to `.btn-emerald`/`.btn-outline`.
+- **Lint**: `@typescript-eslint/no-explicit-any`, `no-unused-vars`, `react-hooks/exhaustive-deps` tightened from `off` to `warn` (0 errors; new `any`s now surface).
 
 ### Planned / Next Up
 
 These are the items currently queued for the next release. Add new items here as they come up.
 
-- [x] TD-001: Founder email bypass centralized in `lib/auth.ts` (removal still open — needs the live role row verified)
+- [x] TD-001: Founder email bypass REMOVED in `fix(auth)!` (2026-10-01, `lib/auth.ts` — no more `FOUNDER_EMAIL`/`isFounder()`). ⚠️ Before deploy, confirm the founder's `users.role = 'admin'` in the live DB or they will be locked out of admin.
 - [x] TD-002: `ignoreBuildErrors: true` removed
 - [ ] TD-003: Cache `get_my_role()` result to reduce per-RLS-call overhead
 - [ ] TD-004: Evaluate SVG/CSS receipt generation as alternative to node-canvas
@@ -89,7 +112,7 @@ These are the items currently queued for the next release. Add new items here as
 - [ ] Roadmap: receipt PDF export (currently JPEG only)
 
 ### Known debt (tracked in [docs/decisions/TECH_DEBT.md](docs/decisions/TECH_DEBT.md))
-- TD-001 *(mitigated)* Founder email bypass — now centralized in `lib/auth.ts`
+- TD-001 *(resolved 2026-10-01)* Founder email bypass — removed from `lib/auth.ts`; roles are the single source of truth
 - TD-003 `get_my_role()` runs per RLS check
 - TD-004 Receipt generation is canvas-heavy
 - TD-007 *(mitigated)* Excel/PDF export overlap — `exceljs` dropped

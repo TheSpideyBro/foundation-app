@@ -92,4 +92,4 @@ The resolved `role` / `isApproved` / `memberId` / `phone` are exposed to all com
 
 ## Known Caveat
 
-`isAdmin()` and `isStaff()` in `lib/auth.ts` return `true` for one hardcoded address (`FOUNDER_EMAIL`, overridable via `NEXT_PUBLIC_FOUNDER_EMAIL`) regardless of `users.role`. This is the single remaining bypass — nothing else in the codebase compares emails inline. See [TD-001](../decisions/TECH_DEBT.md#td-001-hardcoded-founder-email-as-admin-bypass); delete it once the founder's `users.role` row is confirmed to be `admin`.
+~~`isAdmin()` and `isStaff()` in `lib/auth.ts` return `true` for one hardcoded address (`FOUNDER_EMAIL`, overridable via `NEXT_PUBLIC_FOUNDER_EMAIL`) regardless of `users.role`.~~ **Removed 2026-10-01 (TD-001 resolved):** `isAdmin()`/`isStaff()` are purely `users.role`-based. `users.role` is the single source of truth — verify the founder's row is `admin` in the live DB before deploying.

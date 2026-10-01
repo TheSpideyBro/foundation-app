@@ -26,7 +26,14 @@ export async function POST() {
   }
 }
 
-/** GET: lightweight status — whether sheets sync is configured. */
+/**
+ * GET: lightweight status — whether sheets sync is configured.
+ *
+ * Gated behind the same admin auth as POST: an unauthenticated caller
+ * must not learn whether Google Sheets backup is configured.
+ */
 export async function GET() {
+  const auth = await requireAuth("admin");
+  if (!auth.ok) return auth.response;
   return NextResponse.json({ enabled: Boolean(getSheetsConfig()) });
 }

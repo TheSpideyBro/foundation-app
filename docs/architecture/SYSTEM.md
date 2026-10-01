@@ -178,7 +178,7 @@ foundation-app/
 ├── lib/                    # Shared libraries
 │   ├── supabase-client.ts  # Browser Supabase client (singleton + mock fallback)
 │   ├── supabase/server.ts  # Server client (cookie-based)
-│   ├── auth.ts             # FOUNDER_EMAIL + isStaff/isAdmin/isApproved
+│   ├── auth.ts             # isStaff/isAdmin/isApproved (purely role-based; founder email bypass removed 2026-10-01)
 │   ├── server-auth.ts      # requireAuth() for API routes
 │   ├── utils.ts            # cn(), Bengali formatting, money formatting, local dates
 │   ├── payment-ledger.ts   # ★ Canonical allocation engine

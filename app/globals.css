@@ -3,7 +3,6 @@
 @theme {
   --font-tiro: "Tiro Bangla", serif;
   --font-hind: "Hind Siliguri", sans-serif;
-  --font-inter: "Inter", sans-serif;
   
   --color-primary: #064E3B;
   --color-primary-light: #059669;
@@ -24,7 +23,7 @@
   body {
     background-color: var(--color-background);
     color: var(--color-text-primary);
-    font-family: var(--font-inter), var(--font-hind), sans-serif;
+    font-family: var(--font-hind), sans-serif;
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.01em;
   }

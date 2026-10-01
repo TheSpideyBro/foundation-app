@@ -13,9 +13,9 @@ import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
 export default function AdminPage() {
-  const { user, role } = useAuth();
-  const isAdmin = hasAdminRole(role, user?.email);
-  const isStaff = hasStaffRole(role, user?.email);
+  const { role } = useAuth();
+  const isAdmin = hasAdminRole(role);
+  const isStaff = hasStaffRole(role);
   
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);

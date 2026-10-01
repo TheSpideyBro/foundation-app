@@ -128,7 +128,7 @@ Complete feature inventory with route, role access, and implementation status.
 - **Route**: `/api/receipts/[id]` (GET, with `?download=1` for JPEG)
 - **Roles**: all authenticated users (own receipts); staff (all receipts)
 - **Implementation**: `app/api/receipts/[id]/route.ts`
-- **Description**: Premium Bengali receipt as JPEG canvas with foundation logo, QR code, amount in Bengali words, signature font, verified badge
+- **Description**: Premium Bengali receipt as JPEG canvas with foundation logo, QR code, amount in Bengali words, signature font, verified badge. The QR payload now uses `NEXT_PUBLIC_SITE_URL` (request-origin fallback) and points at the public `/verify/[receipt_no]` page, with a "স্ক্যান করে যাচাই করুন" caption under the code.
 
 ### 20. Member QR Codes
 - **Route**: `/api/members/[id]/qr`
@@ -170,3 +170,15 @@ Complete feature inventory with route, role access, and implementation status.
 - **Route**: `/`
 - **Implementation**: `app/page.tsx`
 - **Description**: Public landing page with foundation info and login/signup links
+
+### 27. Receipt Verification (রসিদ যাচাই)
+- **Route**: `/verify/[receipt_no]`
+- **Roles**: public (no login; whitelisted in `middleware.ts`)
+- **Implementation**: `app/verify/[receipt_no]/page.tsx`
+- **Description**: Public receipt authenticity check — the QR code printed on every receipt points here. Shows a "যাচাইকৃত রসিদ" badge, receipt number, amount in Bengali digits + words, covered month(s), date, and collector. Donor name is masked (first 3 code points + •••) for privacy. Unknown receipt numbers render a branded "রসিদ পাওয়া যায়নি" card. Lookup runs server-side with the service-role key; only verification fields are selected.
+
+### 28. HTML Receipt View
+- **Route**: `/donations/[id]/receipt`
+- **Roles**: admin, treasurer (staff-gated, same pattern as other protected pages)
+- **Implementation**: `app/donations/[id]/receipt/page.tsx`
+- **Description**: Accessible HTML version of the donation receipt (the JPEG is invisible to screen readers). Same data as the JPEG including batch consolidation, with a print button and scoped `@media print` stylesheet. Links out to the public verify page for sharing.

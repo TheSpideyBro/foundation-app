@@ -8,21 +8,21 @@ Every trade-off that will bite later is logged here. Format: `TD-###`.
 
 ## TD-001: Hardcoded Founder Email as Admin Bypass
 
-**Status:** mitigated
+**Status:** resolved (2026-10-01)
 **Region:** frontend
 
 ### Description
 
-Was: 16 files inlined `user?.email === 'saddamakash234@gmail.com'` alongside `role === 'admin'`, so the literal was impossible to audit or rotate. Now every check goes through `isStaff()` / `isAdmin()` in `lib/auth.ts`, which read a single `FOUNDER_EMAIL` constant (`process.env.NEXT_PUBLIC_FOUNDER_EMAIL ?? "saddamakash234@gmail.com"`). The bypass itself is kept deliberately: it is the recovery path if the founder's `users.role` row is ever wrong, and it is auditable in one place. Remaining risk:
-- Cannot be revoked from the database (it lives in code/env, not a role row).
-- Bypasses the `users.role` model and RLS semantics.
+Was: 16 files inlined a founder-email literal alongside `role === 'admin'`, so the literal was impossible to audit or rotate. It was then centralized in `lib/auth.ts` (`FOUNDER_EMAIL` / `isFounder()`, overridable via `NEXT_PUBLIC_FOUNDER_EMAIL`) — but it still bypassed the `users.role` model and could not be revoked from the database.
 
-### Why it exists
-The founder's mail account predates role modeling and the hardcoded check was the fastest reliable fix; role resolution had gaps at the time (BUG-005). Kept intentionally as a recovery path, now in exactly one place.
+Resolved 2026-10-01: the constant and `isFounder()` were deleted; `isAdmin()` / `isStaff()` are now purely `users.role`-based. `users.role` is the single source of truth.
+
+### Why it existed
+The founder's mail account predates role modeling and the hardcoded check was the fastest reliable fix; role resolution had gaps at the time (BUG-005).
 
 ### Recommended action
-- Done: centralized helper (`lib/auth.ts`) — no component inlines an email.
-- Still open: set the founder's `users.role = 'admin'` in the live DB, then decide whether the bypass is still needed; if not, drop `isFounder()` from `isAdmin`.
+- Done: bypass removed (`fix(auth)!`, 2026-10-01).
+- Before deploy: verify the founder's `users.role = 'admin'` in the live DB (or the founder loses admin access). `/admin/users` can set the role.
 
 ---
 

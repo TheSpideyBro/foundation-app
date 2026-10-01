@@ -59,6 +59,40 @@
 
 ---
 
+## 40b056b — fix(joma): repair status block dropped in rebase resolution
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `app/joma/page.tsx`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Status badge wrapper | `{allocationPreview.allocations.length > 0 && (` line dropped in the 555d111 rebase resolution; dangling `)}` broke `tsc` (TS1381) | wrapper restored — badge only renders when the preview has allocations (user's behavior, per rebase policy) |
+| `money(autoAllocatable)` call site | `Cannot find name 'money'` (TS2304) — the local helper was deleted in 555d111, main's auto-split code added a new call site | `formatMoney(autoAllocatable)` — finishes the `money()` → `formatMoney()` migration |
+
+### Why
+
+The rebase of 555d111 onto main's auto-split commit needed two manual merges in `app/joma/page.tsx`; both left compile breaks. Caught by `npx tsc --noEmit` on the rebased tree.
+
+### Tests Run
+
+- `npx tsc --noEmit` — clean
+- `npm run lint` — 0 errors, 140 warnings (all pre-existing)
+- `npm run build` — ok, all routes including `/verify/[receipt_no]` and `/donations/[id]/receipt`
+
+### Related
+
+- Rebase of 555d111 (`feat(joma): form semantics, a11y, validation and button hierarchy`) onto 2b88e45
+
+### Known Risks / Follow-ups
+
+- None — restores the exact pre-rebase runtime behavior.
+
+---
+
 ## 2b88e45 — feat(joma): derive the extra amount from the cash handed over
 
 **Date:** 2026-10-01  
@@ -108,6 +142,450 @@ manual flow produced when the boxes were filled correctly.
 - `donations.extra_amount` is Main-only; the Test project's `save_payment_entry` has no `p_extra_amount`, so a Joma entry pointed at Test fails as it did before (TD-011).
 - The zero-pledge edge stores the whole cash as `amount` with `extra_amount = 0`, so the donations card/Reports extra column stays 0 there even though the UI called it অতিরিক্ত জমা — the rows and totals are still correct.
 - No unit test covers the split (it is four lines of arithmetic over the already-tested preview); worth one if the split ever grows rules.
+
+---
+
+## fc97bd0 — chore(lint): tighten no-explicit-any/no-unused-vars/exhaustive-deps to warn
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `eslint.config.mjs`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| `no-explicit-any`, `no-unused-vars`, `exhaustive-deps` | `off` | `warn` |
+| `npm run lint` result | 0 errors, 0 warnings (silent) | 0 errors, 142 warnings (pre-existing, all surfaced) |
+
+### Why
+
+Audit M7 (first step of the lint-strict roadmap). Warnings don't fail CI, but new `any`s now surface instead of spreading silently.
+
+### Tests Run
+
+- `npm run lint` — 0 errors, 142 warnings (all pre-existing, triaged as legit `any` usage or unused vars in this pass).
+
+### Related
+
+- Audit report §4 item 24
+
+### Known Risks / Follow-ups
+
+- Full `any` cleanup is follow-up work, not this pass. `react-hooks/immutability` + `set-state-in-effect` stay `off` (too aggressive for this codebase).
+
+---
+
+## 53413c9 — feat(i18n): Bengali-first label sweep across reports/donations/members
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `app/reports/page.tsx`, `app/donations/page.tsx`, `app/members/page.tsx`, `app/admin/members/[id]/page.tsx`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Reports labels | "Search...", "Cash Received", "Covered Month", "মাসিক pledge" | "খুঁজুন...", "নগদ প্রাপ্তি", "মাস", "মাসিক প্রতিশ্রুতি" (+ Bengali month dropdowns, dates, statuses, roles) |
+| Donations methods/dates | Raw "CASH", ISO dates | `methodLabels`, `formatDateBengali`, `monthLabelBengali` |
+| Donations share fallback | Shared raw `/api/receipts/[id]` URL (401s for recipients) | Shares public `/verify/[receipt_no]` link |
+| "Workflow / /joma only" stat card | Dev-speak label | "এই মাসের জমা" |
+| `/admin/members/[id]` | Orphan (no link pointed to it) | Linked from members list ("বিস্তারিত দেখুন", staff-only) |
+| Buttons | Ad-hoc classes | `.btn-emerald` / `.btn-outline` design-system classes |
+| Icon buttons | No accessible names | Bengali `aria-label`s |
+
+### Why
+
+UI review M4/M5/M6/M10/M14/M16/M17/L14/L15 — Bengali-first rule (AGENTS.md): users should never see English UI strings in normal flows.
+
+### Tests Run
+
+- `npx tsc --noEmit` — clean
+- `npm run lint` — 0 errors
+- `npm run build` — 30/30 routes
+
+### Related
+
+- Bug: none (label sweep, UI review items)
+
+### Known Risks / Follow-ups
+
+- `xlsx` import on reports page moved to `@e965/xlsx` (same change as 5cd16d5).
+
+---
+
+## 316cf4e — feat(a11y): drawer a11y, safe-area, error boundaries, back-nav consistency
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `components/layout.tsx` (major), `app/not-found.tsx` + `app/error.tsx` (new), `components/AdminBackLink.tsx` (new), `app/layout.tsx`, `public/manifest.json`, `app/globals.css`, `app/page.tsx`, 7 admin pages (back-nav)
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Mobile drawer | Plain div, no keyboard support | Escape closes, focus trap (in on open, back to hamburger on close), `role="dialog"`, `aria-modal`, `inert` when closed, Bangla labels, `aria-expanded` on hamburger |
+| Active nav indication | Visual only | `aria-current="page"` on sidebar/drawer/bottom-nav (admin matches pathname prefix) |
+| 404 / crash | Raw Next.js pages | Branded Bengali `not-found.tsx`; `error.tsx` boundary with "আবার চেষ্টা করুন" retry |
+| Safe area | Dead `pb-safe` class (no such utility) | `pb-[env(safe-area-inset-bottom)]` + `viewportFit: "cover"` in layout |
+| Touch targets | 32–40px icon buttons | 44px (hamburger, drawer close, admin back buttons) |
+| Manifest | Mismatched theme/background colors | `#059669` / `#FDFDFC` (no splash flash) |
+| Footer | Dead `href="#"` links | Unwrapped (no phone/website published anywhere in repo — nothing invented) |
+| Admin back-nav | users/pledge-history/audit had none; inconsistent | Shared `AdminBackLink` component; 44px + Bangla aria-labels everywhere |
+| Bottom nav (staff) | "খরচ" tab | "জমা" tab (ReceiptText icon); খরচ still in drawer |
+
+### Why
+
+UI review H6/M1/M8/M9/M11/L1/L2/L4/L5/L6; audit L4 (partial). Also removed 2 unused icon imports (`Bell`, `Search`).
+
+### Tests Run
+
+- `npx tsc --noEmit` — clean
+- `npm run lint` — 0 errors
+- `npm run build` — 30/30 routes
+
+### Related
+
+- Bug: none (a11y/shell, UI review items)
+
+### Known Risks / Follow-ups
+
+- No full offline mode: `sw.js` kept as cache-clearing no-op; the word "offline" appears nowhere in manifest/layout/README/docs, so there was nothing misleading to remove. Full offline = future work.
+
+---
+
+## e7cc06b — fix(expenses): inline errors, amount guard, Bengali formatting, skeletons
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `app/expenses/page.tsx`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Error display | 3× native `alert()` | Inline banners: modal-internal (validation + save), page-top (delete) |
+| Amount validation | Any number; `<= 0` failed at DB with English constraint error | `amount <= 0` rejected client-side with Bengali message; `min="0.01"`, `inputMode="decimal"` |
+| Amounts/dates | Raw numbers, ISO dates | `formatMoney` (Bengali digits), `formatDateBengali` |
+| `proof_url` state | Dead state (no UI ever set it) | Removed |
+| Loading | Bare spinner | Layout-matched skeleton rows |
+
+### Why
+
+UI review H7/H8/M7(partial)/M16. Delete still uses native `confirm()` (out of scope).
+
+### Tests Run
+
+- `npx tsc --noEmit` — clean
+- `npm run lint` — 0 errors
+- `npm run build` — 30/30 routes
+
+### Related
+
+- Bug: BUG-038
+
+### Known Risks / Follow-ups
+
+- None.
+
+---
+
+## f863b55 — feat(joma): form semantics, a11y, validation and button hierarchy
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `app/joma/page.tsx`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Entry UI | Divs + click handlers | Real `<form noValidate onSubmit>` — Enter submits like Save; `noValidate` keeps manual Bengali validation (no browser English tooltips) |
+| Amount inputs | `type="number"` only | + `inputMode="decimal"` (mobile decimal keyboard) |
+| Member combobox | No ARIA roles | `role=combobox/listbox/option`, `aria-expanded`, `aria-selected`; "কোনো সদস্য পাওয়া যায়নি" empty state |
+| Disabled Save | Silent | Explains itself ("প্রথমে সদস্য নির্বাচন করুন" …) |
+| Confirm dialog | No keyboard support | Escape closes; focus in on open, returns on close; Tab cycles inside (no new dep) |
+| Validation | `paymentAmount > 0` required | `paymentAmount + extraAmount > 0` (extra-only allowed client-side) |
+| Pledge toggle | "ON"/"OFF" | "চালু"/"বন্ধ" |
+| Money formatting | Duplicate local `money()` with `Math.round` | Shared `formatMoney` (fractional paisa now displays — behavior change, more accurate) |
+| Buttons | Ad-hoc | `.btn-emerald` / `.btn-outline` hierarchy |
+
+### Why
+
+UI review H11/M12(client half)/L12/L13.
+
+### Tests Run
+
+- `npx tsc --noEmit` — clean
+- `npm run lint` — 0 errors
+- `npm run build` — 30/30 routes
+
+### Related
+
+- Bug: none (UI review items)
+
+### Known Risks / Follow-ups
+
+- **Server still requires `amount > 0`** (`app/api/payments/route.ts`) — a pure extra-only entry passes client validation but 400s at the API. Relaxing the API rule is out of scope for this page-level commit; needs a follow-up decision.
+
+---
+
+## 6d0ff1a — feat(auth): login callbackUrl, password visibility, signup validation
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `app/login/page.tsx`, `app/signup/page.tsx`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Post-login redirect | Always `/dashboard` | Honors `?callbackUrl=` after same-origin check (must start with `/`, not `//`; falls back to `/dashboard`) |
+| `useSearchParams` | — | Wrapped in `Suspense` (Next.js 16 static prerender requirement) |
+| Password fields | Always masked | Eye/EyeOff toggles with Bangla aria-labels on all 3 (login + signup + confirm) |
+| Signup errors | `alert()` + raw `error.message` (English leaked) | Inline banners; Supabase errors mapped to Bengali ("User already registered" → account-exists message) |
+| Phone validation | Basic | `^01[3-9]\d{8}$` after trim; `inputMode="tel"` on both phone inputs |
+| Password hint | None | "কমপক্ষে ৬ অক্ষর" (matches `supabase/config.toml` minimum_password_length = 6) |
+
+### Why
+
+UI review H5/H9/H10/M14/L11. Kept: double-submit guard, non-user-enumerating login error message.
+
+### Tests Run
+
+- `npx tsc --noEmit` — clean
+- `npm run lint` — 0 errors
+- `npm run build` — 30/30 routes (no prerender bailout for `/login`)
+
+### Related
+
+- Bug: BUG-037
+
+### Known Risks / Follow-ups
+
+- None.
+
+---
+
+## 7c0c762 — perf(admin): paginate audit log; require auth on sync-sheets status
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `app/admin/audit/page.tsx`, `app/api/sync-sheets/route.ts`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Audit log load | Entire `audit_log` table in one query | `.range()` pagination, 50/page, "আরো দেখুন" load-more; search filter over loaded rows; total in Bengali digits |
+| `GET /api/sync-sheets` | No auth — revealed Sheets-backup config status anonymously | `requireAuth("admin")` |
+
+### Why
+
+Audit M6 (audit half), L1. No client calls GET (only POST), so the auth gate breaks nothing.
+
+### Tests Run
+
+- `npx tsc --noEmit` — clean
+- `npm run lint` — 0 errors
+- `npm run build` — 30/30 routes
+
+### Related
+
+- Bug: BUG-040, BUG-041
+
+### Known Risks / Follow-ups
+
+- None.
+
+---
+
+## 5cd16d5 — feat(admin): harden bulk import — template, preview/confirm, per-row errors, cap
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `app/admin/bulk/page.tsx`, `app/api/admin/bulk/route.ts`, `package.json`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Spreadsheet parser | `xlsx@0.18.5` (unmaintained, known vulns) | `@e965/xlsx@0.20.3` drop-in (same `read`/`utils` API, patched CVEs) |
+| Import flow | File select → instant POST | Template download (exact headers) → validation (5 MB, extension/MIME, try/catch Bengali errors) → preview (Bengali row count + first-5-rows table) → "নিশ্চিত করুন" confirm → POST |
+| Row cap | None | 500 rows, enforced client + server (413) |
+| Server validation | Inserted rows as received | Per-table column allow-list + type checks (members/donations/expenses) before insert — fail-closed, nothing inserts if any row errors; per-row `{row, error}` list (Bengali, max 50) |
+| Export endpoint | Unbounded | `limit` (default 1000, max 5000) / `offset` pagination |
+| Progress/status | Silent | Progress text, `role="status"`, section-title success messages; ReceiptText icon for expenses |
+
+### Why
+
+Audit H1/M3/M6(export half); UI review H4/M13.
+
+### Tests Run
+
+- `npx tsc --noEmit` — clean
+- `@e965/xlsx` import smoke test (`read` function, `utils` object present)
+- `npm run lint` — 0 errors
+- `npm run build` — 30/30 routes
+
+### Related
+
+- Bug: BUG-033, BUG-039
+- Tech Debt: none
+
+### Known Risks / Follow-ups
+
+- **`pnpm-lock.yaml` still points at old `xlsx`** — pnpm isn't installed in this environment, so the lockfile couldn't be regenerated. Run `pnpm install` before deploy.
+
+---
+
+## e28c1f0 — fix(auth)!: remove founder email bypass; users.role is the single source
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `lib/auth.ts`, `lib/server-auth.ts`, `app/api/payments/route.ts`, `.env.example`, `SETUP.md`, `app/dashboard/page.tsx`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| `isAdmin()` / `isStaff()` | `true` for a hardcoded founder email regardless of `users.role` | Purely `users.role`-based |
+| `FOUNDER_EMAIL` / `isFounder()` | Existed in `lib/auth.ts` (+ `NEXT_PUBLIC_FOUNDER_EMAIL` in `.env.example`) | Deleted everywhere |
+| Payments API collector check | `… \|\| isFounder(collector.email)` | `isApproved(collector.is_approved) && isStaff(collector.role)` |
+| Page call sites | `hasAdminRole(role, user?.email)` | `hasAdminRole(role)` (~15 pages; mechanical hunks ride in their workstream commits on this branch) |
+
+### Why
+
+Audit H2 — privilege conferred by a string literal, not by data; could not be revoked from the database. TD-001 → resolved.
+
+### Tests Run
+
+- `grep -r "isFounder\|FOUNDER_EMAIL"` — clean
+- `npx tsc --noEmit` — clean
+- `npm run lint` — 0 errors
+- `npm run build` — 30/30 routes
+
+### Related
+
+- Bug: BUG-034
+- Tech Debt: TD-001 (resolved)
+
+### Known Risks / Follow-ups
+
+- ⚠️ **DEPLOY GATE:** confirm the founder's `users.role = 'admin'` in the LIVE database before deploying, or the founder will be locked out of admin screens and APIs. `/admin/users` can set the role.
+
+---
+
+## fe6467b — feat(receipts): add accessible HTML receipt view with print styles
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `app/donations/[id]/receipt/page.tsx` (new)
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Receipt access | JPEG only — invisible to screen readers, text not copyable | + accessible HTML view: receipt no, donor, amount (Bengali digits + কথায়), month coverage with batch consolidation (mirrors JPEG generator), date, collector, payment method, extra amount |
+| Printing | Screenshot/print the JPEG | Print button + scoped `@media print` CSS (hides nav/buttons, clean layout) |
+| Sharing | Raw `/api` URL (401s for non-logged-in recipients) | Links out to public `/verify/[receipt_no]` |
+
+### Why
+
+UI review H3, M2 (print). Auth follows the repo's existing client-page pattern (`useAuth` + `isStaff`).
+
+### Tests Run
+
+- `npx tsc --noEmit` — clean (2 type errors found and fixed during dev: single-arg `hasStaffRole`, embedded-relation array typing)
+- `npm run lint` — 0 errors
+- `npm run build` — 30/30 routes, `ƒ /donations/[id]/receipt` dynamic
+
+### Related
+
+- Bug: none (UI review items; companion to BUG-032's verify page)
+
+### Known Risks / Follow-ups
+
+- None.
+
+---
+
+## 098fb7a — fix(security): enable CSP header and SAMEORIGIN frame policy
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `next.config.ts`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Content-Security-Policy | Commented out entirely | Enabled, adapted: `script-src 'self' 'unsafe-inline'` (Next.js App Router inline bootstrap scripts), `style-src 'self' 'unsafe-inline'` + Google Fonts (Tailwind v4), `font-src` googleapis/gstatic, `img-src data:/blob:/https:`, `connect-src 'self'` + `*.supabase.co`; `api.qrserver.com` dropped (QR is server-generated) |
+| `X-Frame-Options` | `DENY` — blocked the app's own receipt preview iframe on `/donations` (blank preview) | `SAMEORIGIN` |
+| `X-XSS-Protection` | Deprecated header sent | Removed |
+
+### Why
+
+Audit M1; UI review H1.
+
+### Tests Run
+
+- `npm run build` — green; receipt preview iframe loads same-origin again.
+
+### Related
+
+- Bug: BUG-035, BUG-036 (partial — the middleware fail-closed change rode in 95ae1ea)
+
+### Known Risks / Follow-ups
+
+- `script-src` keeps `'unsafe-inline'` because static headers can't do per-request nonces — nonce-based CSP is future work (noted in config). Deliberate, documented deviation.
+
+---
+
+## 95ae1ea — feat(verify): add public receipt verification page
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `app/verify/[receipt_no]/page.tsx` (new), `middleware.ts`, `app/api/receipts/[id]/route.ts`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Receipt QR codes | Pointed at `/verify/{receipt_no}` — a route that didn't exist (404 on every scan) | New public page: "যাচাইকৃত রসিদ" badge, masked donor name (first 3 code points + •••), amount in Bengali digits + words, month, date, collector; branded "রসিদ পাওয়া যায়নি" card for unknown numbers |
+| QR payload domain | Hardcoded `https://daulkharfoundation.vercel.app` | `NEXT_PUBLIC_SITE_URL` with `request.nextUrl.origin` fallback + "স্ক্যান করে যাচাই করুন" caption |
+| Middleware public paths | `/verify/*` redirected to login | `/verify` + `/verify/*` whitelisted |
+| Middleware env handling | Skipped the auth gate when Supabase env was missing (fail-open) | Fails closed — protected routes redirect to `/login` when env is missing |
+
+### Why
+
+Audit H2/M2 (dead QR trust feature); UI review C1. Lookup uses the service-role key inside the Server Component only, selecting only verification fields (AGENTS.md rule 1).
+
+### Tests Run
+
+- `npx tsc --noEmit` — clean
+- `npm run lint` — 0 errors
+- `npm run build` — 30/30 routes, `ƒ /verify/[receipt_no]` dynamic
+
+### Related
+
+- Bug: BUG-032, BUG-036
+
+### Known Risks / Follow-ups
+
+- Old printed receipts (QR encoding the old hardcoded domain) still point at the wrong place — paper already printed can't be fixed.
 
 ---
 

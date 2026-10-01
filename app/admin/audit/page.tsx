@@ -4,18 +4,50 @@ import { useState, useEffect } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole } from "@/lib/auth";
+import { toBengaliNumber } from "@/lib/utils";
+import AdminBackLink from "@/components/AdminBackLink";
 import { 
   History, User, Activity, Calendar, 
-  Search, Filter, Clock, ArrowRight, AlertCircle
+  Search, Filter, Clock, ArrowRight, AlertCircle, Loader2
 } from "lucide-react";
 
+const PAGE_SIZE = 50;
+
 export default function AuditLogsPage() {
-  const { user, role } = useAuth();
-  const isAdmin = hasAdminRole(role, user?.email);
+  const { role } = useAuth();
+  const isAdmin = hasAdminRole(role);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const fetchLogs = async (pageNum: number, append: boolean) => {
+    if (append) setLoadingMore(true); else setLoading(true);
+    try {
+      const from = pageNum * PAGE_SIZE;
+      const { data, error } = await supabase()
+        .from("audit_log")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      setLoadError(null);
+      setLogs((prev) => (append ? [...prev, ...(data || [])] : data || []));
+      // A short page means we've reached the end.
+      setHasMore((data || []).length === PAGE_SIZE);
+      setPage(pageNum);
+    } catch (err) {
+      console.error("Error fetching logs:", err);
+      if (!append) setLogs([]);
+      setLoadError(err instanceof Error ? err.message : "লগ লোড করতে সমস্যা হয়েছে");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     // audit_log RLS is admin-only; skip the query (and its guaranteed empty
@@ -24,21 +56,7 @@ export default function AuditLogsPage() {
       setLoading(false);
       return;
     }
-    const fetchLogs = async () => {
-      try {
-        const { data, error } = await supabase().from("audit_log").select("*").order("created_at", { ascending: false });
-        if (error) throw error;
-        setLoadError(null);
-        setLogs(data || []);
-      } catch (err) {
-        console.error("Error fetching logs:", err);
-        setLogs([]);
-        setLoadError(err instanceof Error ? err.message : "লগ লোড করতে সমস্যা হয়েছে");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLogs();
+    void fetchLogs(0, false);
   }, [isAdmin]);
 
   const getActionLabel = (action: string) => {
@@ -74,9 +92,12 @@ export default function AuditLogsPage() {
   return (
     <div className="p-4 sm:p-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-[28px] font-bold font-tiro text-gray-900">অডিট লগ</h1>
-          <p className="text-gray-500 text-[14px]">ফাউন্ডেশনের সকল কার্যক্রমের পূর্ণাঙ্গ ইতিহাস</p>
+        <div className="flex items-center gap-4">
+          <AdminBackLink />
+          <div>
+            <h1 className="text-[28px] font-bold font-tiro text-gray-900">অডিট লগ</h1>
+            <p className="text-gray-500 text-[14px]">ফাউন্ডেশনের সকল কার্যক্রমের পূর্ণাঙ্গ ইতিহাস</p>
+          </div>
         </div>
       </div>
 
@@ -141,6 +162,24 @@ export default function AuditLogsPage() {
           )}
         </div>
       </div>
+
+      {!loading && !loadError && logs.length > 0 && (
+        <div className="mt-6 flex flex-col items-center gap-3">
+          <p className="text-xs text-gray-400 font-bold">
+            মোট {toBengaliNumber(logs.length)}টি লগ দেখানো হচ্ছে
+          </p>
+          {hasMore && (
+            <button
+              onClick={() => void fetchLogs(page + 1, true)}
+              disabled={loadingMore}
+              className="btn-outline flex items-center gap-2 disabled:opacity-50"
+            >
+              {loadingMore && <Loader2 size={16} className="animate-spin" />}
+              আরো দেখুন
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

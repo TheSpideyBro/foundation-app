@@ -838,3 +838,265 @@ The engine fallback argument is deliberately untouched: `effectiveMonthlyPledge`
 tsc + eslint + `pnpm build` clean, `pnpm test:ledger` 28/28, Playwright 3 passed / 6 skipped. For the reported member every label now resolves to ৳1,000 for `2026-09`…`2026-11` (the `2026-09 → ৳1,000` row wins), matching the preview and `calculate_payment_allocation()` (`1200 → 1000/200/0`, `1300 → 1000/300/0`).
 
 After `20261001_pledge_history_akash_october.sql` ran on Main: three history rows (`2026-08 → 100`, `2026-09 → 1000`, `2026-10 → 100`), the ADR-001 rule resolves `2026-08 → 100`, `2026-09 → 1000`, `2026-10`/`2026-11`/`2026-12 → 100`, `members.monthly_pledge` = 100 (agrees with the newest row), and the zero-sum invariant is untouched: `SUM(donations) = SUM(payment_allocations) = 7,850` (30 donations, 77 allocations).
+
+## BUG-032: Receipt QR Codes Pointed at a Nonexistent /verify Route
+
+**Status:** fixed
+**Fixed:** 2026-10-01
+**Found:** 2026-10-01
+**Region:** app
+
+### Description
+
+Every printed receipt carries a QR code whose payload was `/verify/{receipt_no}` — but no such route existed in the app, so scanning a receipt's QR landed on a 404. The entire receipt-trust feature was dead. Additionally, the QR URL was hardcoded to `https://daulkharfoundation.vercel.app`, so receipts generated on any other domain (staging, custom domain) pointed at the wrong place, and nothing told the donor to scan the code.
+
+### Impact
+
+The foundation's main anti-fraud affordance (donors verifying their receipt) was completely broken; every receipt printed to date has a dead QR.
+
+### Fix
+
+- New public page `app/verify/[receipt_no]/page.tsx`: Server Component, no login required (whitelisted in `middleware.ts`). Shows a "যাচাইকৃত রসিদ" badge, receipt number, amount in Bengali digits + words (`numberToWordsBengali`), covered month(s), date, and collector. Donor name is masked to the first 3 code points + •••. Unknown receipt numbers render a branded "রসিদ পাওয়া যায়নি" card, not the raw Next.js 404.
+- Lookup uses the service-role key inside the Server Component only, selecting only verification fields (AGENTS.md rule 1).
+- `app/api/receipts/[id]/route.ts`: QR payload now uses `NEXT_PUBLIC_SITE_URL` with `request.nextUrl.origin` fallback; a "স্ক্যান করে যাচাই করুন" caption was added under the QR.
+
+### Verification
+
+`npx tsc --noEmit` clean, `pnpm build` 30/30 routes with `ƒ /verify/[receipt_no]` dynamic. Old printed receipts (whose QR encodes the old hardcoded domain) will still fail if that domain isn't this app — nothing can fix paper already printed.
+
+---
+
+## BUG-033: Bulk Import Parsed Admin-Uploaded Files with Unpatched xlsx and No Row Cap
+
+**Status:** fixed
+**Fixed:** 2026-10-01
+**Found:** 2026-10-01
+**Region:** frontend + API
+
+### Description
+
+`app/admin/bulk/page.tsx` parsed admin-uploaded spreadsheets with `xlsx@0.18.5` — unmaintained with known prototype-pollution/ReDoS CVEs — and POSTed whatever it parsed to `/api/admin/bulk` with no row cap and no server-side validation: the API inserted rows as received.
+
+### Impact
+
+A malicious or corrupt spreadsheet could DoS the browser tab, and oversized payloads could be written straight to `members`/`donations`/`expenses` with no validation gate.
+
+### Fix
+
+- `xlsx@0.18.5` → `@e965/xlsx@0.20.3` (drop-in: same `read`/`utils` API, patched CVEs) in `package.json` and both import sites (bulk page, reports page). NOTE: `pnpm-lock.yaml` still points at `xlsx` — run `pnpm install` to regenerate before deploy.
+- Client: file validation (5 MB cap, extension/MIME, try/catch with Bengali errors), per-section template download with exact expected headers, parse preview (Bengali row count + first-5-rows table) with a "নিশ্চিত করুন" confirm step before POST, 500-row cap, progress text, `role="status"`.
+- Server (`app/api/admin/bulk/route.ts` POST): rejects `items.length > 500` with 413; every row is validated against a per-table column allow-list with type checks before insert — fail-closed: nothing inserts if any row errors; returns per-row `{row, error}` list (Bengali, max 50).
+
+### Verification
+
+`npx tsc --noEmit` clean, `@e965/xlsx` import smoke-tested (`read`/`utils` present), `pnpm build` green. The API's per-row validation rejects unknown columns and wrong types before any insert.
+
+---
+
+## BUG-034: Founder Email Bypass Granted Admin Outside the Role Model
+
+**Status:** fixed
+**Fixed:** 2026-10-01
+**Found:** 2026-09-30 (audit H2)
+**Region:** frontend + API
+
+### Description
+
+`lib/auth.ts` contained a hardcoded `FOUNDER_EMAIL` constant and `isFounder()` helper that made `isAdmin()`/`isStaff()` return `true` for one email address regardless of `users.role`. It could not be revoked from the database, bypassed RLS semantics, and lived in code/env rather than a role row. Call sites in ~15 pages passed `user?.email` as a second argument.
+
+### Impact
+
+Privilege was conferred by a string literal, not by data. Rotating it required a code deploy; anyone who could set that env/email controlled admin access.
+
+### Fix
+
+- `FOUNDER_EMAIL` and `isFounder()` deleted from `lib/auth.ts`; `isAdmin()`/`isStaff()` are now purely `users.role`-based (TD-001 → resolved).
+- `lib/server-auth.ts`, `app/api/payments/route.ts` (collector check is now `isApproved(...) && isStaff(collector.role)`), all page call sites: email argument dropped.
+- `NEXT_PUBLIC_FOUNDER_EMAIL` removed from `.env.example`; `SETUP.md` auth reference updated.
+- Docs: `docs/architecture/SECURITY.md`, `docs/development/ROLES.md`, `docs/architecture/SYSTEM.md`, `docs/decisions/TECH_DEBT.md` updated.
+
+### Verification
+
+`grep -r "isFounder\|FOUNDER_EMAIL" --include="*.ts*" .` is clean; `npx tsc --noEmit` clean; `pnpm build` 30/30.
+
+⚠️ **Deploy gate:** confirm the founder's `users.role = 'admin'` in the LIVE database before deploying, or the founder will be locked out of admin screens and APIs (`/admin/users` can set the role).
+
+---
+
+## BUG-035: CSP Was Commented Out; X-Frame-Options: DENY Broke the Receipt Preview
+
+**Status:** fixed
+**Fixed:** 2026-10-01
+**Found:** 2026-09-30 (audit M1) / 2026-10-01 (UI review H1)
+**Region:** config
+
+### Description
+
+`next.config.ts` had the Content-Security-Policy commented out entirely (no injection/XSS defense-in-depth), while `X-Frame-Options: DENY` blocked the app's own same-origin receipt preview `<iframe>` on `/donations`, rendering a blank preview.
+
+### Impact
+
+No CSP protection at all; a broken core UI element (receipt preview).
+
+### Fix
+
+- CSP enabled, adapted to actual needs: `script-src 'self' 'unsafe-inline'` (Next.js App Router injects inline bootstrap scripts; per-request nonces would need middleware — noted as future work), `style-src 'self' 'unsafe-inline'` + Google Fonts (Tailwind v4), `font-src` googleapis/gstatic, `img-src data:/blob:/https:`, `connect-src 'self'` + `*.supabase.co`. `api.qrserver.com` dropped (QR is server-generated).
+- `X-Frame-Options: DENY` → `SAMEORIGIN`; deprecated `X-XSS-Protection` header removed.
+
+### Verification
+
+`pnpm build` green; receipt preview iframe on `/donations` loads same-origin again. Nonce-based CSP remains future work.
+
+---
+
+## BUG-036: Middleware Skipped the Auth Gate When Supabase Env Was Missing
+
+**Status:** fixed
+**Fixed:** 2026-10-01
+**Found:** 2026-10-01
+**Region:** middleware
+
+### Description
+
+If `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` were unset, `middleware.ts` skipped the Supabase session check and let the request through — protected routes were effectively public in a misconfigured environment.
+
+### Impact
+
+Fail-open: a deploy missing env vars would expose every protected route.
+
+### Fix
+
+Middleware now fails closed: when Supabase env is missing, protected routes redirect to `/login`; only the explicit public paths (`/`, `/login`, `/signup`, `/verify/*`) remain reachable.
+
+### Verification
+
+Code path reviewed; `pnpm build` green. (Not exercised live — exercising it requires a deploy without env, which is exactly the failure mode.)
+
+---
+
+## BUG-037: Login Ignored callbackUrl, Always Landing on /dashboard
+
+**Status:** fixed
+**Fixed:** 2026-10-01
+**Found:** 2026-10-01 (UI review H5)
+**Region:** app
+
+### Description
+
+`app/login/page.tsx` hardcoded `router.push("/dashboard")` after sign-in, so deep links (e.g. `/admin/pending` shared in a message) were lost — the user had to navigate back manually.
+
+### Impact
+
+Broken deep-linking; shared admin links landed users on the dashboard instead of the intended page.
+
+### Fix
+
+Login honors `?callbackUrl=`, validated same-origin (must start with `/` and not `//`; falls back to `/dashboard`). Wrapped in `Suspense` for `useSearchParams` (Next.js 16 static prerender requirement).
+
+### Verification
+
+`npx tsc --noEmit` clean; `pnpm build` green (no prerender bailout for `/login`).
+
+---
+
+## BUG-038: Expenses Used Native alert() and Accepted Negative Amounts
+
+**Status:** fixed
+**Fixed:** 2026-10-01
+**Found:** 2026-10-01 (UI review H7/H8)
+**Region:** app
+
+### Description
+
+All three expense error paths used blocking native `alert()` (inconsistent with the rest of the app, inaccessible, no Bengali), and the amount input accepted `0`/negative values client-side even though the DB has `CHECK (amount > 0)` — a confusing DB error was the only guard.
+
+### Impact
+
+Poor error UX; users could submit amounts the database would reject with an English constraint error.
+
+### Fix
+
+- All three `alert()` calls → inline banners: form validation + save errors in a dismissible modal banner; delete errors in a page-top banner (mirrors the existing `loadError` pattern). Delete still uses native `confirm()` (out of scope).
+- Client validation rejects `amount <= 0` with a Bengali message; input gets `min="0.01"` + `inputMode="decimal"`.
+- Amounts via `formatMoney` (Bengali digits), dates via `formatDateBengali`; dead `proof_url` state removed; loading spinner → skeleton rows.
+
+### Verification
+
+`npx tsc --noEmit` clean; `pnpm build` green.
+
+---
+
+## BUG-039: Bulk Import API Inserted Rows With No Validation or Row Cap
+
+**Status:** fixed
+**Fixed:** 2026-10-01
+**Found:** 2026-09-30 (audit M6)
+**Region:** API
+
+### Description
+
+`POST /api/admin/bulk` inserted whatever the client sent — no row cap, no column allow-list, no type checks. Combined with BUG-033's unpatched parser, admin uploads were an unvalidated write path into `members`/`donations`/`expenses`.
+
+### Impact
+
+Corrupt or malicious payloads could write arbitrary-shaped data into core tables.
+
+### Fix
+
+- POST rejects `items.length > 500` with 413.
+- Every row validated against a per-table column allow-list (`members`/`donations`/`expenses`) with type checks before any insert — fail-closed: nothing inserts if any row errors; per-row `{row, error}` list (Bengali, max 50) returned.
+- GET export paginated (`limit` default 1000, max 5000; `offset`).
+
+### Verification
+
+`npx tsc --noEmit` clean. Validation logic reviewed; fail-closed behavior (no partial inserts) is by construction — all rows validated before the first insert.
+
+---
+
+## BUG-040: GET /api/sync-sheets Revealed Backup Status With No Auth
+
+**Status:** fixed
+**Fixed:** 2026-10-01
+**Found:** 2026-09-30 (audit L1)
+**Region:** API
+
+### Description
+
+`GET /api/sync-sheets` reported whether the Google Sheets backup was configured with no authentication — an information leak about infra setup to anonymous callers.
+
+### Impact
+
+Low: configuration disclosure, no data exposed.
+
+### Fix
+
+GET is now gated by `requireAuth("admin")`. No client calls GET (only POST), so nothing breaks.
+
+### Verification
+
+`npx tsc --noEmit` clean; `pnpm build` green; no client-side GET callers found.
+
+---
+
+## BUG-041: Audit Log Page Loaded the Entire audit_log Table
+
+**Status:** fixed
+**Fixed:** 2026-10-01
+**Found:** 2026-09-30 (audit M6)
+**Region:** app
+
+### Description
+
+`app/admin/audit/page.tsx` fetched the whole `audit_log` table in one query — unbounded growth means an ever-slower page and a heavy read.
+
+### Impact
+
+Performance degrades as the log grows; one huge initial query per admin visit.
+
+### Fix
+
+`.range()` pagination (50/page) with an "আরো দেখুন" load-more button; existing search filter works over loaded rows; total shown in Bengali digits.
+
+### Verification
+
+`npx tsc --noEmit` clean; `pnpm build` green.
