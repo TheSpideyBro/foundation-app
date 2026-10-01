@@ -1165,7 +1165,7 @@ export default function JomaEntryPage() {
                 </div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-xs text-emerald-700 font-bold">বরাদ্দ</span>
-                  <span className="text-sm font-black text-emerald-700">{money(autoAllocatable)}</span>
+                  <span className="text-sm font-black text-emerald-700">{formatMoney(autoAllocatable)}</span>
                 </div>
                 {autoExtra > 0 && (
                   <div className="flex justify-between items-center pt-2 border-t border-emerald-100">
@@ -1200,6 +1200,7 @@ export default function JomaEntryPage() {
                   above, one label per number (BUG-028). An extra amount is the
                   normal result of handing over more cash than the coverage
                   window can absorb, so it is not a warning. */}
+              {allocationPreview.allocations.length > 0 && (
                 <div className={`mt-3 p-3 rounded-xl text-center text-sm font-bold ${
                   autoExtra === 0 && autoAllocatable > 0
                     ? "bg-emerald-100 text-emerald-700"
