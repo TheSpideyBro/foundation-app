@@ -100,7 +100,7 @@ export default function SignupPage() {
             <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mb-8 shadow-lg shadow-emerald-500/20">
               <UserPlus size={32} className="text-white" />
             </div>
-            <h1 className="text-[36px] font-bold font-tiro leading-tight mb-4">আমাদের সাথে যুক্ত হোন</h1>
+            <h1 className="text-[36px] font-bold font-shadhinata leading-tight mb-4">আমাদের সাথে যুক্ত হোন</h1>
             <p className="text-emerald-400/80 text-[16px] font-medium leading-relaxed max-w-xs">
               দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশনের সদস্য হিসেবে স্বচ্ছ ও জবাবদিহিমূলক সেবায় অংশগ্রহণ করুন।
             </p>
@@ -125,7 +125,7 @@ export default function SignupPage() {
         {/* Right Side: Signup Form */}
         <div className="md:w-[60%] p-8 sm:p-12 md:p-16 flex flex-col justify-center bg-white/50 backdrop-blur-sm">
           <div className="mb-8">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 font-tiro mb-2">নতুন একাউন্ট</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 font-shadhinata mb-2">নতুন একাউন্ট</h2>
             <p className="text-gray-500 text-sm font-medium">আপনার তথ্য দিয়ে রেজিস্ট্রেশন সম্পন্ন করুন</p>
           </div>
 

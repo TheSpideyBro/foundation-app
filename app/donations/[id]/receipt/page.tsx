@@ -118,11 +118,11 @@ export default function ReceiptViewPage() {
 
   if (!isStaff) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center font-hind">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center font-akkas">
         <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-xl shadow-red-100">
           <Shield size={40} />
         </div>
-        <h1 className="mb-2 font-tiro text-2xl font-bold text-gray-900">
+        <h1 className="mb-2 font-shadhinata text-2xl font-bold text-gray-900">
           প্রবেশাধিকার সংরক্ষিত
         </h1>
         <p className="max-w-xs text-gray-500">
@@ -135,7 +135,7 @@ export default function ReceiptViewPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center gap-2 font-hind text-gray-500">
+      <div className="flex min-h-[60vh] items-center justify-center gap-2 font-akkas text-gray-500">
         <Loader2 className="animate-spin" size={24} />
         রসিদ লোড হচ্ছে…
       </div>
@@ -144,8 +144,8 @@ export default function ReceiptViewPage() {
 
   if (error || !donation) {
     return (
-      <div className="mx-auto max-w-md p-8 text-center font-hind">
-        <h1 className="mb-2 font-tiro text-2xl font-bold text-gray-900">
+      <div className="mx-auto max-w-md p-8 text-center font-akkas">
+        <h1 className="mb-2 font-shadhinata text-2xl font-bold text-gray-900">
           রসিদ পাওয়া যায়নি
         </h1>
         <p className="text-gray-500">{error || "এই আইডির কোনো দান পাওয়া যায়নি।"}</p>
@@ -184,7 +184,7 @@ export default function ReceiptViewPage() {
         }
       `}</style>
 
-      <div className="receipt-stage min-h-screen bg-[#0a0f0d] px-4 py-8 font-hind sm:py-12">
+      <div className="receipt-stage min-h-screen bg-[#0a0f0d] px-4 py-8 font-akkas sm:py-12">
         <div className="no-print mx-auto mb-8 flex max-w-2xl items-center justify-between">
           <Link
             href="/donations"

@@ -44,7 +44,7 @@ export default function AdminPage() {
         <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-red-100">
           <Shield size={40} />
         </div>
-        <h1 className="text-2xl font-bold font-tiro text-gray-900 mb-2">প্রবেশাধিকার সংরক্ষিত</h1>
+        <h1 className="text-2xl font-bold font-shadhinata text-gray-900 mb-2">প্রবেশাধিকার সংরক্ষিত</h1>
         <p className="text-gray-500 max-w-xs">এই পেজটি শুধুমাত্র অ্যাডমিন ও ট্রেজারারদের জন্য। আপনার যদি মনে হয় এটি ভুল, তবে প্রধান অ্যাডমিনের সাথে যোগাযোগ করুন।</p>
       </div>
     );
@@ -118,7 +118,7 @@ export default function AdminPage() {
     <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">অ্যাডমিন প্যানেল</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold font-shadhinata text-gray-900 mb-1">অ্যাডমিন প্যানেল</h1>
           <p className="text-sm text-gray-500 font-medium">ফাউন্ডেশনের প্রশাসনিক নিয়ন্ত্রণ কেন্দ্র</p>
         </div>
       </div>
@@ -139,7 +139,7 @@ export default function AdminPage() {
               <RefreshCw size={24} className={syncing ? "animate-spin" : ""} />
             </div>
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2 font-tiro">গুগল শিট সিঙ্ক</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-2 font-shadhinata">গুগল শিট সিঙ্ক</h3>
           <p className="text-gray-500 text-sm mb-6 font-medium">ফাউন্ডেশনের সব ডাটা গুগল শিটের সাথে সিঙ্ক করুন যাতে ব্যাকআপ এবং রিপোর্ট তৈরি করা সহজ হয়।</p>
           <button 
             onClick={handleSync}
@@ -156,7 +156,7 @@ export default function AdminPage() {
               <Database size={24} />
             </div>
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2 font-tiro">ডাটা ব্যাকআপ</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-2 font-shadhinata">ডাটা ব্যাকআপ</h3>
           <p className="text-gray-500 text-sm mb-6 font-medium">পুরো সিস্টেমের একটি ব্যাকআপ ফাইল ডাউনলোড করুন। এটি যেকোনো সময় ডাটা রিস্টোর করতে সাহায্য করবে।</p>
           <button 
             onClick={() => alert("ব্যাকআপ তৈরির ফিচারটি প্রসেস করা হচ্ছে...")}

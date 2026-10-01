@@ -127,7 +127,7 @@ export default function ProfilePage() {
     <div className="max-w-md mx-auto mt-20 text-center px-4">
       <div className="card-premium p-12">
         <User size={48} className="mx-auto mb-6 text-gray-200" />
-        <h2 className="text-xl font-bold font-tiro text-gray-900 mb-3">সদস্য তথ্য পাওয়া যায়নি</h2>
+        <h2 className="text-xl font-bold font-shadhinata text-gray-900 mb-3">সদস্য তথ্য পাওয়া যায়নি</h2>
         <p className="text-sm text-gray-500 mb-6">আপনার অ্যাকাউন্টের সাথে কোনো মেম্বার প্রোফাইল লিঙ্ক করা নেই।</p>
         <div className="p-4 bg-emerald-50 rounded-2xl">
           <p className="text-xs text-emerald-600 font-bold uppercase mb-1">আপনার আইডি</p>
@@ -146,7 +146,7 @@ export default function ProfilePage() {
               {member.name[0]}
             </div>
             <div className="text-center md:text-left">
-              <h1 className="text-3xl font-bold font-tiro mb-2">{member.name}</h1>
+              <h1 className="text-3xl font-bold font-shadhinata mb-2">{member.name}</h1>
               <div className="flex flex-wrap justify-center md:justify-start gap-4 text-white/70 text-sm">
                 <span className="flex items-center gap-1.5"><Phone size={14} /> {member.phone}</span>
                 <span className="flex items-center gap-1.5"><MapPin size={14} /> {member.address || 'ঠিকানা নেই'}</span>
@@ -169,7 +169,7 @@ export default function ProfilePage() {
           <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-6 sm:p-8 border-b border-gray-100 flex items-center justify-between bg-emerald-600 text-white">
               <div>
-                <h2 className="text-xl font-bold font-tiro">প্রোফাইল এডিট করুন</h2>
+                <h2 className="text-xl font-bold font-shadhinata">প্রোফাইল এডিট করুন</h2>
                 <p className="text-emerald-100 text-xs mt-1">আপনার ব্যক্তিগত তথ্য আপডেট করুন</p>
               </div>
               <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
@@ -240,13 +240,13 @@ export default function ProfilePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-1 space-y-6">
           <div className="card-premium p-6">
-            <h3 className="font-bold font-tiro mb-4 flex items-center gap-2">
+            <h3 className="font-bold font-shadhinata mb-4 flex items-center gap-2">
               <Activity size={18} className="text-emerald-600" /> অবদান
             </h3>
             <div className="space-y-4">
               <div className="p-4 bg-emerald-50 rounded-2xl">
                 <p className="text-[10px] text-emerald-600 font-bold uppercase mb-1">মোট অনুদান</p>
-                <p className="text-2xl font-bold text-emerald-700 font-tiro">৳{donations.reduce((sum, d) => sum + Number(d.amount), 0).toLocaleString()}</p>
+                <p className="text-2xl font-bold text-emerald-700 font-baloo">৳{donations.reduce((sum, d) => sum + Number(d.amount), 0).toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -255,7 +255,7 @@ export default function ProfilePage() {
         <div className="md:col-span-2">
           <div className="card-premium overflow-hidden">
             <div className="p-6 border-b border-gray-100">
-              <h3 className="font-bold font-tiro">দানের ইতিহাস</h3>
+              <h3 className="font-bold font-shadhinata">দানের ইতিহাস</h3>
             </div>
             <div className="divide-y divide-gray-50">
               {donations.map((d, i) => (
@@ -264,7 +264,7 @@ export default function ProfilePage() {
                     <p className="font-bold text-gray-900">{new Date(d.date).toLocaleDateString('bn-BD')}</p>
                     <p className="text-xs text-gray-400">{d.donation_month || 'সাধারণ'}</p>
                   </div>
-                  <p className="text-lg font-bold text-emerald-600 font-tiro">৳{Number(d.amount).toLocaleString()}</p>
+                  <p className="text-lg font-bold text-emerald-600 font-shadhinata">৳{Number(d.amount).toLocaleString()}</p>
                 </div>
               ))}
             </div>

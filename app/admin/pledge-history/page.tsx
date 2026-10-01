@@ -54,14 +54,14 @@ export default function AdminPledgeHistoryPage() {
   const getMemberName = (entry: PledgeEntry) => Array.isArray(entry.members) ? entry.members[0]?.name || "অজ্ঞাত সদস্য" : entry.members?.name || "অজ্ঞাত সদস্য";
 
   if (!isStaff) {
-    return <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center"><div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mb-6"><Shield size={40} /></div><h1 className="text-2xl font-bold font-tiro text-gray-900 mb-2">প্রবেশাধিকার সংরক্ষিত</h1><p className="text-gray-500 max-w-xs">এই পেজটি শুধুমাত্র অ্যাডমিন ও ট্রেজারারদের জন্য।</p></div>;
+    return <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center"><div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mb-6"><Shield size={40} /></div><h1 className="text-2xl font-bold font-shadhinata text-gray-900 mb-2">প্রবেশাধিকার সংরক্ষিত</h1><p className="text-gray-500 max-w-xs">এই পেজটি শুধুমাত্র অ্যাডমিন ও ট্রেজারারদের জন্য।</p></div>;
   }
 
   return <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div className="flex items-center gap-4">
         <AdminBackLink />
-        <div><h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">মাসিক অঙ্গীকার পরিবর্তনের ইতিহাস</h1><p className="text-sm text-gray-500 font-medium">কোন মাস থেকে pledge amount পরিবর্তন হয়েছে এবং পরিবর্তনের কারণ দেখুন</p></div>
+        <div><h1 className="text-3xl sm:text-4xl font-bold font-shadhinata text-gray-900 mb-1">মাসিক অঙ্গীকার পরিবর্তনের ইতিহাস</h1><p className="text-sm text-gray-500 font-medium">কোন মাস থেকে pledge amount পরিবর্তন হয়েছে এবং পরিবর্তনের কারণ দেখুন</p></div>
       </div>
       <button type="button" onClick={loadHistory} className="btn-outline h-11 px-4"><RefreshCw size={17} /> রিফ্রেশ</button>
     </div>
@@ -80,7 +80,7 @@ export default function AdminPledgeHistoryPage() {
         const currentAmount = Number(entry.monthly_amount) || 0;
         const change = previousAmount === null ? null : currentAmount - previousAmount;
         const ChangeIcon = change === null ? Minus : change > 0 ? TrendingUp : change < 0 ? TrendingDown : Minus;
-        return <div key={entry.id} className="p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 hover:bg-emerald-50/30 transition-colors"><div><div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-bold font-tiro text-gray-900">{getMemberName(entry)}</h2>{change !== null && <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${change > 0 ? "bg-emerald-50 text-emerald-700" : change < 0 ? "bg-rose-50 text-rose-700" : "bg-gray-100 text-gray-600"}`}><ChangeIcon size={13} />{change > 0 ? "বৃদ্ধি" : change < 0 ? "হ্রাস" : "অপরিবর্তিত"}</span>}</div><p className="text-xs text-gray-500 mt-1">কার্যকর মাস: <span className="font-bold text-gray-700">{formatMonth(entry.effective_from_month)}</span></p><p className="text-sm text-gray-600 mt-2">নোট: {entry.note || "নোট দেওয়া হয়নি"}</p></div><div className="flex items-center gap-4 shrink-0">{previousAmount !== null && <span className="text-sm text-gray-400">৳{previousAmount.toLocaleString("bn-BD")} থেকে</span>}<span className="text-lg font-black text-emerald-600">৳{currentAmount.toLocaleString("bn-BD")}</span></div></div>;
+        return <div key={entry.id} className="p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 hover:bg-emerald-50/30 transition-colors"><div><div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-bold font-shadhinata text-gray-900">{getMemberName(entry)}</h2>{change !== null && <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${change > 0 ? "bg-emerald-50 text-emerald-700" : change < 0 ? "bg-rose-50 text-rose-700" : "bg-gray-100 text-gray-600"}`}><ChangeIcon size={13} />{change > 0 ? "বৃদ্ধি" : change < 0 ? "হ্রাস" : "অপরিবর্তিত"}</span>}</div><p className="text-xs text-gray-500 mt-1">কার্যকর মাস: <span className="font-bold text-gray-700">{formatMonth(entry.effective_from_month)}</span></p><p className="text-sm text-gray-600 mt-2">নোট: {entry.note || "নোট দেওয়া হয়নি"}</p></div><div className="flex items-center gap-4 shrink-0">{previousAmount !== null && <span className="text-sm text-gray-400">৳{previousAmount.toLocaleString("bn-BD")} থেকে</span>}<span className="text-lg font-black text-emerald-600">৳{currentAmount.toLocaleString("bn-BD")}</span></div></div>;
       })}</div>}
     </div>
   </div>;

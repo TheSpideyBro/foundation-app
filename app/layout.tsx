@@ -196,7 +196,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable} ${anekBangla.variable} ${sabbirSorolota.variable} ${alinurNakkhatra.variable} ${abuJmAkkas.variable} ${shadhinata.variable} ${chayanaTeesta.variable}`}>
-      <body className="antialiased font-hind">
+      <body className="antialiased font-akkas">
         <AuthProvider>
           <LayoutWrapper>{children}</LayoutWrapper>
         </AuthProvider>

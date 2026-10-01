@@ -16,7 +16,7 @@ export default function LandingPage() {
               <Heart className="text-white" size={20} fill="currentColor" />
             </div>
             <div>
-              <span className="text-lg font-bold text-gray-900 font-tiro block leading-tight">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span>
+              <span className="text-lg font-bold text-gray-900 font-shadhinata block leading-tight">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span>
               <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">সেবাই আমাদের ধর্ম</span>
             </div>
           </div>
@@ -46,7 +46,7 @@ export default function LandingPage() {
               <Zap size={14} fill="currentColor" /> নতুন যুগের ফাউন্ডেশন ম্যানেজমেন্ট
             </div>
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold text-gray-900 font-tiro leading-[1.1] mb-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+          <h1 className="text-5xl md:text-7xl font-bold text-gray-900 font-shadhinata leading-[1.1] mb-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
             মানবতার কল্যাণে, <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-800">একতাবদ্ধ মোরা সকলে</span>
           </h1>
@@ -76,7 +76,7 @@ export default function LandingPage() {
                 <span className="uppercase tracking-widest text-sm">আমাদের পথচলা</span>
               </div>
               
-              <h2 className="text-3xl md:text-5xl font-bold text-gray-900 font-tiro mb-8 leading-tight">
+              <h2 className="text-3xl md:text-5xl font-bold text-gray-900 font-shadhinata mb-8 leading-tight">
                 ২০০৯ সাল থেকে আস্থার সাথে মানবতার সেবায়
               </h2>
               
@@ -105,7 +105,7 @@ export default function LandingPage() {
           <div className="bg-emerald-900 rounded-[3rem] p-12 md:p-20 text-center relative overflow-hidden shadow-2xl shadow-emerald-900/40">
             <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
             <div className="relative z-10">
-              <h2 className="text-4xl md:text-5xl font-bold text-white font-tiro mb-8">আজই আমাদের ফাউন্ডেশনের অংশ হোন</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-white font-shadhinata mb-8">আজই আমাদের ফাউন্ডেশনের অংশ হোন</h2>
               <p className="text-emerald-100/70 text-lg mb-12 max-w-xl mx-auto">একত্রে আমরা গড়বো এক সুন্দর আগামী। আপনার সামান্য অবদান হতে পারে কারো জীবনের বড় পরিবর্তন।</p>
               <Link href="/signup" className="bg-white text-emerald-900 px-12 py-5 rounded-2xl font-bold text-lg hover:bg-emerald-50 transition-all shadow-xl inline-flex items-center gap-3 active:scale-95">
                 নিবন্ধন করুন <ArrowRight size={20} />
@@ -122,7 +122,7 @@ export default function LandingPage() {
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
               <Heart className="text-white" size={16} fill="currentColor" />
             </div>
-            <span className="text-sm font-bold text-gray-900 font-tiro">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span>
+            <span className="text-sm font-bold text-gray-900 font-shadhinata">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span>
           </div>
           <div>
             <p className="text-sm text-gray-400 font-medium">© ২০২৬ দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন। সর্বস্বত্ব সংরক্ষিত।</p>

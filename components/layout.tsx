@@ -103,7 +103,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-emerald-200">
             <Leaf size={18} fill="currentColor" />
           </div>
-          <span className="text-md font-bold text-gray-900 font-tiro tracking-tight">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span>
+          <span className="text-md font-bold text-gray-900 font-shadhinata tracking-tight">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -126,7 +126,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Leaf size={24} fill="currentColor" />
             </div>
             <div>
-              <span className="text-xl font-bold text-gray-900 tracking-tight font-tiro">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল</span>
+              <span className="text-xl font-bold text-gray-900 tracking-tight font-shadhinata">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল</span>
               <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">ফাউন্ডেশন</p>
             </div>
           </Link>
@@ -218,7 +218,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg">
                 <Leaf size={20} fill="currentColor" />
               </div>
-              <span className="text-lg font-bold text-gray-900 font-tiro">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span>
+              <span className="text-lg font-bold text-gray-900 font-shadhinata">দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</span>
             </div>
             <button
               ref={drawerCloseRef}

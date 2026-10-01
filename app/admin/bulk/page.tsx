@@ -205,7 +205,7 @@ export default function BulkManagementPage() {
           <ArrowLeft size={24} />
         </Link>
         <div>
-          <h1 className="text-3xl font-bold font-tiro text-gray-900 mb-1">বাল্ক ইম্পোর্ট/এক্সপোর্ট</h1>
+          <h1 className="text-3xl font-bold font-shadhinata text-gray-900 mb-1">বাল্ক ইম্পোর্ট/এক্সপোর্ট</h1>
           <p className="text-sm text-gray-500 font-medium">এক্সেল ফাইলের মাধ্যমে ডাটা ব্যাকআপ ও আপলোড</p>
         </div>
       </div>
@@ -239,7 +239,7 @@ export default function BulkManagementPage() {
         <div className="card-premium p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold font-tiro text-gray-900">প্রিভিউ: {preview.section.title}</h3>
+              <h3 className="text-lg font-bold font-shadhinata text-gray-900">প্রিভিউ: {preview.section.title}</h3>
               <p className="text-sm text-gray-500 font-medium mt-1">
                 {preview.fileName} — মোট {toBengaliNumber(preview.rows.length)} সারি পাওয়া গেছে। নিচে প্রথম{" "}
                 {toBengaliNumber(Math.min(5, preview.rows.length))}টি সারি দেখানো হলো।
@@ -297,7 +297,7 @@ export default function BulkManagementPage() {
               {s.icon}
             </div>
             <div>
-              <h3 className="text-xl font-bold font-tiro text-gray-900">{s.title}</h3>
+              <h3 className="text-xl font-bold font-shadhinata text-gray-900">{s.title}</h3>
               <p className="text-xs text-gray-400 mt-1">ব্যাকআপ বা নতুন তথ্য যোগ করুন</p>
             </div>
             <div className="w-full space-y-3">

@@ -199,7 +199,7 @@ export default function ExpensesPage() {
       )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">ব্যয় ও খরচ</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold font-shadhinata text-gray-900 mb-1">ব্যয় ও খরচ</h1>
           <p className="text-sm text-gray-500 font-medium">ফাউন্ডেশনের সকল খরচের হিসাব</p>
         </div>
         {isStaff && (
@@ -231,7 +231,7 @@ export default function ExpensesPage() {
           {filteredExpenses.length === 0 ? (
             <div className="p-20 text-center text-gray-400">
               <TrendingDown size={48} className="mx-auto mb-4 opacity-20" />
-              <p className="font-bold font-tiro text-sm">কোনো খরচের তথ্য পাওয়া যায়নি।</p>
+              <p className="font-bold font-shadhinata text-sm">কোনো খরচের তথ্য পাওয়া যায়নি।</p>
             </div>
           ) : (
             filteredExpenses.map((e) => (
@@ -242,7 +242,7 @@ export default function ExpensesPage() {
                       <TrendingDown size={20} />
                     </div>
                     <div>
-                      <p className="text-[15px] sm:text-base font-bold text-gray-900 leading-snug font-tiro">{e.description}</p>
+                      <p className="text-[15px] sm:text-base font-bold text-gray-900 leading-snug font-shadhinata">{e.description}</p>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
                         <span className="flex items-center gap-1.5 text-[11px] text-gray-500 font-medium bg-gray-50 px-2 py-0.5 rounded-md">
                           <Calendar size={12} className="text-rose-600" /> {e.date ? formatDateBengali(e.date) : ""}
@@ -256,7 +256,7 @@ export default function ExpensesPage() {
                   
                   <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-10">
                     <div className="text-right">
-                      <p className="text-lg sm:text-xl font-bold text-rose-600 font-tiro">{formatMoney(Number(e.amount))}</p>
+                      <p className="text-lg sm:text-xl font-bold text-rose-600 font-shadhinata">{formatMoney(Number(e.amount))}</p>
                     </div>
                     
                     {isStaff && (
@@ -294,7 +294,7 @@ export default function ExpensesPage() {
           <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-6 sm:p-8 border-b border-gray-100 flex items-center justify-between bg-red-600 text-white">
               <div>
-                <h2 className="text-xl font-bold font-tiro">{editingExpense ? 'খরচ এডিট করুন' : 'নতুন খরচ যোগ করুন'}</h2>
+                <h2 className="text-xl font-bold font-shadhinata">{editingExpense ? 'খরচ এডিট করুন' : 'নতুন খরচ যোগ করুন'}</h2>
                 <p className="text-red-100 text-xs mt-1">সঠিক তথ্য প্রদান করে সেভ করুন</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">

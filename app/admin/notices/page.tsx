@@ -87,7 +87,7 @@ export default function NoticeManagementPage() {
             <ArrowLeft size={24} />
           </Link>
           <div>
-            <h1 className="text-3xl font-bold font-tiro text-gray-900 mb-1">নোটিশ বোর্ড</h1>
+            <h1 className="text-3xl font-bold font-shadhinata text-gray-900 mb-1">নোটিশ বোর্ড</h1>
             <p className="text-sm text-gray-500 font-medium">সদস্যদের জন্য ঘোষণা তৈরি করুন</p>
           </div>
         </div>
@@ -124,7 +124,7 @@ export default function NoticeManagementPage() {
                   </button>
                 </div>
               </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2 font-tiro">{notice.title}</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-2 font-shadhinata">{notice.title}</h3>
               <p className="text-sm text-gray-600 line-clamp-3 mb-4">{notice.content}</p>
               <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest border-t border-gray-50 pt-4">
                 প্রকাশিত: {new Date(notice.created_at).toLocaleDateString('bn-BD')}
@@ -139,7 +139,7 @@ export default function NoticeManagementPage() {
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
           <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-emerald-600 text-white">
-              <h2 className="text-xl font-bold font-tiro">{editingNotice ? 'নোটিশ এডিট' : 'নতুন নোটিশ'}</h2>
+              <h2 className="text-xl font-bold font-shadhinata">{editingNotice ? 'নোটিশ এডিট' : 'নতুন নোটিশ'}</h2>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors"><X size={24} /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-5">

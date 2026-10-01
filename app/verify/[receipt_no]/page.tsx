@@ -75,7 +75,7 @@ function monthRangeLabel(start: string | null, end: string | null): string {
 function BrandHeader() {
   return (
     <div className="bg-gradient-to-b from-[#022C22] to-[#064E3B] px-6 py-6 text-center">
-      <p className="font-tiro text-lg font-bold text-white">
+      <p className="font-shadhinata text-lg font-bold text-white">
         দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন
       </p>
       <div className="mx-auto mt-3 h-0.5 w-24 bg-[#C9A227]" />
@@ -85,14 +85,14 @@ function BrandHeader() {
 
 function NotFoundCard() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#FDFDFC] p-4 font-hind">
+    <main className="flex min-h-screen items-center justify-center bg-[#FDFDFC] p-4 font-akkas">
       <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[#C9A227]/40 bg-white shadow-xl">
         <BrandHeader />
         <div className="px-6 py-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 text-amber-600">
             <SearchX size={32} />
           </div>
-          <h1 className="font-tiro text-2xl font-bold text-gray-900">
+          <h1 className="font-shadhinata text-2xl font-bold text-gray-900">
             রসিদ পাওয়া যায়নি
           </h1>
           <p className="mt-2 text-sm text-gray-500">
@@ -114,11 +114,11 @@ function NotFoundCard() {
 
 function ServiceDownCard() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#FDFDFC] p-4 font-hind">
+    <main className="flex min-h-screen items-center justify-center bg-[#FDFDFC] p-4 font-akkas">
       <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[#C9A227]/40 bg-white shadow-xl">
         <BrandHeader />
         <div className="px-6 py-8 text-center">
-          <h1 className="font-tiro text-2xl font-bold text-gray-900">
+          <h1 className="font-shadhinata text-2xl font-bold text-gray-900">
             যাচাই করা যাচ্ছে না
           </h1>
           <p className="mt-2 text-sm text-gray-500">
@@ -171,7 +171,7 @@ export default async function VerifyReceiptPage({
   ];
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#FDFDFC] p-4 font-hind">
+    <main className="flex min-h-screen items-center justify-center bg-[#FDFDFC] p-4 font-akkas">
       <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[#C9A227]/40 bg-white shadow-xl">
         <BrandHeader />
         <div className="px-6 py-6">
@@ -181,7 +181,7 @@ export default async function VerifyReceiptPage({
               ✅ যাচাইকৃত রসিদ
             </span>
           </div>
-          <dl className="divide-y divide-dashed divide-gray-100">
+          <dl className="divide-y divide-dashed divide-gray-100 font-nakkhatra">
             {rows.map(([label, value]) => (
               <div key={label} className="flex items-start justify-between gap-4 py-2.5">
                 <dt className="shrink-0 text-sm text-gray-500">{label}</dt>

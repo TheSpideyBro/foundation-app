@@ -76,7 +76,7 @@ export default function CategoryManagementPage() {
           <ArrowLeft size={24} />
         </Link>
         <div>
-          <h1 className="text-3xl font-bold font-tiro text-gray-900 mb-1">ক্যাটাগরি ম্যানেজমেন্ট</h1>
+          <h1 className="text-3xl font-bold font-shadhinata text-gray-900 mb-1">ক্যাটাগরি ম্যানেজমেন্ট</h1>
           <p className="text-sm text-gray-500 font-medium">খরচের ক্যাটাগরিগুলো নিয়ন্ত্রণ করুন</p>
         </div>
       </div>

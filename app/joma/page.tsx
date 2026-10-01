@@ -558,7 +558,7 @@ export default function JomaEntryPage() {
       <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
         <div className="text-center p-8">
           <ShieldCheck className="w-16 h-16 text-rose-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 font-tiro mb-2">প্রবেশাধিকার সংরক্ষিত</h1>
+          <h1 className="text-2xl font-bold text-gray-900 font-shadhinata mb-2">প্রবেশাধিকার সংরক্ষিত</h1>
           <p className="text-gray-500">এই পেজটি শুধুমাত্র স্টাফ সদস্যদের জন্য।</p>
           <button onClick={() => router.push("/dashboard")} className="mt-6 btn-emerald">ড্যাশবোর্ডে যান</button>
         </div>
@@ -579,7 +579,7 @@ export default function JomaEntryPage() {
             <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 className="w-10 h-10 text-emerald-600" />
             </div>
-            <h1 className="text-2xl font-bold font-tiro text-gray-900 mb-2">জমা এন্ট্রি সফলভাবে সংরক্ষিত হয়েছে</h1>
+            <h1 className="text-2xl font-bold font-shadhinata text-gray-900 mb-2">জমা এন্ট্রি সফলভাবে সংরক্ষিত হয়েছে</h1>
             <p className="text-gray-500 mb-6">জমার তথ্য নিচে দেওয়া হলো</p>
 
             <div className="grid grid-cols-2 gap-4 text-left max-w-sm mx-auto">
@@ -642,7 +642,7 @@ export default function JomaEntryPage() {
           className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
         >
           <div className="bg-emerald-600 p-6 text-white">
-            <h2 className="text-xl font-black font-tiro">জমা এন্ট্রি নিশ্চিত করুন</h2>
+            <h2 className="text-xl font-black font-shadhinata">জমা এন্ট্রি নিশ্চিত করুন</h2>
             <p className="text-emerald-100 text-sm mt-1">বরাদ্দ তথ্য পরীক্ষা করুন</p>
           </div>
           <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
@@ -770,7 +770,7 @@ export default function JomaEntryPage() {
           </button>
           <div className="flex items-center gap-2">
             <ReceiptText className="w-5 h-5 text-emerald-600" />
-            <h1 className="text-lg font-black text-gray-900 font-tiro">জমা এন্ট্রি</h1>
+            <h1 className="text-lg font-black text-gray-900 font-shadhinata">জমা এন্ট্রি</h1>
           </div>
           <div className="w-20" /> {/* spacer */}
         </div>
