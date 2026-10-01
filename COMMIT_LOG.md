@@ -59,6 +59,33 @@
 
 ---
 
+## c0737ae — feat(receipt): signature-style collector name on the signature line
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Collector name | Plain Hind Siliguri text below "আদায়কারীর স্বাক্ষর" label | Galada calligraphic script sitting on the signature line (slight overlap, like a handwritten signature) |
+
+### Why
+
+Akash: the name should look like a signature on the line, not a caption under it. Reused the already-loaded Galada font so no new font payload.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## fcd73da — feat(receipt): use Anek Bangla for details rows
 
 **Date:** 2026-10-01  
