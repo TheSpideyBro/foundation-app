@@ -59,6 +59,37 @@
 
 ---
 
+## 182f26a — feat(receipt): Abu JM Akkas as default font + bigger detail rows
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/fonts/LiAbuJMAkkasUnicode-Regular.ttf, app/fonts/LiAbuJMAkkasUnicode-Italic.ttf (new), app/layout.tsx, app/globals.css, app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Default body font | Hind Siliguri | **Li Abu J M Akkas** (`--font-akkas`, Hind Siliguri as fallback) |
+| Detail row labels | 11px | 12px |
+| Detail row values | 15px | 17px |
+
+### Why
+
+Akash supplied `AbuJMAkkas.zip`: use it instead of the default Hind Siliguri, and bump the detail-row sizes.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green; `@font-face{font-family:abuJmAkkas}` emitted, variable chain verified
+
+### Known Risks / Follow-ups
+
+- Same Lipighor licensing: webfont use needs `admin@lipighor.com` permission + footer backlink; TTFs must not be redistributed. Branch stays local, nothing pushed.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## 8f16ac2 — feat(receipt): Li Alinur Nakkhatra for detail rows
 
 **Date:** 2026-10-01  
