@@ -80,14 +80,14 @@ function LoginForm() {
           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-600 rounded-2xl sm:rounded-[2rem] flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-2xl shadow-emerald-600/30 animate-bounce-slow" style={{ background: '#059669', boxShadow: '0 25px 50px -12px rgba(5, 150, 105, 0.25)' }}>
             <Heart className="text-white fill-white w-7 h-7 sm:w-8 sm:h-8" style={{ width: '32px', height: '32px' }} />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 font-tiro mb-2 sm:mb-3" style={{ fontFamily: 'var(--font-tiro), serif' }}>দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 font-shadhinata mb-2 sm:mb-3" style={{ fontFamily: 'var(--font-shadhinata), sans-serif' }}>দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন</h1>
           <p className="text-sm sm:text-base text-gray-500 font-medium">আপনার একাউন্টে লগইন করুন</p>
         </div>
 
         <div className="p-6 sm:p-10 bg-white rounded-[1.5rem] md:rounded-[2rem] shadow-xl border border-gray-100" style={{ background: 'white', borderRadius: '2rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
           <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
             <div>
-              <label className="block text-[13px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">মোবাইল নম্বর</label>
+              <label className="block text-[13px] font-bold text-gray-400 mb-2 ml-1">মোবাইল নম্বর</label>
               <div className="relative group">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={20} />
                 <input
@@ -103,7 +103,7 @@ function LoginForm() {
             </div>
 
             <div>
-              <label className="block text-[13px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">পাসওয়ার্ড</label>
+              <label className="block text-[13px] font-bold text-gray-400 mb-2 ml-1">পাসওয়ার্ড</label>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={20} />
                 <input
@@ -153,12 +153,12 @@ function LoginForm() {
               একাউন্ট নেই? <Link href="/signup" className="text-emerald-600 font-bold hover:underline">নতুন একাউন্ট খুলুন</Link>
             </p>
             <div className="flex items-center justify-center gap-6 text-gray-400">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold">
                 <ShieldCheck size={14} className="text-emerald-500" />
                 নিরাপদ
               </div>
               <div className="w-1.5 h-1.5 rounded-full bg-gray-200"></div>
-              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold">
                 <MessageCircle size={14} className="text-emerald-500" />
                 সহায়তা
               </div>

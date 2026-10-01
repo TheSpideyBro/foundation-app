@@ -30,7 +30,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
           <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
             !
           </div>
-          <h1 className="text-xl font-bold font-tiro text-gray-900">
+          <h1 className="text-xl font-bold font-shadhinata text-gray-900">
             প্রোফাইল লোড করতে সমস্যা হয়েছে
           </h1>
           <p className="text-sm text-gray-500 leading-relaxed break-words">{profileError}</p>
@@ -61,7 +61,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
           <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
             ⏳
           </div>
-          <h1 className="text-xl font-bold font-tiro text-gray-900">
+          <h1 className="text-xl font-bold font-shadhinata text-gray-900">
             অ্যাকাউন্ট অনুমোদনের অপেক্ষায়
           </h1>
           <p className="text-sm text-gray-500 leading-relaxed">

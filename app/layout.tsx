@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Tiro_Bangla, Hind_Siliguri } from "next/font/google";
+import { Tiro_Bangla, Hind_Siliguri, Baloo_Da_2, Galada } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers";
 import Script from "next/script";
@@ -19,8 +20,84 @@ const hindSiliguri = Hind_Siliguri({
   display: "swap",
 });
 
+const balooDa2 = Baloo_Da_2({
+  weight: ["500", "600", "700", "800"],
+  subsets: ["bengali"],
+  variable: "--font-baloo",
+  display: "swap",
+});
+
+const galada = Galada({
+  weight: "400",
+  subsets: ["bengali"],
+  variable: "--font-galada",
+  display: "swap",
+});
+
+// Lipighor "Li Alinur Nakkhatra" — custom Bengali font supplied by Akash,
+// used for the receipt detail rows (replaces Anek Bangla). See app/fonts/
+// (Unicode TTFs only; ANSI variants not for web use).
+const alinurNakkhatra = localFont({
+  src: [
+    {
+      path: "./fonts/LiAlinurNakkhatraUnicode-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+  ],
+  variable: "--font-nakkhatra",
+  display: "swap",
+});
+
+// Lipighor "Li Abu J M Akkas" — custom Bengali font supplied by Akash,
+// now the default body font (replaces Hind Siliguri). See app/fonts/
+// (Unicode TTFs only; ANSI variants not for web use).
+const abuJmAkkas = localFont({
+  src: [
+    {
+      path: "./fonts/LiAbuJMAkkasUnicode-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+  ],
+  variable: "--font-akkas",
+  display: "swap",
+});
+
+// Lipighor "Li Shadhinata 2.0" — custom Bengali font supplied by Akash,
+// used for the receipt masthead (replaces Sabbir Sorolota). See app/fonts/
+// (Unicode TTFs only; ANSI variants not for web use).
+const shadhinata = localFont({
+  src: [
+    {
+      path: "./fonts/LiShadhinata2Unicode-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+  ],
+  variable: "--font-shadhinata",
+  display: "swap",
+});
+
+// Lipighor "Li Chayana Teesta" — custom Bengali script font supplied by Akash,
+// used for the gratitude line and the collector signature (replaces Galada).
+// See app/fonts/ (Unicode TTFs only; ANSI variants not for web use).
+const chayanaTeesta = localFont({
+  src: [
+    {
+      path: "./fonts/LiChayanaTeestaUnicode-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+  ],
+  variable: "--font-teesta",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://daulkharfoundation.vercel.app"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://daulkharfoundation.vercel.app"
+  ),
   title: {
     default: "দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন",
     template: "%s | দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন",
@@ -36,7 +113,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "bn_BD",
-    url: "https://daulkharfoundation.vercel.app",
+    url:
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      "https://daulkharfoundation.vercel.app",
     title: "দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন",
     description: "২০০৯ সাল থেকে স্বচ্ছতা ও আস্থার সাথে আর্তমানবতার সেবায় নিয়োজিত একটি অলাভজনক সমাজসেবামূলক প্রতিষ্ঠান।",
     siteName: "দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন",
@@ -74,8 +153,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable}`}>
-      <body className="antialiased font-hind">
+    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable} ${alinurNakkhatra.variable} ${abuJmAkkas.variable} ${shadhinata.variable} ${chayanaTeesta.variable}`}>
+      <body className="antialiased font-akkas">
         <AuthProvider>
           <LayoutWrapper>{children}</LayoutWrapper>
         </AuthProvider>

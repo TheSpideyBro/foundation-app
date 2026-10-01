@@ -76,7 +76,7 @@ export default function CategoryManagementPage() {
           <ArrowLeft size={24} />
         </Link>
         <div>
-          <h1 className="text-3xl font-bold font-tiro text-gray-900 mb-1">ক্যাটাগরি ম্যানেজমেন্ট</h1>
+          <h1 className="text-3xl font-bold font-shadhinata text-gray-900 mb-1">ক্যাটাগরি ম্যানেজমেন্ট</h1>
           <p className="text-sm text-gray-500 font-medium">খরচের ক্যাটাগরিগুলো নিয়ন্ত্রণ করুন</p>
         </div>
       </div>
@@ -124,7 +124,7 @@ export default function CategoryManagementPage() {
                       <div className="flex items-center gap-3">
                         <Tag size={18} className="text-emerald-600" />
                         <span className="font-bold text-gray-900">{cat.name}</span>
-                        {cat.is_default && <span className="text-[9px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded uppercase tracking-tighter">ডিফল্ট</span>}
+                        {cat.is_default && <span className="text-[9px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded">ডিফল্ট</span>}
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 

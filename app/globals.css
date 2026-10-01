@@ -3,6 +3,12 @@
 @theme {
   --font-tiro: "Tiro Bangla", serif;
   --font-hind: "Hind Siliguri", sans-serif;
+  --font-baloo: "Baloo Da 2", "Hind Siliguri", sans-serif;
+  --font-galada: "Galada", "Tiro Bangla", cursive;
+  --font-nakkhatra: "Li Alinur Nakkhatra Unicode", "Anek Bangla", sans-serif;
+  --font-akkas: "Li Abu J M Akkas Unicode", "Hind Siliguri", sans-serif;
+  --font-shadhinata: "Li Shadhinata 2.0 Unicode", "Baloo Da 2", sans-serif;
+  --font-teesta: "Li Chayana Teesta Unicode", "Tiro Bangla", cursive;
   
   --color-primary: #064E3B;
   --color-primary-light: #059669;
@@ -23,9 +29,9 @@
   body {
     background-color: var(--color-background);
     color: var(--color-text-primary);
-    font-family: var(--font-hind), sans-serif;
+    font-family: var(--font-akkas), sans-serif;
     -webkit-font-smoothing: antialiased;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
   }
 
   h1, h2, h3, h4, h5, h6 {

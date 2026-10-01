@@ -61,7 +61,7 @@ export default function PendingPledgesPage() {
           <ArrowLeft size={24} />
         </Link>
         <div>
-          <h1 className="text-3xl font-bold font-tiro text-gray-900 mb-1">বাকি চাঁদার তালিকা</h1>
+          <h1 className="text-3xl font-bold font-shadhinata text-gray-900 mb-1">বাকি চাঁদার তালিকা</h1>
           <p className="text-sm text-gray-500 font-medium">মাসিক অঙ্গীকার অনুযায়ী অনাদায়ী হিসাব</p>
         </div>
       </div>
@@ -95,7 +95,7 @@ export default function PendingPledgesPage() {
           ) : loadError ? (
             <div className="p-20 text-center text-gray-400">
               <AlertTriangle size={48} className="mx-auto mb-4 text-red-500 opacity-60" />
-              <p className="font-bold font-tiro text-sm mb-1 text-gray-600">তালিকা লোড করা যায়নি</p>
+              <p className="font-bold font-shadhinata text-sm mb-1 text-gray-600">তালিকা লোড করা যায়নি</p>
               <p className="text-xs mb-5">{loadError}</p>
               <button
                 onClick={fetchPending}
@@ -107,12 +107,12 @@ export default function PendingPledgesPage() {
           ) : pending.length === 0 ? (
             <div className="p-20 text-center text-gray-400">
               <CheckCircle2 size={48} className="mx-auto mb-4 opacity-20 text-emerald-600" />
-              <p className="font-bold font-tiro text-sm">এই মাসের সকল অঙ্গীকার পূর্ণ হয়েছে!</p>
+              <p className="font-bold font-shadhinata text-sm">এই মাসের সকল অঙ্গীকার পূর্ণ হয়েছে!</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-20 text-center text-gray-400">
               <Search size={48} className="mx-auto mb-4 opacity-20" />
-              <p className="font-bold font-tiro text-sm">অনুসন্ধানে কোনো সদস্য পাওয়া যায়নি</p>
+              <p className="font-bold font-shadhinata text-sm">অনুসন্ধানে কোনো সদস্য পাওয়া যায়নি</p>
             </div>
           ) : (
             filtered.map((p) => (
@@ -123,15 +123,15 @@ export default function PendingPledgesPage() {
                       {p.name[0]}
                     </div>
                     <div>
-                      <p className="text-base font-bold text-gray-900 font-tiro">{p.name}</p>
+                      <p className="text-base font-bold text-gray-900 font-shadhinata">{p.name}</p>
                       <p className="text-xs text-gray-400 flex items-center gap-1"><Phone size={10} /> {p.phone || 'ফোন নেই'}</p>
                     </div>
                   </div>
                   
                   <div className="flex items-center justify-between sm:justify-end gap-8">
                     <div className="text-right">
-                      <p className="text-lg font-bold text-red-600 font-tiro">৳{p.remaining.toLocaleString()}</p>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">বাকি (মোট: ৳{p.pledge})</p>
+                      <p className="text-lg font-bold text-red-600 font-baloo">৳{p.remaining.toLocaleString()}</p>
+                      <p className="text-[10px] text-gray-400 font-bold">বাকি (মোট: ৳{p.pledge})</p>
                     </div>
                     
                     <button 

@@ -210,7 +210,7 @@ export default function MembersPage() {
     <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">সদস্য তালিকা</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold font-shadhinata text-gray-900 mb-1">সদস্য তালিকা</h1>
           <p className="text-sm text-gray-500 font-medium">ফাউন্ডেশনের সকল নিবন্ধিত সদস্য</p>
         </div>
         {isStaff && (
@@ -246,7 +246,7 @@ export default function MembersPage() {
                   {member.name[0]}
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${member.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
+                  <div className={`px-3 py-1 rounded-full text-[10px] font-bold ${member.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
                     {member.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                   </div>
                   {isStaff && (
@@ -305,8 +305,8 @@ export default function MembersPage() {
                 </div>
               </div>
               
-              <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors font-tiro">{member.name}</h3>
-              <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-4">{member.role || 'সদস্য'}</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors font-shadhinata">{member.name}</h3>
+              <p className="text-[11px] text-gray-400 font-bold mb-4">{member.role || 'সদস্য'}</p>
               
               <div className="space-y-3 pt-4 border-t border-gray-50">
                 <div className="flex items-center gap-3 text-sm text-gray-600 font-medium">
@@ -322,8 +322,8 @@ export default function MembersPage() {
                   <span className="line-clamp-1">{isStaff ? (member.address || 'ঠিকানা নেই') : 'পাবলিক নয়'}</span>
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">মাসিক অঙ্গীকার</span>
-                  <span className="text-base font-bold text-emerald-600 font-tiro">৳{effectivePledgeOf(member).toLocaleString("bn-BD")}</span>
+                  <span className="text-[10px] text-gray-400 font-bold">মাসিক অঙ্গীকার</span>
+                  <span className="text-base font-bold text-emerald-600 font-baloo">৳{effectivePledgeOf(member).toLocaleString("bn-BD")}</span>
                 </div>
               </div>
             </div>
@@ -340,7 +340,7 @@ export default function MembersPage() {
           <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-6 sm:p-8 border-b border-gray-100 flex items-center justify-between bg-emerald-600 text-white">
               <div>
-                <h2 className="text-xl font-bold font-tiro">{editingMember ? 'সদস্য এডিট করুন' : 'নতুন সদস্য যোগ করুন'}</h2>
+                <h2 className="text-xl font-bold font-shadhinata">{editingMember ? 'সদস্য এডিট করুন' : 'নতুন সদস্য যোগ করুন'}</h2>
                 <p className="text-emerald-100 text-xs mt-1">সঠিক তথ্য প্রদান করে সেভ করুন</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors" aria-label="বন্ধ">

@@ -17,11 +17,11 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-[#FDFDFC] flex flex-col items-center justify-center px-6 text-center font-hind">
+    <div className="min-h-screen bg-[#FDFDFC] flex flex-col items-center justify-center px-6 text-center font-akkas">
       <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600 mb-8">
         <TriangleAlert size={28} />
       </div>
-      <h1 className="text-2xl font-bold text-gray-900 font-tiro mb-3">
+      <h1 className="text-2xl font-bold text-gray-900 font-shadhinata mb-3">
         কিছু ভুল হয়েছে
       </h1>
       <p className="text-gray-500 mb-8 max-w-sm leading-relaxed">

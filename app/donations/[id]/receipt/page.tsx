@@ -3,13 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import {
-  Printer,
-  ArrowLeft,
-  Shield,
-  Loader2,
-  ExternalLink,
-} from "lucide-react";
+import { Printer, ArrowLeft, Shield, Loader2 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
 import { isStaff as hasStaffRole } from "@/lib/auth";
@@ -21,6 +15,7 @@ import {
   toBengaliNumber,
   methodLabels,
 } from "@/lib/utils";
+import ReceiptPaper from "./ReceiptPaper";
 
 type Donation = {
   id: string;
@@ -55,7 +50,7 @@ function monthRangeLabel(start: string | null, end: string | null): string {
 
 export default function ReceiptViewPage() {
   const { id } = useParams<{ id: string }>();
-  const { role } = useAuth();
+  const { role, memberId } = useAuth();
   const isStaff = hasStaffRole(role);
 
   const [donation, setDonation] = useState<Donation | null>(null);
@@ -67,13 +62,14 @@ export default function ReceiptViewPage() {
   const [batchReceiptNo, setBatchReceiptNo] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id || !isStaff) {
+    if (!id) {
       setLoading(false);
       return;
     }
+    // Staff and members (own donations, enforced by RLS) may load.
     void loadDonation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isStaff]);
+  }, [id]);
 
   async function loadDonation() {
     setLoading(true);
@@ -97,45 +93,54 @@ export default function ReceiptViewPage() {
           .from("donations")
           .select("amount, donation_month, receipt_no")
           .eq("batch_id", d.batch_id)
+          .eq("member_id", d.member_id)
           .order("donation_month", { ascending: true });
         if (batchRows && batchRows.length > 1) {
-          const first = batchRows[0] as { amount: number; donation_month: string; receipt_no: string };
-          const last = batchRows[batchRows.length - 1] as { amount: number; donation_month: string };
-          setBatchMonth(
-            `${monthLabelBengali(first.donation_month)} – ${monthLabelBengali(last.donation_month)} (${toBengaliNumber(
-              String(batchRows.length).padStart(2, "0")
-            )} মাস)`
-          );
+          // Unique months only: two rows covering the same month must not
+          // inflate the "(০৩ মাস)" label. Null months are skipped safely.
+          const months = Array.from(
+            new Set(
+              batchRows.map(
+                (r) => (r as { donation_month: string | null }).donation_month
+              )
+            )
+          )
+            .filter((m): m is string => !!m)
+            .sort();
+          if (months.length > 0) {
+            setBatchMonth(
+              `${monthLabelBengali(months[0])} – ${monthLabelBengali(months[months.length - 1])} (${toBengaliNumber(
+                String(months.length).padStart(2, "0")
+              )} মাস)`
+            );
+          }
           setBatchAmount(
             batchRows.reduce((sum: number, r: { amount: number }) => sum + Number(r.amount), 0)
           );
-          setBatchReceiptNo(`${(d.receipt_no || "").split("-")[0]} (Batch)`);
+          setBatchReceiptNo(d.receipt_no ? `${d.receipt_no} (Batch)` : null);
         }
       }
     }
     setLoading(false);
   }
 
-  if (!isStaff) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
-        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-xl shadow-red-100">
-          <Shield size={40} />
-        </div>
-        <h1 className="mb-2 font-tiro text-2xl font-bold text-gray-900">
-          প্রবেশাধিকার সংরক্ষিত
-        </h1>
-        <p className="max-w-xs text-gray-500">
-          এই রসিদ পেজটি শুধুমাত্র অ্যাডমিন ও ট্রেজারারদের জন্য। আপনার যদি মনে
-          হয় এটি ভুল, তবে প্রধান অ্যাডমিনের সাথে যোগাযোগ করুন।
-        </p>
-      </div>
-    );
-  }
+  // Client-only after mount: window.location.origin differs between server
+  // and client render, so building this in render would cause a hydration
+  // mismatch (QR flicker). The QR stays hidden until the URL is ready.
+  const [verifyUrl, setVerifyUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (donation?.receipt_no) {
+      setVerifyUrl(
+        `${window.location.origin}/verify/${encodeURIComponent(donation.receipt_no)}`
+      );
+    } else {
+      setVerifyUrl(null);
+    }
+  }, [donation?.receipt_no]);
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center gap-2 text-gray-500">
+      <div className="flex min-h-[60vh] items-center justify-center gap-2 font-akkas text-gray-500">
         <Loader2 className="animate-spin" size={24} />
         রসিদ লোড হচ্ছে…
       </div>
@@ -144,8 +149,53 @@ export default function ReceiptViewPage() {
 
   if (error || !donation) {
     return (
-      <div className="mx-auto max-w-md p-8 text-center">
-        <h1 className="mb-2 font-tiro text-2xl font-bold text-gray-900">
+      <div className="mx-auto max-w-md p-8 text-center font-akkas">
+        <h1 className="mb-2 font-shadhinata text-2xl font-bold text-gray-900">
+          রসিদ পাওয়া যায়নি
+        </h1>
+        <p className="text-gray-500">{error || "এই আইডির কোনো দান পাওয়া যায়নি।"}</p>
+        <Link href="/donations" className="btn-outline mt-6 inline-flex items-center gap-2">
+          <ArrowLeft size={16} />
+          জমা তালিকায় ফিরুন
+        </Link>
+      </div>
+    );
+  }
+
+  // Same gate as the legacy JPEG receipt: staff OR the member who owns the
+  // donation. Row access itself is enforced by RLS; this is only the UI gate.
+  const canView = isStaff || (memberId !== null && memberId === donation.member_id);
+  if (!canView) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center font-akkas">
+        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-xl shadow-red-100">
+          <Shield size={40} />
+        </div>
+        <h1 className="mb-2 font-shadhinata text-2xl font-bold text-gray-900">
+          প্রবেশাধিকার সংরক্ষিত
+        </h1>
+        <p className="max-w-xs text-gray-500">
+          এই রসিদটি শুধুমাত্র সংশ্লিষ্ট সদস্য, অ্যাডমিন ও ট্রেজারাররা দেখতে
+          পারেন। আপনার যদি মনে হয় এটি ভুল, তবে প্রধান অ্যাডমিনের সাথে
+          যোগাযোগ করুন।
+        </p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center gap-2 font-akkas text-gray-500">
+        <Loader2 className="animate-spin" size={24} />
+        রসিদ লোড হচ্ছে…
+      </div>
+    );
+  }
+
+  if (error || !donation) {
+    return (
+      <div className="mx-auto max-w-md p-8 text-center font-akkas">
+        <h1 className="mb-2 font-shadhinata text-2xl font-bold text-gray-900">
           রসিদ পাওয়া যায়নি
         </h1>
         <p className="text-gray-500">{error || "এই আইডির কোনো দান পাওয়া যায়নি।"}</p>
@@ -167,86 +217,68 @@ export default function ReceiptViewPage() {
         donation.coverage_start_month ||
         donation.donation_month
     );
-  const receiptNo = batchReceiptNo ?? donation.receipt_no;
-  const collectorName =
-    donation.collector?.[0]?.members?.[0]?.name ||
-    donation.collector?.[0]?.name ||
-    "অ্যাডমিন";
-
-  const rows: Array<[string, string]> = [
-    ["রসিদ নং", receiptNo || "—"],
-    ["জনাব/জনাবা", donation.members?.[0]?.name || "অজ্ঞাত"],
-    ["তারিখ", formatDateBengali(donation.date)],
-    ["মাসের নাম", monthLabel],
-    ["টাকার পরিমাণ কথায়", `${numberToWordsBengali(amount)} টাকা`],
-    ["টাকার পরিমাণ", formatMoney(amount)],
-    ...(donation.extra_amount && Number(donation.extra_amount) > 0
-      ? [["অতিরিক্ত", formatMoney(Number(donation.extra_amount))] as [string, string]]
-      : []),
-    ["মাধ্যম", donation.method ? methodLabels[donation.method] || donation.method : "—"],
-    ["আদায়কারী", collectorName],
-  ];
 
   return (
     <>
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          .receipt-print { box-shadow: none !important; border: 1px solid #064E3B !important; max-width: 148mm; margin: 0 auto; }
           body { background: #fff !important; }
+          .receipt-stage { background: #fff !important; padding: 0 !important; }
+          .receipt-paper {
+            box-shadow: none !important;
+            margin: 0 auto !important;
+            max-width: 175mm !important;
+          }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
-      <div className="mx-auto max-w-2xl px-4 py-6 font-hind">
-        <div className="no-print mb-4 flex items-center justify-between">
-          <Link href="/donations" className="btn-outline inline-flex items-center gap-2">
+
+      <div className="receipt-stage min-h-screen bg-[#0a0f0d] px-4 py-8 font-akkas sm:py-12">
+        <div className="no-print mx-auto mb-8 flex max-w-2xl items-center justify-between">
+          <Link
+            href="/donations"
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-stone-200 transition hover:border-white/30 hover:text-white"
+          >
             <ArrowLeft size={16} />
             জমা তালিকা
           </Link>
           <button
             type="button"
             onClick={() => window.print()}
-            className="btn-emerald inline-flex items-center gap-2"
+            className="inline-flex items-center gap-2 rounded-full bg-[#C9A227] px-5 py-2 text-sm font-bold text-[#022C22] shadow-[0_8px_24px_rgba(201,162,39,0.35)] transition hover:brightness-110"
           >
             <Printer size={16} />
             প্রিন্ট করুন
           </button>
         </div>
 
-        <article className="receipt-print overflow-hidden rounded-2xl bg-white shadow-xl">
-          <header className="bg-gradient-to-b from-[#022C22] to-[#064E3B] px-6 py-6 text-center">
-            <h1 className="font-tiro text-xl font-bold text-white">
-              দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন
-            </h1>
-            <p className="mt-1 text-sm text-emerald-100">দান রসিদ</p>
-            <div className="mx-auto mt-3 h-0.5 w-24 bg-[#C9A227]" />
-          </header>
+        <ReceiptPaper
+          receiptNo={batchReceiptNo ?? donation.receipt_no}
+          dateLabel={formatDateBengali(donation.date)}
+          amountLabel={formatMoney(amount)}
+          amountWords={numberToWordsBengali(amount)}
+          donorName={donation.members?.[0]?.name || "অজ্ঞাত"}
+          monthLabel={monthLabel}
+          methodLabel={
+            donation.method ? methodLabels[donation.method] || donation.method : "—"
+          }
+          collectorName={
+            donation.collector?.[0]?.members?.[0]?.name ||
+            donation.collector?.[0]?.name ||
+            "অ্যাডমিন"
+          }
+          extraAmountLabel={
+            donation.extra_amount && Number(donation.extra_amount) > 0
+              ? formatMoney(Number(donation.extra_amount))
+              : null
+          }
+          verifyUrl={verifyUrl}
+        />
 
-          <dl className="px-6 py-4">
-            {rows.map(([label, value]) => (
-              <div
-                key={label}
-                className="flex items-start justify-between gap-4 border-b border-dashed border-gray-100 py-3 last:border-0"
-              >
-                <dt className="shrink-0 text-sm text-gray-500">{label}</dt>
-                <dd className="text-right text-sm font-semibold text-gray-900">{value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          <footer className="px-6 pb-6 text-center">
-            <p className="text-sm text-[#064E3B]">আপনার মহানুভবতার জন্য ধন্যবাদ!</p>
-            <p className="mt-1 text-xs text-gray-500">আল্লাহ আপনার দান কবুল করুন</p>
-            {donation.receipt_no && (
-              <Link
-                href={`/verify/${donation.receipt_no}`}
-                className="no-print mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#059669] underline underline-offset-4"
-              >
-                যাচাই লিংক
-                <ExternalLink size={14} />
-              </Link>
-            )}
-          </footer>
-        </article>
+        <p className="no-print mx-auto mt-6 max-w-2xl text-center text-xs text-stone-500">
+          প্রিন্ট করলে উপরের বাটনগুলো বাদ যাবে — শুধু রসিদটি কাগজে আসবে।
+        </p>
       </div>
     </>
   );

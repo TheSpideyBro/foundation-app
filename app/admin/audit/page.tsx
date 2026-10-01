@@ -95,7 +95,7 @@ export default function AuditLogsPage() {
         <div className="flex items-center gap-4">
           <AdminBackLink />
           <div>
-            <h1 className="text-[28px] font-bold font-tiro text-gray-900">অডিট লগ</h1>
+            <h1 className="text-[28px] font-bold font-shadhinata text-gray-900">অডিট লগ</h1>
             <p className="text-gray-500 text-[14px]">ফাউন্ডেশনের সকল কার্যক্রমের পূর্ণাঙ্গ ইতিহাস</p>
           </div>
         </div>
@@ -119,13 +119,13 @@ export default function AuditLogsPage() {
           {loadError ? (
             <div className="p-20 text-center text-gray-400">
               <AlertCircle size={48} className="mx-auto mb-4 text-red-500 opacity-60" />
-              <p className="font-bold font-tiro text-sm mb-1 text-gray-600">অডিট লগ লোড করা যায়নি</p>
+              <p className="font-bold font-shadhinata text-sm mb-1 text-gray-600">অডিট লগ লোড করা যায়নি</p>
               <p className="text-xs">{loadError}</p>
             </div>
           ) : filteredLogs.length === 0 ? (
             <div className="p-20 text-center text-gray-400">
               <History size={48} className="mx-auto mb-4 opacity-20" />
-              <p className="font-bold font-tiro text-sm">
+              <p className="font-bold font-shadhinata text-sm">
                 {searchQuery ? "অনুসন্ধানে কোনো লগ পাওয়া যায়নি।" : "কোনো লগ পাওয়া যায়নি।"}
               </p>
             </div>
@@ -142,10 +142,10 @@ export default function AuditLogsPage() {
                         <span className="font-bold">{getActionLabel(log.action)}</span>: {log.target_table === 'donations' ? 'অনুদান' : log.target_table === 'expenses' ? 'খরচ' : log.target_table === 'members' ? 'সদস্য' : log.target_table}
                       </p>
                       <div className="flex items-center gap-3 mt-1.5">
-                        <span className="flex items-center gap-1 text-[11px] text-gray-400 font-bold uppercase tracking-widest">
+                        <span className="flex items-center gap-1 text-[11px] text-gray-400 font-bold">
                           <User size={12} /> {log.actor_email || 'সিস্টেম'}
                         </span>
-                        <span className="flex items-center gap-1 text-[11px] text-gray-400 font-bold uppercase tracking-widest">
+                        <span className="flex items-center gap-1 text-[11px] text-gray-400 font-bold">
                           <Clock size={12} /> {new Date(log.created_at).toLocaleString('bn-BD')}
                         </span>
                       </div>

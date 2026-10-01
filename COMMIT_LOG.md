@@ -59,6 +59,643 @@
 
 ---
 
+## 2a80430 — fix(review): resolve full-repo review findings H2, M1–M4, L1–L11
+
+**Date:** 2026-10-02  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** 10 (app/api/qr, app/api/receipts/[id], donations receipt page, donations page, verify page, layout.tsx, globals.css, components/layout.tsx, 2 Sabbir TTF deletions)
+
+### What Changed (Before → After)
+
+| Finding | Before | After |
+|---------|--------|-------|
+| H2 legacy batch total | `sum + d.amount` — PostgREST numeric-as-string could print `৳ 0500300/-` | `sum + Number(d.amount \|\| 0)` |
+| M1 verify URLs | raw `receipt_no` interpolated into `/verify/...` (3 spots) | `encodeURIComponent(...)` everywhere |
+| M2 batch QR semantics | QR pointed at one row while the paper showed the batch total | `/verify` shows a 📦 batch box (total + month range) when the scanned donation is in a batch |
+| M3 `/api/qr` errors | `QRCode.toBuffer` threw → raw 500 | try/catch → `422 { error }` JSON |
+| M4 QR hydration | `verifyUrl` built with `window.location.origin` in render → server/client tree mismatch | built in `useEffect` after mount; QR renders only when URL is set |
+| L1 dead fonts | unused Anek Bangla + Sabbir Sorolota declarations (and Sabbir TTFs) shipped | declarations + `@theme` tokens removed; Sabbir TTFs deleted from repo |
+| L2 unused italics | 5 italic `@font-face` src entries with zero italic text | italic entries dropped (TTFs kept on disk, unreferenced) |
+| L3 batch number | `FHF-2026-0001` → `FHF (Batch)` | `FHF-2026-0001 (Batch)` (both receipts) |
+| L4 null month | `monthLabelBengali(first.donation_month)` could receive null | months filtered/deduped before labeling |
+| L5 batch guard | batch query filtered by `batch_id` only | also `.eq("member_id", …)` (receipt page, legacy, verify) |
+| L6 month count | label counted rows (`(০৩ মাস)` could lie on duplicate months) | counts unique months |
+| L7 legacy QR origin | preferred `NEXT_PUBLIC_SITE_URL` over request host | `request.nextUrl.origin` first, env as fallback |
+| L8 `/api/qr` abuse | public CPU-bound endpoint, no limit | 60 renders/min per IP, in-memory, fail-open |
+| L9 receipt access | HTML receipt staff-only (legacy let members view own) | staff OR `member_id` match — legacy parity; RLS still enforces rows |
+| L10 hardcoded URLs | `metadataBase` + openGraph `url` hardcoded | honor `NEXT_PUBLIC_SITE_URL`, hardcoded host as fallback |
+| L11 dead class | `text-md` (not a Tailwind size) in mobile header | `text-base` |
+
+### Why
+
+Akash: "Shob fix koro" — apply every finding from the 2026-10-02 full-repo review.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm lint` — 0 errors, 140 warnings (baseline, none new)
+- `pnpm build` — green, 31/31 pages
+
+### Known Risks / Follow-ups
+
+- L9 is a product call: member-own receipt access restored to match legacy. Revert if staff-only was intentional.
+- Lipighor licensing still open (Akkas, Nakkhatra, Shadhinata, Teesta need permission email + footer backlink); branch stays local until Akash approves push.
+- Sabbir TTFs deleted from git but Akash's original ZIPs remain in `~/workspace/user/files/` if the font is ever wanted back.
+
+---
+
+## 53039cf — fix(fonts): AppLayout shell font-hind -> font-akkas
+
+**Date:** 2026-10-02  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** components/layout.tsx
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Authenticated app shell font | `font-hind` class on the AppLayout wrapper (Hind Siliguri leaked back into the logged-in UI) | `font-akkas` — Li Abu J M Akkas everywhere, matching the public pages |
+
+### Why
+
+Full-app font rollout (d8ffedc) missed the authenticated shell — review finding H1.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+
+### Known Risks / Follow-ups
+
+- None known.
+
+---
+
+## d8ffedc — feat(fonts): apply custom fonts across the full app by role
+
+**Date:** 2026-10-02  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** 26 files (app/**, components/layout.tsx, CHANGELOG.md)
+
+### What Changed (Before → After)
+
+| Role | Before | After |
+|------|--------|-------|
+| Page headings (h1/h2/h3), brand names (sidebar/nav, footer, auth headers, verify brand) | Tiro Bangla (`font-tiro`) | **Li Shadhinata 2.0** (`font-shadhinata`) |
+| Default body font | Hind Siliguri (`font-hind` on `<body>` + page wrappers — the utility class was overriding the CSS body rule, so Akkas never actually applied) | **Li Abu J M Akkas** (`font-akkas`) |
+| Amounts / stat numbers (dashboard stats, net balance, member count, pledges, dues) | Tiro Bangla | **Baloo Da 2** (`font-baloo`) |
+| Verify page detail rows | default | **Li Alinur Nakkhatra** (`font-nakkhatra`) |
+| Receipt italic quote | Tiro Bangla | Tiro Bangla (kept on purpose) |
+
+### Why
+
+Akash: apply the custom fonts across the full app, each where needed — same role mapping the receipt established.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Lipighor licensing still open (permission + footer backlink); branch stays local.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## dc2136b — feat(receipt): gratitude back to Galada, signature keeps Teesta
+
+**Date:** 2026-10-02  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| "জাযাকাল্লাহু খাইরান" | Li Chayana Teesta | **Galada** (reverted) |
+| Collector signature name | Li Chayana Teesta | Li Chayana Teesta (unchanged) |
+
+### Why
+
+Akash: keep the two different — gratitude in Galada, signature in Chayana Teesta.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## 5205a00 — feat(receipt): Li Chayana Teesta for gratitude + signature
+
+**Date:** 2026-10-02  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/fonts/LiChayanaTeestaUnicode-Regular.ttf, app/fonts/LiChayanaTeestaUnicode-Italic.ttf (new), app/layout.tsx, app/globals.css, app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Gratitude "জাযাকাল্লাহু খাইরান" | Galada (`font-galada`) | **Li Chayana Teesta** (`font-teesta`) |
+| Collector signature name | Galada (`font-galada`) | **Li Chayana Teesta** (`font-teesta`) |
+
+### Why
+
+Akash supplied `ChayanaTeesta.zip` and asked to use it for these two spots. Straight swap — sizes (24px / 20px) unchanged.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green; `@font-face{font-family:chayanaTeesta}` emitted, variable chain verified
+
+### Known Risks / Follow-ups
+
+- Same Lipighor licensing: webfont use needs `admin@lipighor.com` permission + footer backlink; TTFs must not be redistributed. Branch stays local, nothing pushed.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## 083ac3d — feat(receipt): Li Shadhinata 2.0 for masthead
+
+**Date:** 2026-10-02  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/fonts/LiShadhinata2Unicode-Regular.ttf, app/fonts/LiShadhinata2Unicode-Italic.ttf (new), app/layout.tsx, app/globals.css, app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Masthead font | Li Sabbir Sorolota (`font-sabbir`) | **Li Shadhinata 2.0** (`font-shadhinata`), Baloo Da 2 as fallback |
+
+### Why
+
+Akash supplied `Shadhinata2.0.zip` and asked to use it in the header. Straight swap — size (23/26px), bold, and black color unchanged.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green; `@font-face{font-family:shadhinata}` emitted, variable chain verified
+
+### Known Risks / Follow-ups
+
+- Same Lipighor licensing: webfont use needs `admin@lipighor.com` permission + footer backlink; TTFs must not be redistributed. Branch stays local, nothing pushed.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## 182f26a — feat(receipt): Abu JM Akkas as default font + bigger detail rows
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/fonts/LiAbuJMAkkasUnicode-Regular.ttf, app/fonts/LiAbuJMAkkasUnicode-Italic.ttf (new), app/layout.tsx, app/globals.css, app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Default body font | Hind Siliguri | **Li Abu J M Akkas** (`--font-akkas`, Hind Siliguri as fallback) |
+| Detail row labels | 11px | 12px |
+| Detail row values | 15px | 17px |
+
+### Why
+
+Akash supplied `AbuJMAkkas.zip`: use it instead of the default Hind Siliguri, and bump the detail-row sizes.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green; `@font-face{font-family:abuJmAkkas}` emitted, variable chain verified
+
+### Known Risks / Follow-ups
+
+- Same Lipighor licensing: webfont use needs `admin@lipighor.com` permission + footer backlink; TTFs must not be redistributed. Branch stays local, nothing pushed.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## 8f16ac2 — feat(receipt): Li Alinur Nakkhatra for detail rows
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/fonts/LiAlinurNakkhatraUnicode-Regular.ttf, app/fonts/LiAlinurNakkhatraUnicode-Italic.ttf (new), app/layout.tsx, app/globals.css, app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Detail rows font | Anek Bangla (`font-anek`) | **Li Alinur Nakkhatra** (`font-nakkhatra`), Anek Bangla as fallback |
+
+### Why
+
+Akash supplied `AlinurNakkhatra.zip` and asked to use it instead of Anek Bangla. Wired the same way as Sabbir Sorolota: Unicode TTFs in `app/fonts/`, `next/font/local` as `--font-nakkhatra`, applied to the `<dl>` detail rows only — no other changes.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green; `@font-face{font-family:alinurNakkhatra}` emitted, variable chain verified
+
+### Known Risks / Follow-ups
+
+- Same Lipighor licensing as Sabbir: webfont use needs `admin@lipighor.com` permission + footer backlink; TTFs must not be redistributed. Branch stays local, nothing pushed.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## abda731 — feat(receipt): smaller signature name (26px → 20px)
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Collector signature name | 26px Galada | 20px Galada (overlap adjusted -mb-4 → -mb-3) |
+
+### Why
+
+Akash: the treasurer/collector signature name looked too big.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## 80cb38a — feat(receipt): QR/signature always side by side
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| QR/signature row | Stacked below 420px (phone preview showed উপর-নিচ) | Always `flex-row`: QR fixed left (`shrink-0`), signature flexible right (`flex-1`, `min-w-0`, `max-w-[280px]`) |
+
+### Why
+
+Akash viewed the preview on his phone (viewport < 420px) where the responsive stacking kicked in — he wants them পাশাপাশি everywhere.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## ce65534 — feat(receipt): QR left, signature right per sketch
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Bottom row | QR card + signature in adjacent centered columns | QR at left edge, signature at right edge (`justify-between`, bottom-aligned) — matches Akash's sketch |
+| QR treatment | White card with title + caption | Minimal: gold-ringed QR + small "স্ক্যান করে যাচাই করুন" label |
+
+### Why
+
+Akash's sketch showed the classic receipt footer: QR left, signature right, spread apart.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## 3913ea8 — feat(receipt): pure black masthead
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Masthead color | Deep emerald `#022C22` | Pure black |
+
+### Why
+
+Akash asked for pure black on the header.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## c4a0831 — feat(receipt): straight Sabbir Sorolota swap on masthead
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Masthead | 26/30px, no bold (my tweak) | Back to 23/26px + font-bold — only `font-baloo` → `font-sabbir` changed |
+
+### Why
+
+Akash: the real font wasn't showing (preview bug — the static preview has no next/font runtime, so `--font-sabbir` fell back to the `@theme` value `"Li Sabbir Sorolota Unicode"` while the embedded `@font-face` declared `sabbirSorolota`; names now match). And: apply the font with no other modifications.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- Font-chain verified: app runtime (`sabbirSorolota` var + @font-face) and static preview (`Li Sabbir Sorolota Unicode` fallback + embedded face) both resolve
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## d06efa7 — feat(receipt): masthead in Li Sabbir Sorolota (custom font)
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/fonts/LiSabbirSorolotaUnicode-Regular.ttf, app/fonts/LiSabbirSorolotaUnicode-Italic.ttf (new), app/layout.tsx, app/globals.css, app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Masthead font | Baloo Da 2 bold | **Li Sabbir Sorolota** (Akash's font, 26/30px, no faux-bold) |
+
+### Why
+
+Akash supplied the font file and asked for it on the receipt's main header. Only the Unicode TTFs are bundled (ANSI variants are legacy-encoded, not for web). Dropped `font-bold` — the font ships a single 400 weight and synthetic bold distorts Bengali conjuncts.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green (`@font-face` + woff2 emitted correctly)
+
+### Known Risks / Follow-ups
+
+- Lipighor license: free for designs, but **webfont use on the live site needs email permission (admin@lipighor.com) + a footer backlink to lipighor.com** — flagged to Akash.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## 0ad5eb6 — feat(receipt): QR and signature side by side, tighter page
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| QR card + signature | Stacked full-width rows | One 2-column row: QR card left, signature right (stacks below 420px) |
+| Gratitude position | Between QR card and signature | Above the row, so signature stays last |
+| Density | Roomy | Tightened throughout (container pt/pb 8→6, smaller meta/amount/details/gratitude/footer gaps) |
+
+### Why
+
+Akash: make the page more compact and put QR + signature পাশাপাশি.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green (one transient Turbopack font-fetch failure on first attempt; clean on retry)
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## 6c6a207 — feat(receipt): remove office seal, tighten signature spacing
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| অফিস সিল column | Present beside collector signature | Removed entirely |
+| Signature name ↔ line gap | `-mb-2` — name floated above the line | `-mb-4` — name sits on the line |
+
+### Why
+
+Akash: the seal isn't needed, and the signature name had too much space above the line.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## c0737ae — feat(receipt): signature-style collector name on the signature line
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Collector name | Plain Hind Siliguri text below "আদায়কারীর স্বাক্ষর" label | Galada calligraphic script sitting on the signature line (slight overlap, like a handwritten signature) |
+
+### Why
+
+Akash: the name should look like a signature on the line, not a caption under it. Reused the already-loaded Galada font so no new font payload.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## fcd73da — feat(receipt): use Anek Bangla for details rows
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, app/layout.tsx, app/globals.css, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Details rows (প্রদানকারী, মাসের নাম, মাধ্যম, আদায়কারী) | Hind Siliguri | **Anek Bangla** (400–700, `--font-anek` token) |
+
+### Why
+
+Akash asked for a more stylish Bangla font for the detail labels/values. Anek Bangla is a modern, characterful Bengali sans — distinct from the Baloo Da 2 headings and Galada gratitude line, and still highly legible for data.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## 170d3af — feat(receipt): add letterhead contact details under masthead
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Masthead | Foundation name only | Name + contact line: address (দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা) and phones (০১৮৪০-৮২৮০১০ · ০১৮১৪-৯৪৮২২৪) with gold MapPin/Phone icons |
+
+### Why
+
+Akash asked to add contact/address details, pointing at the old receipt — the legacy JPEG receipt (`app/api/receipts/[id]/route.ts` lines 205–206) carries exactly this address and these two phone numbers, so they were lifted verbatim.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Hardcoded foundation constants (same as the legacy receipt). If numbers change, update both this file and the JPEG route.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
+## 7f771fe — feat(receipt): stylish fonts and compact layout per feedback
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, app/layout.tsx, app/globals.css, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Display font | Tiro Bangla serif for masthead + amount | **Baloo Da 2** (bold, rounded) for foundation name + amount hero |
+| Gratitude line | Tiro Bangla bold | **Galada** calligraphic script for "জাযাকাল্লাহু খাইরান" |
+| দান রসিদ eyebrow | `tracking-[0.42em]` — looked gappy/broken in Bengali | `tracking-[0.12em]` (same fix for other Bengali eyebrow labels) |
+| QR card | Raw verify URL text under the title | URL line removed; title + caption only |
+| Density | ~1250px tall paper, lots of scroll | Tightened throughout (48px seal, 42–50px amount, 88px QR, reduced paddings) |
+
+### Why
+
+Akash's design feedback on the v1 preview: wanted a more stylish Bengali font, the wide-tracked "দান রসিদ" looked broken, the URL next to the QR was clutter, and the receipt needed to fit with less scrolling.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm lint` — 0 errors (140 pre-existing warnings)
+- `pnpm build` — green (fonts download at build time, no errors)
+
+### Known Risks / Follow-ups
+
+- Baloo Da 2 / Galada are new global font payloads (bengali subsets only) — negligible size impact, display=swap.
+- Awaiting Akash's visual approval on v2 preview before push/PR.
+
+---
+
+## 82f966d — feat(receipt): premium paper receipt redesign with QR verification card
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx (new), app/donations/[id]/receipt/page.tsx, app/api/qr/route.ts (new), CHANGELOG.md, docs/product/FEATURE_MAP.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Receipt layout | Plain white card, emerald gradient header, dashed detail rows | Editorial ivory "paper" on dark stage: gold hairline frame, emerald/gold brand bands, Landmark masthead seal |
+| Amount display | One row in a detail list ("টাকার পরিমাণ") | Large Bengali amount hero (54–64px Tiro Bangla) with কথায় line between gold rules |
+| QR code | ExternalLink text link to /verify/{receipt_no} | Scannable QR card: same-origin PNG from new /api/qr endpoint + verify URL caption |
+| Foundation name | Decomposed ড+় spelling in HTML receipt | Canonical ড় spelling, matching the JPEG receipt |
+| Print | `.receipt-print` max 148mm, border fallback | Toolbar hidden, white stage, exact color adjust, max 175mm |
+| Code structure | All markup inline in page.tsx | Pure presentational `ReceiptPaper.tsx`; page keeps data/batch/auth logic |
+
+### Why
+
+Akash asked for a premium receipt in the foundation's emerald/gold identity, designed freely (not bound to the old reference). No allocation/ledger logic touched.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm lint` — 0 errors (140 pre-existing warnings)
+- `pnpm build` — green, 31/31 routes incl. `/api/qr` and `/donations/[id]/receipt`
+- `GET /api/qr?text=...` — 200 image/png (240×240)
+- Static render check of ReceiptPaper (react-dom/server) — markup + QR img + icons render
+
+### Known Risks / Follow-ups
+
+- Visual QA was via static markup render, not a live screenshot (no working browser/screenshot path in this environment) — Akash should eyeball the preview before merge.
+- `/api/qr` has no auth; input capped at 512 chars and only encoded (never fetched), so abuse surface is minimal.
+- `NEXT_PUBLIC_SITE_URL` should be set in production so QR verify URLs use the public domain (request-origin fallback exists).
+
+---
+
 ## 40b056b — fix(joma): repair status block dropped in rebase resolution
 
 **Date:** 2026-10-01  
