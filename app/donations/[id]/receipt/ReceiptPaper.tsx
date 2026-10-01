@@ -43,7 +43,7 @@ export default function ReceiptPaper({
   ];
 
   const signatureBlock = (
-    <div className="min-w-[200px] px-2 text-center">
+    <div className="min-w-0 flex-1 max-w-[280px] px-2 text-center">
       <p className="-mb-4 font-galada text-[26px] leading-tight text-[#022C22]">{collectorName}</p>
       <div className="border-b border-stone-400/70 pb-6" aria-hidden="true" />
       <p className="mt-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-stone-500">
@@ -146,8 +146,8 @@ export default function ReceiptPaper({
 
         {/* verify + signature — QR left, signature right, spread apart */}
         {verifyUrl ? (
-          <div className="mx-auto mt-5 flex max-w-lg flex-col items-center gap-6 min-[420px]:flex-row min-[420px]:items-end min-[420px]:justify-between">
-            <div className="text-center">
+          <div className="mx-auto mt-5 flex max-w-lg flex-row items-end justify-between gap-4">
+            <div className="shrink-0 text-center">
               <div className="mx-auto w-fit rounded-md bg-white p-1.5 shadow-[0_6px_18px_rgba(6,78,59,0.12)] ring-1 ring-[#C9A227]/70">
                 <Image
                   src={`/api/qr?text=${encodeURIComponent(verifyUrl)}`}
