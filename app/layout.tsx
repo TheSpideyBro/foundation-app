@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Tiro_Bangla, Hind_Siliguri } from "next/font/google";
+import { Tiro_Bangla, Hind_Siliguri, Baloo_Da_2, Galada } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers";
 import Script from "next/script";
@@ -16,6 +16,20 @@ const hindSiliguri = Hind_Siliguri({
   weight: ["300", "400", "500", "600", "700"],
   subsets: ["bengali"],
   variable: "--font-hind",
+  display: "swap",
+});
+
+const balooDa2 = Baloo_Da_2({
+  weight: ["500", "600", "700", "800"],
+  subsets: ["bengali"],
+  variable: "--font-baloo",
+  display: "swap",
+});
+
+const galada = Galada({
+  weight: "400",
+  subsets: ["bengali"],
+  variable: "--font-galada",
   display: "swap",
 });
 
@@ -74,7 +88,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable}`}>
+    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable}`}>
       <body className="antialiased font-hind">
         <AuthProvider>
           <LayoutWrapper>{children}</LayoutWrapper>
