@@ -120,6 +120,26 @@ const shadhinata = localFont({
   display: "swap",
 });
 
+// Lipighor "Li Chayana Teesta" — custom Bengali script font supplied by Akash,
+// used for the gratitude line and the collector signature (replaces Galada).
+// See app/fonts/ (Unicode TTFs only; ANSI variants not for web use).
+const chayanaTeesta = localFont({
+  src: [
+    {
+      path: "./fonts/LiChayanaTeestaUnicode-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "./fonts/LiChayanaTeestaUnicode-Italic.ttf",
+      weight: "400",
+      style: "italic",
+    },
+  ],
+  variable: "--font-teesta",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://daulkharfoundation.vercel.app"),
   title: {
@@ -175,7 +195,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable} ${anekBangla.variable} ${sabbirSorolota.variable} ${alinurNakkhatra.variable} ${abuJmAkkas.variable} ${shadhinata.variable}`}>
+    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable} ${anekBangla.variable} ${sabbirSorolota.variable} ${alinurNakkhatra.variable} ${abuJmAkkas.variable} ${shadhinata.variable} ${chayanaTeesta.variable}`}>
       <body className="antialiased font-hind">
         <AuthProvider>
           <LayoutWrapper>{children}</LayoutWrapper>

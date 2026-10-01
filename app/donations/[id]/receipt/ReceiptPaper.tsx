@@ -44,7 +44,7 @@ export default function ReceiptPaper({
 
   const signatureBlock = (
     <div className="min-w-0 flex-1 max-w-[280px] px-2 text-center">
-      <p className="-mb-3 font-galada text-[20px] leading-tight text-[#022C22]">{collectorName}</p>
+      <p className="-mb-3 font-teesta text-[20px] leading-tight text-[#022C22]">{collectorName}</p>
       <div className="border-b border-stone-400/70 pb-6" aria-hidden="true" />
       <p className="mt-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-stone-500">
         আদায়কারীর স্বাক্ষর
@@ -138,7 +138,7 @@ export default function ReceiptPaper({
 
         {/* gratitude */}
         <div className="mt-5 text-center">
-          <p className="font-galada text-[24px] leading-snug text-[#064E3B]">জাযাকাল্লাহু খাইরান</p>
+          <p className="font-teesta text-[24px] leading-snug text-[#064E3B]">জাযাকাল্লাহু খাইরান</p>
           <p className="mx-auto mt-1 max-w-sm text-[12px] leading-relaxed text-stone-500">
             আপনার মহানুভবতার জন্য আন্তরিক ধন্যবাদ — আল্লাহ তায়ালা আপনার দান কবুল করুন
           </p>
