@@ -59,7 +59,7 @@
 
 ---
 
-## 583b796 — feat(receipt): premium paper receipt redesign with QR verification card
+## 82f966d — feat(receipt): premium paper receipt redesign with QR verification card
 
 **Date:** 2026-10-01  
 **Author:** Muse (for Akash)  
