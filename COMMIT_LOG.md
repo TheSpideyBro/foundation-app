@@ -59,6 +59,35 @@
 
 ---
 
+## 8f16ac2 — feat(receipt): Li Alinur Nakkhatra for detail rows
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/fonts/LiAlinurNakkhatraUnicode-Regular.ttf, app/fonts/LiAlinurNakkhatraUnicode-Italic.ttf (new), app/layout.tsx, app/globals.css, app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Detail rows font | Anek Bangla (`font-anek`) | **Li Alinur Nakkhatra** (`font-nakkhatra`), Anek Bangla as fallback |
+
+### Why
+
+Akash supplied `AlinurNakkhatra.zip` and asked to use it instead of Anek Bangla. Wired the same way as Sabbir Sorolota: Unicode TTFs in `app/fonts/`, `next/font/local` as `--font-nakkhatra`, applied to the `<dl>` detail rows only — no other changes.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green; `@font-face{font-family:alinurNakkhatra}` emitted, variable chain verified
+
+### Known Risks / Follow-ups
+
+- Same Lipighor licensing as Sabbir: webfont use needs `admin@lipighor.com` permission + footer backlink; TTFs must not be redistributed. Branch stays local, nothing pushed.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## abda731 — feat(receipt): smaller signature name (26px → 20px)
 
 **Date:** 2026-10-01  
