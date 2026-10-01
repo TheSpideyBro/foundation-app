@@ -59,6 +59,48 @@
 
 ---
 
+## 6d90c60 — fix(migrations): add the missing pledge row so October onward charges ৳100
+
+**Date:** 2026-10-01  
+**Author:** AI Assistant (opencode)  
+**Branch:** main  
+**Files changed:** `supabase/migrations/20261001_pledge_history_akash_october.sql` (new), `docs/database/SCHEMA.md`, `docs/decisions/BUGS.md`, `CHANGELOG.md`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| `member_pledge_history` for member `a40ef6db…` | `2026-08 → ৳100`, `2026-09 → ৳1,000` | + `2026-10 → ৳100` (existing rows untouched) |
+| Ledger expected, `2026-10` / `2026-11` / `2026-12` | ৳1,000 / ৳1,000 / ৳1,000 | ৳100 / ৳100 / ৳100 |
+| Ledger expected, `2026-09` | ৳1,000 | ৳1,000 (unchanged, operator confirmed) |
+| `members.monthly_pledge` | ৳100 | ৳100 (asserted, not rewritten) |
+| `donations` / `payment_allocations` | 7,850 = 7,850 | unchanged (asserted) |
+
+### Why
+
+The display fix (`7768ab1`) only corrected the labels — the data was still wrong. His ৳100 change had been saved with `effective_from_month = 2026-08`, so the ADR-001 rule (latest history entry `<= month` → `members.monthly_pledge` → 0) priced October at ৳1,000 forever. Operator confirmed 2026-10-01: September stays ৳1,000, October onward ৳100.
+
+The migration is idempotent (inserts only when no `2026-10` row exists) and transactional with three assertions: `2026-09 → 1000`, `2026-10 → 100`, `members.monthly_pledge = 100`. `NOTIFY pgrst, 'reload schema'` included. Data-only, so `supabase/schema.sql` needs no regeneration.
+
+### Tests Run
+
+- [x] Applied through the Management API wrapped in BEGIN/COMMIT → `[]` (no errors)
+- [x] History query: 3 rows, new one `2026-10 → 100` with the note
+- [x] ADR-001 rule re-run in SQL for `2026-08…2026-12` → `100, 1000, 100, 100, 100`
+- [x] Zero-sum: `SUM(donations) = SUM(payment_allocations) = 7,850` (30 donations, 77 allocations)
+- [x] Main only — the member does not exist on Test (per TD-011 the projects are never cross-seeded)
+
+### Related
+
+- Bug: BUG-031
+
+### Known Risks / Follow-ups
+
+- Ledger dues for this member drop from October onward (his September dues stay ৳1,000). Already-stored allocations are not rewritten — only what the ledger will *expect*.
+- Members **edit form** still cannot insert a history row for an unchanged pledge value (it only writes when the amount differs), so corrections like this still need a migration.
+
+---
+
 ## 7768ab1 — fix(joma): show the resolved pledge everywhere "current pledge" is displayed
 
 **Date:** 2026-10-01  
