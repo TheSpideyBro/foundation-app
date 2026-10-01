@@ -59,6 +59,35 @@
 
 ---
 
+## 170d3af — feat(receipt): add letterhead contact details under masthead
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Masthead | Foundation name only | Name + contact line: address (দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা) and phones (০১৮৪০-৮২৮০১০ · ০১৮১৪-৯৪৮২২৪) with gold MapPin/Phone icons |
+
+### Why
+
+Akash asked to add contact/address details, pointing at the old receipt — the legacy JPEG receipt (`app/api/receipts/[id]/route.ts` lines 205–206) carries exactly this address and these two phone numbers, so they were lifted verbatim.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Hardcoded foundation constants (same as the legacy receipt). If numbers change, update both this file and the JPEG route.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## 7f771fe — feat(receipt): stylish fonts and compact layout per feedback
 
 **Date:** 2026-10-01  
