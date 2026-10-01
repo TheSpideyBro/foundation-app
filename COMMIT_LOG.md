@@ -59,6 +59,35 @@
 
 ---
 
+## d06efa7 — feat(receipt): masthead in Li Sabbir Sorolota (custom font)
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/fonts/LiSabbirSorolotaUnicode-Regular.ttf, app/fonts/LiSabbirSorolotaUnicode-Italic.ttf (new), app/layout.tsx, app/globals.css, app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Masthead font | Baloo Da 2 bold | **Li Sabbir Sorolota** (Akash's font, 26/30px, no faux-bold) |
+
+### Why
+
+Akash supplied the font file and asked for it on the receipt's main header. Only the Unicode TTFs are bundled (ANSI variants are legacy-encoded, not for web). Dropped `font-bold` — the font ships a single 400 weight and synthetic bold distorts Bengali conjuncts.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green (`@font-face` + woff2 emitted correctly)
+
+### Known Risks / Follow-ups
+
+- Lipighor license: free for designs, but **webfont use on the live site needs email permission (admin@lipighor.com) + a footer backlink to lipighor.com** — flagged to Akash.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## 0ad5eb6 — feat(receipt): QR and signature side by side, tighter page
 
 **Date:** 2026-10-01  
