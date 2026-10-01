@@ -1,20 +1,39 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabase as supabase } from "@/lib/supabase-client";
-import { 
-  Phone, Lock, ArrowRight, Heart, 
-  ShieldCheck, Loader2, MessageCircle
+import {
+  Phone, Lock, ArrowRight, Heart,
+  ShieldCheck, Loader2, MessageCircle,
+  Eye, EyeOff
 } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // H5: honor the callbackUrl middleware sets for unauthenticated users.
+  // Only same-origin paths are allowed: must start with "/" but not "//".
+  const rawCallback = searchParams.get("callbackUrl");
+  const callbackUrl =
+    rawCallback && rawCallback.startsWith("/") && !rawCallback.startsWith("//")
+      ? rawCallback
+      : null;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +50,7 @@ export default function LoginPage() {
       });
 
       if (error) throw error;
-      router.push("/dashboard");
+      router.push(callbackUrl ?? "/dashboard");
     } catch (err: any) {
       const msg: string = err?.message || "";
       if (msg.includes("Invalid login credentials")) {
@@ -73,6 +92,7 @@ export default function LoginPage() {
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={20} />
                 <input
                   type="text"
+                  inputMode="tel"
                   placeholder="017XXXXXXXX"
                   className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-bold text-gray-900"
                   value={phone}
@@ -87,13 +107,22 @@ export default function LoginPage() {
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={20} />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-bold text-gray-900"
+                  className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-bold text-gray-900"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <button
+                  type="button"
+                  aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
             </div>
 
