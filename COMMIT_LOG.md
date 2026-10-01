@@ -59,6 +59,34 @@
 
 ---
 
+## abda731 — feat(receipt): smaller signature name (26px → 20px)
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Collector signature name | 26px Galada | 20px Galada (overlap adjusted -mb-4 → -mb-3) |
+
+### Why
+
+Akash: the treasurer/collector signature name looked too big.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## 80cb38a — feat(receipt): QR/signature always side by side
 
 **Date:** 2026-10-01  
