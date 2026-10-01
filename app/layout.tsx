@@ -60,6 +60,26 @@ const sabbirSorolota = localFont({
   display: "swap",
 });
 
+// Lipighor "Li Alinur Nakkhatra" — custom Bengali font supplied by Akash,
+// used for the receipt detail rows (replaces Anek Bangla). See app/fonts/
+// (Unicode TTFs only; ANSI variants not for web use).
+const alinurNakkhatra = localFont({
+  src: [
+    {
+      path: "./fonts/LiAlinurNakkhatraUnicode-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "./fonts/LiAlinurNakkhatraUnicode-Italic.ttf",
+      weight: "400",
+      style: "italic",
+    },
+  ],
+  variable: "--font-nakkhatra",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://daulkharfoundation.vercel.app"),
   title: {
@@ -115,7 +135,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable} ${anekBangla.variable} ${sabbirSorolota.variable}`}>
+    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable} ${anekBangla.variable} ${sabbirSorolota.variable} ${alinurNakkhatra.variable}`}>
       <body className="antialiased font-hind">
         <AuthProvider>
           <LayoutWrapper>{children}</LayoutWrapper>

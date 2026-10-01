@@ -122,7 +122,7 @@ export default function ReceiptPaper({
         </div>
 
         {/* details */}
-        <dl className="mx-auto mt-5 max-w-lg font-anek">
+        <dl className="mx-auto mt-5 max-w-lg font-nakkhatra">
           {detailRows.map(({ label, value }) => (
             <div
               key={label}
