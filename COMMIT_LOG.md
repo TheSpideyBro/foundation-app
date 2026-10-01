@@ -59,6 +59,34 @@
 
 ---
 
+## 6c6a207 — feat(receipt): remove office seal, tighten signature spacing
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| অফিস সিল column | Present beside collector signature | Removed entirely |
+| Signature name ↔ line gap | `-mb-2` — name floated above the line | `-mb-4` — name sits on the line |
+
+### Why
+
+Akash: the seal isn't needed, and the signature name had too much space above the line.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## c0737ae — feat(receipt): signature-style collector name on the signature line
 
 **Date:** 2026-10-01  
