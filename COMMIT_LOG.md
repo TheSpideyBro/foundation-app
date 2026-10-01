@@ -59,6 +59,39 @@
 
 ---
 
+## d8ffedc — feat(fonts): apply custom fonts across the full app by role
+
+**Date:** 2026-10-02  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** 26 files (app/**, components/layout.tsx, CHANGELOG.md)
+
+### What Changed (Before → After)
+
+| Role | Before | After |
+|------|--------|-------|
+| Page headings (h1/h2/h3), brand names (sidebar/nav, footer, auth headers, verify brand) | Tiro Bangla (`font-tiro`) | **Li Shadhinata 2.0** (`font-shadhinata`) |
+| Default body font | Hind Siliguri (`font-hind` on `<body>` + page wrappers — the utility class was overriding the CSS body rule, so Akkas never actually applied) | **Li Abu J M Akkas** (`font-akkas`) |
+| Amounts / stat numbers (dashboard stats, net balance, member count, pledges, dues) | Tiro Bangla | **Baloo Da 2** (`font-baloo`) |
+| Verify page detail rows | default | **Li Alinur Nakkhatra** (`font-nakkhatra`) |
+| Receipt italic quote | Tiro Bangla | Tiro Bangla (kept on purpose) |
+
+### Why
+
+Akash: apply the custom fonts across the full app, each where needed — same role mapping the receipt established.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Lipighor licensing still open (permission + footer backlink); branch stays local.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## dc2136b — feat(receipt): gratitude back to Galada, signature keeps Teesta
 
 **Date:** 2026-10-02  
