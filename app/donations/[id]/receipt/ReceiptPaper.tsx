@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { BadgeCheck, Landmark } from "lucide-react";
+import { BadgeCheck, Landmark, MapPin, Phone } from "lucide-react";
 
 export type ReceiptPaperProps = {
   receiptNo: string | null;
@@ -61,7 +61,17 @@ export default function ReceiptPaper({
           <h1 className="mx-auto mt-1.5 max-w-md font-baloo text-[23px] font-bold leading-snug text-[#022C22] sm:text-[26px]">
             দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন
           </h1>
-          <div className="mx-auto mt-4 flex max-w-[200px] items-center gap-3" aria-hidden="true">
+          <p className="mx-auto mt-2 flex max-w-md flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11.5px] font-medium text-stone-500">
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin size={12} className="shrink-0 text-[#C9A227]" />
+              দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Phone size={12} className="shrink-0 text-[#C9A227]" />
+              <span className="font-semibold tracking-[0.06em]">০১৮৪০-৮২৮০১০ · ০১৮১৪-৯৪৮২২৪</span>
+            </span>
+          </p>
+          <div className="mx-auto mt-3 flex max-w-[200px] items-center gap-3" aria-hidden="true">
             <span className="h-px flex-1 bg-[#C9A227]" />
             <span className="text-[10px] text-[#C9A227]">✦</span>
             <span className="h-px flex-1 bg-[#C9A227]" />
