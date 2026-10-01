@@ -59,6 +59,58 @@
 
 ---
 
+## 2b88e45 — feat(joma): derive the extra amount from the cash handed over
+
+**Date:** 2026-10-01  
+**Author:** AI Assistant (opencode)  
+**Branch:** main  
+**Files changed:** `app/joma/page.tsx`, `app/api/receipts/[id]/route.ts`, `app/donations/page.tsx`, `CHANGELOG.md`, `docs/product/FEATURE_MAP.md`, `docs/architecture/ACCOUNTING_DOMAIN.md`, `docs/architecture/DATA_FLOW.md`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Money inputs | "জমার পরিমাণ" (allocatable) **+** editable "অতিরিক্ত জমা" box | one input, **মোট নগদ** (total cash); the extra is derived from the preview and shown in a read-only box |
+| Submit payload | whatever the operator typed: `amount`, `extra_amount` | `amount = allocationPreview.allocatedAmount`, `extra_amount = allocationPreview.unallocatedAmount` |
+| ৳1,400 over an Aug–Nov window worth ৳1,300 | only if the second box was filled; otherwise `extra_amount = 0` + anonymous অবণ্টিত row | always `amount = 1300`, `extra_amount = 100` |
+| `donations.amount` | `p_amount + p_extra_amount` (unchanged) | unchanged — still the cash handed over, zero-sum untouched |
+| Preview summary / confirm / success | three numbers, one of them the warning `⚠ ৳১০০অবণ্টিত` | মোট নগদ / বরাদ্দ / অতিরিক্ত জমা — same three numbers, one label each (BUG-028), extra is not a warning |
+| Receipt + donations card label | `Extra Amount` / `extra` | `অতিরিক্ত জমা` (Bengali-first) |
+
+### Why
+
+Handing over more cash than the coverage window can absorb is normal (the ledger
+already models it as an `unallocated` row), but making the operator compute and
+type the split invited mistakes: a ৳1,400 entry stored `extra_amount = 0`, so the
+donations card and Reports' extra column showed nothing while the ledger flagged
+November as "overpaid". Splitting automatically keeps ONE number for the operator
+and gives the extra amount its own field, card, report column and receipt line.
+
+Engine parity was not touched: `calculatePaymentAllocation()` /
+`calculate_payment_allocation()` still receive the allocatable `amount`, and the
+SQL RPC still stores the extra as its own `month = NULL` row — exactly what the
+manual flow produced when the boxes were filled correctly.
+
+### Tests Run
+
+- [x] `tsc --noEmit`, `eslint .`, `pnpm build` — clean
+- [x] `pnpm test:ledger` — 28/28 (canonical engine untouched)
+- [x] `playwright test` — 3 passed, 6 skipped (the 6 need live credentials)
+- [x] Split checked against the real engine: `1400 → 1300 + 100` (rows `08:100 09:1000 10:100 11:100`), `1300 → 1300 + 0`, `500 → 500 + 0`, `1400` over Sep alone → `1000 + 400`, and the zero-pledge edge `1400 → 1400 + 0` stored as `NULL:1400` (the RPC rejects `amount <= 0`)
+
+### Related
+
+- Bug: BUG-028 (one label per number)
+- ADR-001 (canonical engine — unchanged)
+
+### Known Risks / Follow-ups
+
+- `donations.extra_amount` is Main-only; the Test project's `save_payment_entry` has no `p_extra_amount`, so a Joma entry pointed at Test fails as it did before (TD-011).
+- The zero-pledge edge stores the whole cash as `amount` with `extra_amount = 0`, so the donations card/Reports extra column stays 0 there even though the UI called it অতিরিক্ত জমা — the rows and totals are still correct.
+- No unit test covers the split (it is four lines of arithmetic over the already-tested preview); worth one if the split ever grows rules.
+
+---
+
 ## 6d90c60 — fix(migrations): add the missing pledge row so October onward charges ৳100
 
 **Date:** 2026-10-01  
