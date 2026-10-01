@@ -59,6 +59,44 @@
 
 ---
 
+## 583b796 — feat(receipt): premium paper receipt redesign with QR verification card
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx (new), app/donations/[id]/receipt/page.tsx, app/api/qr/route.ts (new), CHANGELOG.md, docs/product/FEATURE_MAP.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Receipt layout | Plain white card, emerald gradient header, dashed detail rows | Editorial ivory "paper" on dark stage: gold hairline frame, emerald/gold brand bands, Landmark masthead seal |
+| Amount display | One row in a detail list ("টাকার পরিমাণ") | Large Bengali amount hero (54–64px Tiro Bangla) with কথায় line between gold rules |
+| QR code | ExternalLink text link to /verify/{receipt_no} | Scannable QR card: same-origin PNG from new /api/qr endpoint + verify URL caption |
+| Foundation name | Decomposed ড+় spelling in HTML receipt | Canonical ড় spelling, matching the JPEG receipt |
+| Print | `.receipt-print` max 148mm, border fallback | Toolbar hidden, white stage, exact color adjust, max 175mm |
+| Code structure | All markup inline in page.tsx | Pure presentational `ReceiptPaper.tsx`; page keeps data/batch/auth logic |
+
+### Why
+
+Akash asked for a premium receipt in the foundation's emerald/gold identity, designed freely (not bound to the old reference). No allocation/ledger logic touched.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm lint` — 0 errors (140 pre-existing warnings)
+- `pnpm build` — green, 31/31 routes incl. `/api/qr` and `/donations/[id]/receipt`
+- `GET /api/qr?text=...` — 200 image/png (240×240)
+- Static render check of ReceiptPaper (react-dom/server) — markup + QR img + icons render
+
+### Known Risks / Follow-ups
+
+- Visual QA was via static markup render, not a live screenshot (no working browser/screenshot path in this environment) — Akash should eyeball the preview before merge.
+- `/api/qr` has no auth; input capped at 512 chars and only encoded (never fetched), so abuse surface is minimal.
+- `NEXT_PUBLIC_SITE_URL` should be set in production so QR verify URLs use the public domain (request-origin fallback exists).
+
+---
+
 ## 40b056b — fix(joma): repair status block dropped in rebase resolution
 
 **Date:** 2026-10-01  

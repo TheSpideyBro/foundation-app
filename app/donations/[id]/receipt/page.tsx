@@ -1,15 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import {
-  Printer,
-  ArrowLeft,
-  Shield,
-  Loader2,
-  ExternalLink,
-} from "lucide-react";
+import { Printer, ArrowLeft, Shield, Loader2 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
 import { isStaff as hasStaffRole } from "@/lib/auth";
@@ -21,6 +15,7 @@ import {
   toBengaliNumber,
   methodLabels,
 } from "@/lib/utils";
+import ReceiptPaper from "./ReceiptPaper";
 
 type Donation = {
   id: string;
@@ -116,9 +111,14 @@ export default function ReceiptViewPage() {
     setLoading(false);
   }
 
+  const verifyUrl = useMemo(() => {
+    if (typeof window === "undefined" || !donation?.receipt_no) return null;
+    return `${window.location.origin}/verify/${donation.receipt_no}`;
+  }, [donation?.receipt_no]);
+
   if (!isStaff) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center font-hind">
         <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-xl shadow-red-100">
           <Shield size={40} />
         </div>
@@ -135,7 +135,7 @@ export default function ReceiptViewPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center gap-2 text-gray-500">
+      <div className="flex min-h-[60vh] items-center justify-center gap-2 font-hind text-gray-500">
         <Loader2 className="animate-spin" size={24} />
         রসিদ লোড হচ্ছে…
       </div>
@@ -144,7 +144,7 @@ export default function ReceiptViewPage() {
 
   if (error || !donation) {
     return (
-      <div className="mx-auto max-w-md p-8 text-center">
+      <div className="mx-auto max-w-md p-8 text-center font-hind">
         <h1 className="mb-2 font-tiro text-2xl font-bold text-gray-900">
           রসিদ পাওয়া যায়নি
         </h1>
@@ -167,86 +167,68 @@ export default function ReceiptViewPage() {
         donation.coverage_start_month ||
         donation.donation_month
     );
-  const receiptNo = batchReceiptNo ?? donation.receipt_no;
-  const collectorName =
-    donation.collector?.[0]?.members?.[0]?.name ||
-    donation.collector?.[0]?.name ||
-    "অ্যাডমিন";
-
-  const rows: Array<[string, string]> = [
-    ["রসিদ নং", receiptNo || "—"],
-    ["জনাব/জনাবা", donation.members?.[0]?.name || "অজ্ঞাত"],
-    ["তারিখ", formatDateBengali(donation.date)],
-    ["মাসের নাম", monthLabel],
-    ["টাকার পরিমাণ কথায়", `${numberToWordsBengali(amount)} টাকা`],
-    ["টাকার পরিমাণ", formatMoney(amount)],
-    ...(donation.extra_amount && Number(donation.extra_amount) > 0
-      ? [["অতিরিক্ত", formatMoney(Number(donation.extra_amount))] as [string, string]]
-      : []),
-    ["মাধ্যম", donation.method ? methodLabels[donation.method] || donation.method : "—"],
-    ["আদায়কারী", collectorName],
-  ];
 
   return (
     <>
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          .receipt-print { box-shadow: none !important; border: 1px solid #064E3B !important; max-width: 148mm; margin: 0 auto; }
           body { background: #fff !important; }
+          .receipt-stage { background: #fff !important; padding: 0 !important; }
+          .receipt-paper {
+            box-shadow: none !important;
+            margin: 0 auto !important;
+            max-width: 175mm !important;
+          }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
-      <div className="mx-auto max-w-2xl px-4 py-6 font-hind">
-        <div className="no-print mb-4 flex items-center justify-between">
-          <Link href="/donations" className="btn-outline inline-flex items-center gap-2">
+
+      <div className="receipt-stage min-h-screen bg-[#0a0f0d] px-4 py-8 font-hind sm:py-12">
+        <div className="no-print mx-auto mb-8 flex max-w-2xl items-center justify-between">
+          <Link
+            href="/donations"
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-stone-200 transition hover:border-white/30 hover:text-white"
+          >
             <ArrowLeft size={16} />
             জমা তালিকা
           </Link>
           <button
             type="button"
             onClick={() => window.print()}
-            className="btn-emerald inline-flex items-center gap-2"
+            className="inline-flex items-center gap-2 rounded-full bg-[#C9A227] px-5 py-2 text-sm font-bold text-[#022C22] shadow-[0_8px_24px_rgba(201,162,39,0.35)] transition hover:brightness-110"
           >
             <Printer size={16} />
             প্রিন্ট করুন
           </button>
         </div>
 
-        <article className="receipt-print overflow-hidden rounded-2xl bg-white shadow-xl">
-          <header className="bg-gradient-to-b from-[#022C22] to-[#064E3B] px-6 py-6 text-center">
-            <h1 className="font-tiro text-xl font-bold text-white">
-              দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন
-            </h1>
-            <p className="mt-1 text-sm text-emerald-100">দান রসিদ</p>
-            <div className="mx-auto mt-3 h-0.5 w-24 bg-[#C9A227]" />
-          </header>
+        <ReceiptPaper
+          receiptNo={batchReceiptNo ?? donation.receipt_no}
+          dateLabel={formatDateBengali(donation.date)}
+          amountLabel={formatMoney(amount)}
+          amountWords={numberToWordsBengali(amount)}
+          donorName={donation.members?.[0]?.name || "অজ্ঞাত"}
+          monthLabel={monthLabel}
+          methodLabel={
+            donation.method ? methodLabels[donation.method] || donation.method : "—"
+          }
+          collectorName={
+            donation.collector?.[0]?.members?.[0]?.name ||
+            donation.collector?.[0]?.name ||
+            "অ্যাডমিন"
+          }
+          extraAmountLabel={
+            donation.extra_amount && Number(donation.extra_amount) > 0
+              ? formatMoney(Number(donation.extra_amount))
+              : null
+          }
+          verifyUrl={verifyUrl}
+        />
 
-          <dl className="px-6 py-4">
-            {rows.map(([label, value]) => (
-              <div
-                key={label}
-                className="flex items-start justify-between gap-4 border-b border-dashed border-gray-100 py-3 last:border-0"
-              >
-                <dt className="shrink-0 text-sm text-gray-500">{label}</dt>
-                <dd className="text-right text-sm font-semibold text-gray-900">{value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          <footer className="px-6 pb-6 text-center">
-            <p className="text-sm text-[#064E3B]">আপনার মহানুভবতার জন্য ধন্যবাদ!</p>
-            <p className="mt-1 text-xs text-gray-500">আল্লাহ আপনার দান কবুল করুন</p>
-            {donation.receipt_no && (
-              <Link
-                href={`/verify/${donation.receipt_no}`}
-                className="no-print mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#059669] underline underline-offset-4"
-              >
-                যাচাই লিংক
-                <ExternalLink size={14} />
-              </Link>
-            )}
-          </footer>
-        </article>
+        <p className="no-print mx-auto mt-6 max-w-2xl text-center text-xs text-stone-500">
+          প্রিন্ট করলে উপরের বাটনগুলো বাদ যাবে — শুধু রসিদটি কাগজে আসবে।
+        </p>
       </div>
     </>
   );

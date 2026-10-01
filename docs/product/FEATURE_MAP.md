@@ -130,6 +130,16 @@ Complete feature inventory with route, role access, and implementation status.
 - **Implementation**: `app/api/receipts/[id]/route.ts`
 - **Description**: Premium Bengali receipt as JPEG canvas with foundation logo, QR code, amount in Bengali words, signature font, verified badge. The QR payload now uses `NEXT_PUBLIC_SITE_URL` (request-origin fallback) and points at the public `/verify/[receipt_no]` page, with a "স্ক্যান করে যাচাই করুন" caption under the code.
 
+### 19b. HTML Receipt (premium paper)
+- **Route**: `/donations/[id]/receipt` (staff only)
+- **Implementation**: `app/donations/[id]/receipt/page.tsx` + presentational `ReceiptPaper.tsx`
+- **Description**: Editorial ivory-paper receipt on a dark stage in foundation emerald/gold. Masthead with Landmark seal, receipt-no/date band, large Bengali amount hero with কথায় line, donor/month/method/collector rows (method as gold pill, optional অতিরিক্ত জমা), QR verification card, জাযাকাল্লাহু খাইরান gratitude, signature/seal areas. Batch consolidation, staff gate, and loading/error states unchanged from before. Print stylesheet hides the toolbar and keeps exact colors.
+
+### 19c. QR Image Endpoint
+- **Route**: `/api/qr?text=...` (GET)
+- **Implementation**: `app/api/qr/route.ts`
+- **Description**: Renders a 240px PNG QR code (emerald on white) for short text such as receipt verify URLs. Input capped at 512 chars; the text is only *encoded*, never fetched, so there is no SSRF surface. Used by the HTML receipt's verification card.
+
 ### 20. Member QR Codes
 - **Route**: `/api/members/[id]/qr`
 - **Roles**: admin
