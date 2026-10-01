@@ -59,6 +59,34 @@
 
 ---
 
+## fcd73da — feat(receipt): use Anek Bangla for details rows
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, app/layout.tsx, app/globals.css, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Details rows (প্রদানকারী, মাসের নাম, মাধ্যম, আদায়কারী) | Hind Siliguri | **Anek Bangla** (400–700, `--font-anek` token) |
+
+### Why
+
+Akash asked for a more stylish Bangla font for the detail labels/values. Anek Bangla is a modern, characterful Bengali sans — distinct from the Baloo Da 2 headings and Galada gratitude line, and still highly legible for data.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## 170d3af — feat(receipt): add letterhead contact details under masthead
 
 **Date:** 2026-10-01  
