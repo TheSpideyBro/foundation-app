@@ -1,7 +1,7 @@
 import { createClient as createSupaClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/server-auth';
-import { isApproved, isFounder } from '@/lib/auth';
+import { isApproved, isStaff } from '@/lib/auth';
 
 /** The only payment methods the app can produce (lib/supabase-client.ts). */
 const PAYMENT_METHODS = ['cash', 'bkash', 'nagad', 'bank'] as const;
@@ -240,8 +240,7 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (!collector) return fail({ code: 'invalid_collector', message: 'আদায়কারী পাওয়া যায়নি', status: 404 });
     const collectorIsStaff =
-      isApproved(collector.is_approved) &&
-      (collector.role === 'admin' || collector.role === 'treasurer' || isFounder(collector.email));
+      isApproved(collector.is_approved) && isStaff(collector.role);
     if (!collectorIsStaff) {
       return fail({ code: 'invalid_collector', message: 'আদায়কারীকে অনুমোদিত স্টাফ হতে হবে', status: 403 });
     }

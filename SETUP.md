@@ -102,7 +102,7 @@ components/
   layout.tsx            — Sidebar + responsive navigation shell
 lib/
   payment-ledger.ts     — ★ canonical allocation engine (TS side)
-  auth.ts               — FOUNDER_EMAIL + isStaff/isAdmin/isApproved
+  auth.ts               — isStaff/isAdmin/isApproved (purely role-based; no email bypass)
   server-auth.ts        — requireAuth() for API routes
   supabase-client.ts    — browser client (singleton + loud mock fallback)
   supabase/server.ts    — cookie-based server client

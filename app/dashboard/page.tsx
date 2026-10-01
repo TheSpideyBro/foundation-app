@@ -14,10 +14,10 @@ import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
 export default function Dashboard() {
-  const { user, role } = useAuth();
-  // Founder bypass lives in lib/auth, not in the stored role column.
-  const isStaffView = hasStaffRole(role, user?.email);
-  const isAdminView = hasAdminRole(role, user?.email);
+  const { role } = useAuth();
+  // Role gates are purely role-based (lib/auth) — resolved from users.role.
+  const isStaffView = hasStaffRole(role);
+  const isAdminView = hasAdminRole(role);
   const [stats, setStats] = useState({
     totalMembers: 0,
     totalDonations: 0,
@@ -40,7 +40,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [role, user?.email, period, selectedMonth, selectedYear]);
+  }, [role, period, selectedMonth, selectedYear]);
 
   const fetchDashboardData = async () => {
     setLoading(true);

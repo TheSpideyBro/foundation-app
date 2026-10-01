@@ -57,7 +57,7 @@ export async function requireAuth(level: AuthLevel): Promise<AuthResult> {
   const role = row?.role ?? null;
   const email = session.user.email ?? null;
 
-  const allowed = level === "admin" ? isAdmin(role, email) : isStaff(role, email);
+  const allowed = level === "admin" ? isAdmin(role) : isStaff(role);
   if (!allowed) return deny(403, level === "admin" ? "Admins only" : "Only staff can do this");
 
   return { ok: true, supabase, userId: session.user.id, role, email };
