@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Tiro_Bangla, Hind_Siliguri, Baloo_Da_2, Galada, Anek_Bangla } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers";
 import Script from "next/script";
@@ -37,6 +38,25 @@ const anekBangla = Anek_Bangla({
   weight: ["400", "500", "600", "700"],
   subsets: ["bengali"],
   variable: "--font-anek",
+  display: "swap",
+});
+
+// Lipighor "Li Sabbir Sorolota" — custom Bengali display font supplied by Akash,
+// used for the receipt masthead. See app/fonts/ (Unicode TTFs only; ANSI variants not for web use).
+const sabbirSorolota = localFont({
+  src: [
+    {
+      path: "./fonts/LiSabbirSorolotaUnicode-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "./fonts/LiSabbirSorolotaUnicode-Italic.ttf",
+      weight: "400",
+      style: "italic",
+    },
+  ],
+  variable: "--font-sabbir",
   display: "swap",
 });
 
@@ -95,7 +115,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable} ${anekBangla.variable}`}>
+    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable} ${anekBangla.variable} ${sabbirSorolota.variable}`}>
       <body className="antialiased font-hind">
         <AuthProvider>
           <LayoutWrapper>{children}</LayoutWrapper>
