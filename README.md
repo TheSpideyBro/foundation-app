@@ -55,7 +55,7 @@ Full setup (Supabase schema, env vars, first admin account, deployment) → [SET
 | Topic | Link |
 |-------|------|
 | 🎯 Product vision & users | [docs/product/VISION.md](docs/product/VISION.md) |
-| 🗺️ Feature map (all 26 screens) | [docs/product/FEATURE_MAP.md](docs/product/FEATURE_MAP.md) |
+| 🗺️ Feature map (all 28 screens) | [docs/product/FEATURE_MAP.md](docs/product/FEATURE_MAP.md) |
 | 🏗️ System architecture | [docs/architecture/SYSTEM.md](docs/architecture/SYSTEM.md) |
 | 💰 Accounting domain model | [docs/architecture/ACCOUNTING_DOMAIN.md](docs/architecture/ACCOUNTING_DOMAIN.md) |
 | 🔄 Data flows (Mermaid diagrams) | [docs/architecture/DATA_FLOW.md](docs/architecture/DATA_FLOW.md) |

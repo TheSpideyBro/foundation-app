@@ -59,6 +59,40 @@
 
 ---
 
+## 40b056b — fix(joma): repair status block dropped in rebase resolution
+
+**Date:** 2026-10-01  
+**Author:** Muse  
+**Branch:** fix/audit-ui-review-fixes  
+**Files changed:** `app/joma/page.tsx`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Status badge wrapper | `{allocationPreview.allocations.length > 0 && (` line dropped in the 555d111 rebase resolution; dangling `)}` broke `tsc` (TS1381) | wrapper restored — badge only renders when the preview has allocations (user's behavior, per rebase policy) |
+| `money(autoAllocatable)` call site | `Cannot find name 'money'` (TS2304) — the local helper was deleted in 555d111, main's auto-split code added a new call site | `formatMoney(autoAllocatable)` — finishes the `money()` → `formatMoney()` migration |
+
+### Why
+
+The rebase of 555d111 onto main's auto-split commit needed two manual merges in `app/joma/page.tsx`; both left compile breaks. Caught by `npx tsc --noEmit` on the rebased tree.
+
+### Tests Run
+
+- `npx tsc --noEmit` — clean
+- `npm run lint` — 0 errors, 140 warnings (all pre-existing)
+- `npm run build` — ok, all routes including `/verify/[receipt_no]` and `/donations/[id]/receipt`
+
+### Related
+
+- Rebase of 555d111 (`feat(joma): form semantics, a11y, validation and button hierarchy`) onto 2b88e45
+
+### Known Risks / Follow-ups
+
+- None — restores the exact pre-rebase runtime behavior.
+
+---
+
 ## 2b88e45 — feat(joma): derive the extra amount from the cash handed over
 
 **Date:** 2026-10-01  
