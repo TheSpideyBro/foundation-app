@@ -59,6 +59,79 @@
 
 ---
 
+## 2a80430 — fix(review): resolve full-repo review findings H2, M1–M4, L1–L11
+
+**Date:** 2026-10-02  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** 10 (app/api/qr, app/api/receipts/[id], donations receipt page, donations page, verify page, layout.tsx, globals.css, components/layout.tsx, 2 Sabbir TTF deletions)
+
+### What Changed (Before → After)
+
+| Finding | Before | After |
+|---------|--------|-------|
+| H2 legacy batch total | `sum + d.amount` — PostgREST numeric-as-string could print `৳ 0500300/-` | `sum + Number(d.amount \|\| 0)` |
+| M1 verify URLs | raw `receipt_no` interpolated into `/verify/...` (3 spots) | `encodeURIComponent(...)` everywhere |
+| M2 batch QR semantics | QR pointed at one row while the paper showed the batch total | `/verify` shows a 📦 batch box (total + month range) when the scanned donation is in a batch |
+| M3 `/api/qr` errors | `QRCode.toBuffer` threw → raw 500 | try/catch → `422 { error }` JSON |
+| M4 QR hydration | `verifyUrl` built with `window.location.origin` in render → server/client tree mismatch | built in `useEffect` after mount; QR renders only when URL is set |
+| L1 dead fonts | unused Anek Bangla + Sabbir Sorolota declarations (and Sabbir TTFs) shipped | declarations + `@theme` tokens removed; Sabbir TTFs deleted from repo |
+| L2 unused italics | 5 italic `@font-face` src entries with zero italic text | italic entries dropped (TTFs kept on disk, unreferenced) |
+| L3 batch number | `FHF-2026-0001` → `FHF (Batch)` | `FHF-2026-0001 (Batch)` (both receipts) |
+| L4 null month | `monthLabelBengali(first.donation_month)` could receive null | months filtered/deduped before labeling |
+| L5 batch guard | batch query filtered by `batch_id` only | also `.eq("member_id", …)` (receipt page, legacy, verify) |
+| L6 month count | label counted rows (`(০৩ মাস)` could lie on duplicate months) | counts unique months |
+| L7 legacy QR origin | preferred `NEXT_PUBLIC_SITE_URL` over request host | `request.nextUrl.origin` first, env as fallback |
+| L8 `/api/qr` abuse | public CPU-bound endpoint, no limit | 60 renders/min per IP, in-memory, fail-open |
+| L9 receipt access | HTML receipt staff-only (legacy let members view own) | staff OR `member_id` match — legacy parity; RLS still enforces rows |
+| L10 hardcoded URLs | `metadataBase` + openGraph `url` hardcoded | honor `NEXT_PUBLIC_SITE_URL`, hardcoded host as fallback |
+| L11 dead class | `text-md` (not a Tailwind size) in mobile header | `text-base` |
+
+### Why
+
+Akash: "Shob fix koro" — apply every finding from the 2026-10-02 full-repo review.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm lint` — 0 errors, 140 warnings (baseline, none new)
+- `pnpm build` — green, 31/31 pages
+
+### Known Risks / Follow-ups
+
+- L9 is a product call: member-own receipt access restored to match legacy. Revert if staff-only was intentional.
+- Lipighor licensing still open (Akkas, Nakkhatra, Shadhinata, Teesta need permission email + footer backlink); branch stays local until Akash approves push.
+- Sabbir TTFs deleted from git but Akash's original ZIPs remain in `~/workspace/user/files/` if the font is ever wanted back.
+
+---
+
+## 53039cf — fix(fonts): AppLayout shell font-hind -> font-akkas
+
+**Date:** 2026-10-02  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** components/layout.tsx
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Authenticated app shell font | `font-hind` class on the AppLayout wrapper (Hind Siliguri leaked back into the logged-in UI) | `font-akkas` — Li Abu J M Akkas everywhere, matching the public pages |
+
+### Why
+
+Full-app font rollout (d8ffedc) missed the authenticated shell — review finding H1.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+
+### Known Risks / Follow-ups
+
+- None known.
+
+---
+
 ## d8ffedc — feat(fonts): apply custom fonts across the full app by role
 
 **Date:** 2026-10-02  
