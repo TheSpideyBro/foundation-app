@@ -138,7 +138,7 @@ export default function ReceiptPaper({
 
         {/* gratitude */}
         <div className="mt-5 text-center">
-          <p className="font-teesta text-[24px] leading-snug text-[#064E3B]">জাযাকাল্লাহু খাইরান</p>
+          <p className="font-galada text-[24px] leading-snug text-[#064E3B]">জাযাকাল্লাহু খাইরান</p>
           <p className="mx-auto mt-1 max-w-sm text-[12px] leading-relaxed text-stone-500">
             আপনার মহানুভবতার জন্য আন্তরিক ধন্যবাদ — আল্লাহ তায়ালা আপনার দান কবুল করুন
           </p>
