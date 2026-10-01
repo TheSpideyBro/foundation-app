@@ -59,6 +59,33 @@
 
 ---
 
+## 3913ea8 — feat(receipt): pure black masthead
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Masthead color | Deep emerald `#022C22` | Pure black |
+
+### Why
+
+Akash asked for pure black on the header.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## c4a0831 — feat(receipt): straight Sabbir Sorolota swap on masthead
 
 **Date:** 2026-10-01  
