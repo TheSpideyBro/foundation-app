@@ -59,6 +59,35 @@
 
 ---
 
+## 083ac3d — feat(receipt): Li Shadhinata 2.0 for masthead
+
+**Date:** 2026-10-02  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/fonts/LiShadhinata2Unicode-Regular.ttf, app/fonts/LiShadhinata2Unicode-Italic.ttf (new), app/layout.tsx, app/globals.css, app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Masthead font | Li Sabbir Sorolota (`font-sabbir`) | **Li Shadhinata 2.0** (`font-shadhinata`), Baloo Da 2 as fallback |
+
+### Why
+
+Akash supplied `Shadhinata2.0.zip` and asked to use it in the header. Straight swap — size (23/26px), bold, and black color unchanged.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green; `@font-face{font-family:shadhinata}` emitted, variable chain verified
+
+### Known Risks / Follow-ups
+
+- Same Lipighor licensing: webfont use needs `admin@lipighor.com` permission + footer backlink; TTFs must not be redistributed. Branch stays local, nothing pushed.
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## 182f26a — feat(receipt): Abu JM Akkas as default font + bigger detail rows
 
 **Date:** 2026-10-01  
