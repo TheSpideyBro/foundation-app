@@ -162,11 +162,13 @@ export default function ReceiptPaper({
         {/* signatures */}
         <div className="mx-auto mt-7 grid max-w-lg grid-cols-2 gap-8">
           <div className="text-center">
+            <p className="-mb-2 font-galada text-[24px] leading-tight text-[#022C22]">
+              {collectorName}
+            </p>
             <div className="border-b border-stone-400/70 pb-6" aria-hidden="true" />
             <p className="mt-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-stone-500">
               আদায়কারীর স্বাক্ষর
             </p>
-            <p className="mt-1 text-[12.5px] font-semibold text-stone-700">{collectorName}</p>
           </div>
           <div className="text-center">
             <div className="border-b border-stone-400/70 pb-6" aria-hidden="true" />
