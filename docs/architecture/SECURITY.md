@@ -28,13 +28,12 @@ there is exactly one definition of "admin" and "staff" (TD-001).
 | `treasurer` | ট্রেজারার | Record payments, view/edit donations & expenses, view reports, send WhatsApp, view member detail |
 | `member` | সদস্য | View own profile, view own receipts, view notices (read-only) |
 
-### Founder Bypass
-- `FOUNDER_EMAIL` in `lib/auth.ts` (defaults to the owner's address,
-  overridable via `NEXT_PUBLIC_FOUNDER_EMAIL`) grants `isAdmin()`/`isStaff()`
-  even if `users.role` is wrong. It is the single place an email literal
-  appears — components no longer hardcode an address (TD-001).
-- **Risk**: kept as a safety net until the founder's `users.role` is verified
-  to be `admin` in the live database.
+### Founder Bypass (removed 2026-10-01 — TD-001 resolved)
+- `isAdmin()`/`isStaff()` in `lib/auth.ts` are now purely role-based: the
+  hardcoded `FOUNDER_EMAIL` bypass and `isFounder()` were deleted, and
+  `NEXT_PUBLIC_FOUNDER_EMAIL` no longer exists in `.env.example`.
+- `users.role` is the single source of truth. ⚠️ Deploy only after
+  confirming the founder's role row is `admin` in the live database.
 
 ### API Route Authorization
 - Every `/api/*` route starts with `requireAuth("staff")` or
