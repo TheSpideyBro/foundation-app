@@ -142,10 +142,10 @@ export default function AuditLogsPage() {
                         <span className="font-bold">{getActionLabel(log.action)}</span>: {log.target_table === 'donations' ? 'অনুদান' : log.target_table === 'expenses' ? 'খরচ' : log.target_table === 'members' ? 'সদস্য' : log.target_table}
                       </p>
                       <div className="flex items-center gap-3 mt-1.5">
-                        <span className="flex items-center gap-1 text-[11px] text-gray-400 font-bold uppercase tracking-widest">
+                        <span className="flex items-center gap-1 text-[11px] text-gray-400 font-bold">
                           <User size={12} /> {log.actor_email || 'সিস্টেম'}
                         </span>
-                        <span className="flex items-center gap-1 text-[11px] text-gray-400 font-bold uppercase tracking-widest">
+                        <span className="flex items-center gap-1 text-[11px] text-gray-400 font-bold">
                           <Clock size={12} /> {new Date(log.created_at).toLocaleString('bn-BD')}
                         </span>
                       </div>

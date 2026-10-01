@@ -172,7 +172,7 @@ export default function Dashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-6 mb-4"><div><h2 className="text-xl sm:text-2xl font-bold font-shadhinata text-gray-900">সংগ্রহের সারাংশ</h2><p className="text-xs sm:text-sm text-gray-400">নির্বাচিত সময়কালের সংগ্রহের চিত্র</p></div><div className="flex items-center gap-2"><div className="flex bg-gray-100 p-1 rounded-xl">{([["monthly", "মাসিক"], ["yearly", "বাৎসরিক"], ["total", "সর্বমোট"]] as const).map(([key, label]) => <button key={key} onClick={() => setPeriod(key)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${period === key ? "bg-white text-emerald-600 shadow-sm" : "text-gray-500"}`}>{label}</button>)}</div>{period === "monthly" ? <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold text-sm" /> : period === "yearly" ? <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold text-sm">{Array.from({ length: 8 }, (_, i) => String(new Date().getFullYear() - i)).map((year) => <option key={year}>{year}</option>)}</select> : null}</div></div>
       {/* KPI Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-        {[{ label: "এই মাসে সংগ্রহ", value: stats.currentCollection, icon: CreditCard, color: "bg-emerald-600" }, { label: "মাসিক লক্ষ্য", value: stats.monthlyTarget, icon: Wallet, color: "bg-blue-600" }, { label: "এই মাসে বকেয়া", value: stats.currentDue, icon: ArrowDownRight, color: "bg-rose-600" }, { label: "সংগ্রহের হার", value: stats.collectionRate, icon: TrendingUp, color: "bg-amber-600", percent: true }].map((stat) => <div key={stat.label} className="card-premium p-4 sm:p-6 group border border-emerald-50/50"><div className="flex items-center justify-between mb-3"><div className={`w-10 h-10 sm:w-12 sm:h-12 ${stat.color} rounded-xl flex items-center justify-center text-white`}><stat.icon size={21} /></div><span className="text-[10px] font-bold text-gray-400">{selectedMonth}</span></div><h3 className="text-gray-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest mb-1">{stat.label}</h3><p className="text-xl sm:text-2xl font-bold text-gray-900 font-baloo truncate">{stat.percent ? `${stat.value}%` : `৳${stat.value.toLocaleString("bn-BD")}`}</p></div>)}
+        {[{ label: "এই মাসে সংগ্রহ", value: stats.currentCollection, icon: CreditCard, color: "bg-emerald-600" }, { label: "মাসিক লক্ষ্য", value: stats.monthlyTarget, icon: Wallet, color: "bg-blue-600" }, { label: "এই মাসে বকেয়া", value: stats.currentDue, icon: ArrowDownRight, color: "bg-rose-600" }, { label: "সংগ্রহের হার", value: stats.collectionRate, icon: TrendingUp, color: "bg-amber-600", percent: true }].map((stat) => <div key={stat.label} className="card-premium p-4 sm:p-6 group border border-emerald-50/50"><div className="flex items-center justify-between mb-3"><div className={`w-10 h-10 sm:w-12 sm:h-12 ${stat.color} rounded-xl flex items-center justify-center text-white`}><stat.icon size={21} /></div><span className="text-[10px] font-bold text-gray-400">{selectedMonth}</span></div><h3 className="text-gray-400 text-[10px] sm:text-[11px] font-bold mb-1">{stat.label}</h3><p className="text-xl sm:text-2xl font-bold text-gray-900 font-baloo truncate">{stat.percent ? `${stat.value}%` : `৳${stat.value.toLocaleString("bn-BD")}`}</p></div>)}
       </div>
 
       <div className="card-premium p-5 sm:p-8"><div className="flex items-center justify-between mb-5"><div><h3 className="text-lg sm:text-xl font-bold text-gray-900 font-shadhinata">সংগ্রহ বনাম লক্ষ্য</h3><p className="text-xs sm:text-sm text-gray-400">নির্বাচিত সময়কালের অর্জন</p></div><Link href="/reports" className="text-xs font-bold text-emerald-600">বিস্তারিত দেখুন</Link></div><div className="space-y-3">{collectionRows.length ? collectionRows.map((row) => <div key={row.month}><div className="flex justify-between text-xs font-bold mb-1"><span>{row.month}</span><span>৳{Number(row.collected_amount).toLocaleString('bn-BD')} / ৳{Number(row.target_amount).toLocaleString('bn-BD')}</span></div><div className="h-3 rounded-full bg-gray-100 overflow-hidden"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Number(row.target_amount) ? Number(row.collected_amount) / Number(row.target_amount) * 100 : 0)}%` }} /></div></div>) : <p className="py-8 text-center text-sm text-gray-400">এই সময়কালে কোনো collection data নেই</p>}</div></div>\n\n      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
@@ -208,7 +208,7 @@ export default function Dashboard() {
               <div key={n.id} className="card-premium p-6 bg-emerald-50/30 border-emerald-100">
                 <div className="flex items-center gap-2 text-emerald-600 mb-3">
                   <Activity size={16} />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">{new Date(n.created_at).toLocaleDateString('bn-BD')}</span>
+                  <span className="text-[10px] font-bold">{new Date(n.created_at).toLocaleDateString('bn-BD')}</span>
                 </div>
                 <h3 className="font-bold text-gray-900 mb-2 font-shadhinata">{n.title}</h3>
                 <p className="text-xs text-gray-600 line-clamp-2">{n.content}</p>
@@ -245,7 +245,7 @@ export default function Dashboard() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm sm:text-lg font-bold text-emerald-600">৳{Number(donation.amount).toLocaleString("bn-BD")}</p>
-                    <p className="text-[8px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-widest">{donation.method || "ক্যাশ"}</p>
+                    <p className="text-[8px] sm:text-[10px] text-gray-400 font-bold">{donation.method || "ক্যাশ"}</p>
                   </div>
                 </div>
               ))}
@@ -264,7 +264,7 @@ export default function Dashboard() {
                   <Activity size={24} className="hidden sm:block" />
                 </div>
                 <div>
-                  <p className="text-white/50 text-[8px] sm:text-[10px] font-bold uppercase tracking-widest mb-0.5 sm:mb-1">বর্তমান ব্যালেন্স</p>
+                  <p className="text-white/50 text-[8px] sm:text-[10px] font-bold mb-0.5 sm:mb-1">বর্তমান ব্যালেন্স</p>
                   <p className="text-xl sm:text-3xl font-bold font-baloo">৳{stats.netBalance.toLocaleString('bn-BD')}</p>
                 </div>
               </div>
@@ -274,7 +274,7 @@ export default function Dashboard() {
                   <Users size={24} className="hidden sm:block" />
                 </div>
                 <div>
-                  <p className="text-white/50 text-[8px] sm:text-[10px] font-bold uppercase tracking-widest mb-0.5 sm:mb-1">সক্রিয় সদস্য</p>
+                  <p className="text-white/50 text-[8px] sm:text-[10px] font-bold mb-0.5 sm:mb-1">সক্রিয় সদস্য</p>
                   <p className="text-xl sm:text-3xl font-bold font-baloo">{stats.totalMembers}</p>
                 </div>
               </div>

@@ -46,7 +46,7 @@ export default function ReceiptPaper({
     <div className="min-w-0 flex-1 max-w-[280px] px-2 text-center">
       <p className="-mb-3 font-teesta text-[20px] leading-tight text-[#022C22]">{collectorName}</p>
       <div className="border-b border-stone-400/70 pb-6" aria-hidden="true" />
-      <p className="mt-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-stone-500">
+      <p className="mt-2 text-[10.5px] font-bold text-stone-500">
         আদায়কারীর স্বাক্ষর
       </p>
     </div>
@@ -65,7 +65,7 @@ export default function ReceiptPaper({
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#064E3B] shadow-[0_10px_25px_rgba(6,78,59,0.35)] ring-1 ring-[#C9A227] ring-offset-2 ring-offset-[#FDFCF7]">
             <Landmark size={22} className="text-[#C9A227]" strokeWidth={1.8} />
           </div>
-          <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#C9A227]">
+          <p className="mt-3 text-[11px] font-bold text-[#C9A227]">
             দান রসিদ
           </p>
           <h1 className="mx-auto mt-1 max-w-md font-shadhinata text-[23px] font-bold leading-snug text-black sm:text-[26px]">
@@ -78,7 +78,7 @@ export default function ReceiptPaper({
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Phone size={12} className="shrink-0 text-[#C9A227]" />
-              <span className="font-semibold tracking-[0.06em]">০১৮৪০-৮২৮০১০ · ০১৮১৪-৯৪৮২২৪</span>
+              <span className="font-semibold">০১৮৪০-৮২৮০১০ · ০১৮১৪-৯৪৮২২৪</span>
             </span>
           </p>
           <div className="mx-auto mt-3 flex max-w-[200px] items-center gap-3" aria-hidden="true">
@@ -91,7 +91,7 @@ export default function ReceiptPaper({
         {/* meta band */}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-x-8 gap-y-1.5 border-y border-[#022C22]/10 bg-[#064E3B]/[0.04] px-4 py-2">
           <div className="flex items-baseline gap-3">
-            <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-stone-500">
+            <span className="text-[10.5px] font-bold text-stone-500">
               রসিদ নং
             </span>
             <span className="font-mono text-[15px] font-bold tracking-[0.08em] text-[#022C22]">
@@ -99,7 +99,7 @@ export default function ReceiptPaper({
             </span>
           </div>
           <div className="flex items-baseline gap-3">
-            <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-stone-500">
+            <span className="text-[10.5px] font-bold text-stone-500">
               তারিখ
             </span>
             <span className="text-[15px] font-bold text-[#022C22]">{dateLabel}</span>
@@ -108,7 +108,7 @@ export default function ReceiptPaper({
 
         {/* amount hero — editorial, on paper */}
         <div className="mt-5 text-center">
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">
+          <p className="text-[11px] font-bold text-stone-500">
             সর্বমোট প্রাপ্তি
           </p>
           <div className="mx-auto mt-2 max-w-[260px] border-y-2 border-[#C9A227] py-2.5">
@@ -128,7 +128,7 @@ export default function ReceiptPaper({
               key={label}
               className="flex items-baseline justify-between gap-6 border-b border-stone-200/80 py-2 last:border-0"
             >
-              <dt className="shrink-0 text-[12px] font-bold uppercase tracking-[0.12em] text-stone-500">
+              <dt className="shrink-0 text-[12px] font-bold text-stone-500">
                 {label}
               </dt>
               <dd className="text-right text-[17px] font-semibold text-stone-900">{value}</dd>
@@ -169,7 +169,7 @@ export default function ReceiptPaper({
           <div className="mx-auto mt-5 max-w-xs">{signatureBlock}</div>
         )}
 
-        <p className="mt-5 text-center text-[10.5px] tracking-[0.08em] text-stone-400">
+        <p className="mt-5 text-center text-[10.5px] text-stone-400">
           সিস্টেম কর্তৃক স্বয়ংক্রিয়ভাবে প্রস্তুতকৃত রসিদ
         </p>
       </div>

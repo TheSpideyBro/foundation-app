@@ -131,7 +131,7 @@ export default function PendingPledgesPage() {
                   <div className="flex items-center justify-between sm:justify-end gap-8">
                     <div className="text-right">
                       <p className="text-lg font-bold text-red-600 font-baloo">৳{p.remaining.toLocaleString()}</p>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">বাকি (মোট: ৳{p.pledge})</p>
+                      <p className="text-[10px] text-gray-400 font-bold">বাকি (মোট: ৳{p.pledge})</p>
                     </div>
                     
                     <button 

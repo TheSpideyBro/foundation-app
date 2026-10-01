@@ -126,7 +126,7 @@ export default function NoticeManagementPage() {
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2 font-shadhinata">{notice.title}</h3>
               <p className="text-sm text-gray-600 line-clamp-3 mb-4">{notice.content}</p>
-              <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest border-t border-gray-50 pt-4">
+              <div className="text-[10px] text-gray-400 font-bold border-t border-gray-50 pt-4">
                 প্রকাশিত: {new Date(notice.created_at).toLocaleDateString('bn-BD')}
               </div>
             </div>
