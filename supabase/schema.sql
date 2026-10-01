@@ -19,7 +19,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS public.audit_log (
     CONSTRAINT "audit_log_pkey" PRIMARY KEY (id),
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    actor_id uuid NOT NULL,
+    actor_id uuid,
     actor_email text,
     action text NOT NULL,
     target_table text,
@@ -298,7 +298,25 @@ CREATE OR REPLACE FUNCTION public.admin_delete_user(target_user_id uuid)
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public', 'auth'
-AS $function$ BEGIN IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin') AND COALESCE(auth.jwt() ->> 'email', '') <> 'saddamakash234@gmail.com' THEN RAISE EXCEPTION 'Admins only'; END IF; IF target_user_id = auth.uid() THEN RAISE EXCEPTION 'নিজের অ্যাকাউন্ট মুছে ফেলা যাবে না'; END IF; IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = target_user_id) THEN RAISE EXCEPTION 'User not found'; END IF; UPDATE public.donations SET created_by = NULL WHERE created_by = target_user_id; UPDATE public.donations SET collected_by = NULL WHERE collected_by = target_user_id; DELETE FROM auth.users WHERE id = target_user_id; END; $function$;
+AS $function$
+BEGIN
+  IF get_my_role() <> 'admin' THEN
+    RAISE EXCEPTION 'Admins only';
+  END IF;
+
+  IF target_user_id = auth.uid() THEN
+    RAISE EXCEPTION 'নিজের অ্যাকাউন্ট মুছে ফেলা যাবে না';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = target_user_id) THEN
+    RAISE EXCEPTION 'User not found';
+  END IF;
+
+  UPDATE public.donations SET created_by = NULL WHERE created_by = target_user_id;
+  UPDATE public.donations SET collected_by = NULL WHERE collected_by = target_user_id;
+  DELETE FROM auth.users WHERE id = target_user_id;
+END;
+$function$;
 
 -- backfill_payment_allocations: service_role=EXECUTE
 CREATE OR REPLACE FUNCTION public.backfill_payment_allocations()
@@ -354,7 +372,7 @@ BEGIN
 END;
 $function$;
 
--- calculate_payment_allocation: authenticated=EXECUTE, service_role=EXECUTE
+-- calculate_payment_allocation: service_role=EXECUTE
 CREATE OR REPLACE FUNCTION public.calculate_payment_allocation(p_payment_id uuid, p_member_id uuid, p_payment_amount numeric, p_coverage_start text, p_coverage_end text, p_pledge_history jsonb)
  RETURNS TABLE(month text, amount numeric, allocation_type text)
  LANGUAGE plpgsql
@@ -362,7 +380,7 @@ CREATE OR REPLACE FUNCTION public.calculate_payment_allocation(p_payment_id uuid
  SET search_path TO 'public'
 AS $function$ DECLARE month_cursor TEXT; month_start DATE; month_end DATE; pledge_amount NUMERIC; remaining NUMERIC; allocated NUMERIC; BEGIN IF p_coverage_start IS NULL OR p_coverage_end IS NULL OR p_coverage_start > p_coverage_end OR p_payment_amount < 0 THEN RETURN; END IF; month_start := to_date(p_coverage_start, 'YYYY-MM'); month_end := to_date(p_coverage_end, 'YYYY-MM'); remaining := p_payment_amount; FOR month_cursor IN SELECT to_char(d, 'YYYY-MM') FROM generate_series(month_start, month_end, INTERVAL '1 month') d LOOP SELECT COALESCE((SELECT (elem->>'monthly_amount')::numeric FROM jsonb_array_elements(COALESCE(p_pledge_history, '[]'::jsonb)) elem WHERE elem->>'effective_from_month' <= month_cursor ORDER BY elem->>'effective_from_month' DESC LIMIT 1), (SELECT monthly_pledge::numeric FROM public.members WHERE id = p_member_id), 0) INTO pledge_amount; pledge_amount := GREATEST(COALESCE(pledge_amount, 0), 0); allocated := LEAST(remaining, pledge_amount); remaining := remaining - allocated; month := month_cursor; amount := allocated; allocation_type := CASE WHEN allocated > 0 THEN 'pledge' ELSE 'unallocated' END; RETURN NEXT; END LOOP; IF remaining > 0 THEN month := NULL; amount := remaining; allocation_type := 'unallocated'; RETURN NEXT; END IF; END; $function$;
 
--- enforce_member_self_update: anon=EXECUTE, authenticated=EXECUTE, service_role=EXECUTE
+-- enforce_member_self_update: service_role=EXECUTE
 CREATE OR REPLACE FUNCTION public.enforce_member_self_update()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -392,7 +410,7 @@ BEGIN
   RETURN NEW;
 END; $function$;
 
--- generate_receipt_no: anon=EXECUTE, authenticated=EXECUTE, service_role=EXECUTE
+-- generate_receipt_no: authenticated=EXECUTE, service_role=EXECUTE
 CREATE OR REPLACE FUNCTION public.generate_receipt_no()
  RETURNS text
  LANGUAGE plpgsql
@@ -436,7 +454,7 @@ CREATE OR REPLACE FUNCTION public.get_my_role()
  SET search_path TO 'public'
 AS $function$ BEGIN RETURN (SELECT COALESCE(role, 'member') FROM public.users WHERE id = auth.uid() LIMIT 1); END; $function$;
 
--- handle_new_user: anon=EXECUTE, authenticated=EXECUTE, service_role=EXECUTE
+-- handle_new_user: service_role=EXECUTE
 CREATE OR REPLACE FUNCTION public.handle_new_user()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -457,7 +475,7 @@ BEGIN
 END;
 $function$;
 
--- log_audit_event: anon=EXECUTE, authenticated=EXECUTE, service_role=EXECUTE
+-- log_audit_event: service_role=EXECUTE
 CREATE OR REPLACE FUNCTION public.log_audit_event()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -468,7 +486,7 @@ DECLARE
     v_actor_id UUID;
     v_actor_email TEXT;
 BEGIN
-    v_actor_id := coalesce(auth.uid(), (SELECT id FROM public.users WHERE role = 'admin' LIMIT 1));
+    v_actor_id := auth.uid();
     v_actor_email := coalesce(auth.jwt() ->> 'email', 'system@foundation.app');
 
     INSERT INTO public.audit_log (
@@ -573,10 +591,11 @@ BEGIN
   RETURN v_payment_id;
 END; $function$;
 
--- set_donation_month: anon=EXECUTE, authenticated=EXECUTE, service_role=EXECUTE
+-- set_donation_month: service_role=EXECUTE
 CREATE OR REPLACE FUNCTION public.set_donation_month()
  RETURNS trigger
  LANGUAGE plpgsql
+ SET search_path TO 'public'
 AS $function$
 BEGIN
   IF NEW.donation_month IS NULL THEN
@@ -586,10 +605,11 @@ BEGIN
 END;
 $function$;
 
--- set_receipt_no: anon=EXECUTE, authenticated=EXECUTE, service_role=EXECUTE
+-- set_receipt_no: service_role=EXECUTE
 CREATE OR REPLACE FUNCTION public.set_receipt_no()
  RETURNS trigger
  LANGUAGE plpgsql
+ SET search_path TO 'public'
 AS $function$
 BEGIN
   IF NEW.receipt_no IS NULL THEN
@@ -613,23 +633,23 @@ CREATE TRIGGER audit_members AFTER INSERT OR DELETE OR UPDATE ON public.members 
 DROP TRIGGER IF EXISTS trg_member_self_update ON public.members;
 CREATE TRIGGER trg_member_self_update BEFORE UPDATE ON public.members FOR EACH ROW EXECUTE FUNCTION enforce_member_self_update();
 
--- 9. Views
---    NOTE: no security_invoker is set, so views run with owner rights
---    (RLS on the base tables does NOT apply). anon has no SELECT on any
---    view - authenticated and service_role only.
+-- 9. Views (security_invoker is emitted per-view where set)
 CREATE OR REPLACE VIEW public.donation_summary AS
  SELECT COALESCE(sum(amount), 0::numeric) AS total_amount,
     count(*) AS donation_count
    FROM donations;
+ALTER VIEW public.donation_summary SET (security_invoker = true);
 CREATE OR REPLACE VIEW public.expense_category_summary AS
  SELECT COALESCE(category, 'অন্যান্য'::text) AS category,
     COALESCE(sum(amount), 0::numeric) AS total_amount
    FROM expenses
   GROUP BY (COALESCE(category, 'অন্যান্য'::text));
+ALTER VIEW public.expense_category_summary SET (security_invoker = true);
 CREATE OR REPLACE VIEW public.expense_summary AS
  SELECT COALESCE(sum(amount), 0::numeric) AS total_amount,
     count(*) AS expense_count
    FROM expenses;
+ALTER VIEW public.expense_summary SET (security_invoker = true);
 CREATE OR REPLACE VIEW public.member_directory AS
  SELECT id,
     name,
@@ -638,10 +658,12 @@ CREATE OR REPLACE VIEW public.member_directory AS
     monthly_pledge,
     created_at
    FROM members;
+ALTER VIEW public.member_directory SET (security_invoker = true);
 CREATE OR REPLACE VIEW public.member_summary AS
  SELECT count(*) AS total_members,
     count(*) FILTER (WHERE status = 'active'::text) AS active_members
    FROM members;
+ALTER VIEW public.member_summary SET (security_invoker = true);
 CREATE OR REPLACE VIEW public.monthly_collection_summary AS
  WITH RECURSIVE report_window AS (
          SELECT date_trunc('month'::text, CURRENT_DATE::timestamp with time zone)::date AS window_end,
@@ -788,6 +810,7 @@ CREATE OR REPLACE VIEW public.monthly_collection_summary AS
      CROSS JOIN report_window w
   WHERE at.month >= w.window_start AND at.month <= w.window_end
   ORDER BY at.month;
+ALTER VIEW public.monthly_collection_summary SET (security_invoker = true);
 
 -- 10. Grants
 --     Supabase's default grants are permissive for anon/authenticated:
@@ -800,13 +823,13 @@ GRANT SELECT ON public.audit_log TO anon, authenticated, service_role;
 GRANT TRIGGER ON public.audit_log TO anon, authenticated, service_role;
 GRANT TRUNCATE ON public.audit_log TO anon, authenticated, service_role;
 GRANT UPDATE ON public.audit_log TO anon, authenticated, service_role;
-GRANT DELETE ON public.donation_summary TO anon, authenticated, service_role;
-GRANT INSERT ON public.donation_summary TO anon, authenticated, service_role;
+GRANT DELETE ON public.donation_summary TO service_role;
+GRANT INSERT ON public.donation_summary TO service_role;
 GRANT REFERENCES ON public.donation_summary TO anon, authenticated, service_role;
 GRANT SELECT ON public.donation_summary TO authenticated, service_role;
-GRANT TRIGGER ON public.donation_summary TO anon, authenticated, service_role;
-GRANT TRUNCATE ON public.donation_summary TO anon, authenticated, service_role;
-GRANT UPDATE ON public.donation_summary TO anon, authenticated, service_role;
+GRANT TRIGGER ON public.donation_summary TO service_role;
+GRANT TRUNCATE ON public.donation_summary TO service_role;
+GRANT UPDATE ON public.donation_summary TO service_role;
 GRANT DELETE ON public.donations TO anon, authenticated, service_role;
 GRANT INSERT ON public.donations TO anon, authenticated, service_role;
 GRANT REFERENCES ON public.donations TO anon, authenticated, service_role;
@@ -821,20 +844,20 @@ GRANT SELECT ON public.expense_categories TO anon, authenticated, service_role;
 GRANT TRIGGER ON public.expense_categories TO anon, authenticated, service_role;
 GRANT TRUNCATE ON public.expense_categories TO anon, authenticated, service_role;
 GRANT UPDATE ON public.expense_categories TO anon, authenticated, service_role;
-GRANT DELETE ON public.expense_category_summary TO anon, authenticated, service_role;
-GRANT INSERT ON public.expense_category_summary TO anon, authenticated, service_role;
+GRANT DELETE ON public.expense_category_summary TO service_role;
+GRANT INSERT ON public.expense_category_summary TO service_role;
 GRANT REFERENCES ON public.expense_category_summary TO anon, authenticated, service_role;
 GRANT SELECT ON public.expense_category_summary TO authenticated, service_role;
-GRANT TRIGGER ON public.expense_category_summary TO anon, authenticated, service_role;
-GRANT TRUNCATE ON public.expense_category_summary TO anon, authenticated, service_role;
-GRANT UPDATE ON public.expense_category_summary TO anon, authenticated, service_role;
-GRANT DELETE ON public.expense_summary TO anon, authenticated, service_role;
-GRANT INSERT ON public.expense_summary TO anon, authenticated, service_role;
+GRANT TRIGGER ON public.expense_category_summary TO service_role;
+GRANT TRUNCATE ON public.expense_category_summary TO service_role;
+GRANT UPDATE ON public.expense_category_summary TO service_role;
+GRANT DELETE ON public.expense_summary TO service_role;
+GRANT INSERT ON public.expense_summary TO service_role;
 GRANT REFERENCES ON public.expense_summary TO anon, authenticated, service_role;
 GRANT SELECT ON public.expense_summary TO authenticated, service_role;
-GRANT TRIGGER ON public.expense_summary TO anon, authenticated, service_role;
-GRANT TRUNCATE ON public.expense_summary TO anon, authenticated, service_role;
-GRANT UPDATE ON public.expense_summary TO anon, authenticated, service_role;
+GRANT TRIGGER ON public.expense_summary TO service_role;
+GRANT TRUNCATE ON public.expense_summary TO service_role;
+GRANT UPDATE ON public.expense_summary TO service_role;
 GRANT DELETE ON public.expenses TO anon, authenticated, service_role;
 GRANT INSERT ON public.expenses TO anon, authenticated, service_role;
 GRANT REFERENCES ON public.expenses TO anon, authenticated, service_role;
@@ -842,13 +865,13 @@ GRANT SELECT ON public.expenses TO anon, authenticated, service_role;
 GRANT TRIGGER ON public.expenses TO anon, authenticated, service_role;
 GRANT TRUNCATE ON public.expenses TO anon, authenticated, service_role;
 GRANT UPDATE ON public.expenses TO anon, authenticated, service_role;
-GRANT DELETE ON public.member_directory TO anon, authenticated, service_role;
-GRANT INSERT ON public.member_directory TO anon, authenticated, service_role;
+GRANT DELETE ON public.member_directory TO service_role;
+GRANT INSERT ON public.member_directory TO service_role;
 GRANT REFERENCES ON public.member_directory TO anon, authenticated, service_role;
 GRANT SELECT ON public.member_directory TO authenticated, service_role;
-GRANT TRIGGER ON public.member_directory TO anon, authenticated, service_role;
-GRANT TRUNCATE ON public.member_directory TO anon, authenticated, service_role;
-GRANT UPDATE ON public.member_directory TO anon, authenticated, service_role;
+GRANT TRIGGER ON public.member_directory TO service_role;
+GRANT TRUNCATE ON public.member_directory TO service_role;
+GRANT UPDATE ON public.member_directory TO service_role;
 GRANT DELETE ON public.member_pledge_history TO anon, authenticated, service_role;
 GRANT INSERT ON public.member_pledge_history TO anon, authenticated, service_role;
 GRANT REFERENCES ON public.member_pledge_history TO anon, authenticated, service_role;
@@ -856,13 +879,13 @@ GRANT SELECT ON public.member_pledge_history TO anon, authenticated, service_rol
 GRANT TRIGGER ON public.member_pledge_history TO anon, authenticated, service_role;
 GRANT TRUNCATE ON public.member_pledge_history TO anon, authenticated, service_role;
 GRANT UPDATE ON public.member_pledge_history TO anon, authenticated, service_role;
-GRANT DELETE ON public.member_summary TO anon, authenticated, service_role;
-GRANT INSERT ON public.member_summary TO anon, authenticated, service_role;
+GRANT DELETE ON public.member_summary TO service_role;
+GRANT INSERT ON public.member_summary TO service_role;
 GRANT REFERENCES ON public.member_summary TO anon, authenticated, service_role;
 GRANT SELECT ON public.member_summary TO authenticated, service_role;
-GRANT TRIGGER ON public.member_summary TO anon, authenticated, service_role;
-GRANT TRUNCATE ON public.member_summary TO anon, authenticated, service_role;
-GRANT UPDATE ON public.member_summary TO anon, authenticated, service_role;
+GRANT TRIGGER ON public.member_summary TO service_role;
+GRANT TRUNCATE ON public.member_summary TO service_role;
+GRANT UPDATE ON public.member_summary TO service_role;
 GRANT DELETE ON public.members TO anon, authenticated, service_role;
 GRANT INSERT ON public.members TO anon, authenticated, service_role;
 GRANT REFERENCES ON public.members TO anon, authenticated, service_role;
@@ -870,13 +893,13 @@ GRANT SELECT ON public.members TO anon, authenticated, service_role;
 GRANT TRIGGER ON public.members TO anon, authenticated, service_role;
 GRANT TRUNCATE ON public.members TO anon, authenticated, service_role;
 GRANT UPDATE ON public.members TO anon, authenticated, service_role;
-GRANT DELETE ON public.monthly_collection_summary TO anon, authenticated, service_role;
-GRANT INSERT ON public.monthly_collection_summary TO anon, authenticated, service_role;
+GRANT DELETE ON public.monthly_collection_summary TO service_role;
+GRANT INSERT ON public.monthly_collection_summary TO service_role;
 GRANT REFERENCES ON public.monthly_collection_summary TO anon, authenticated, service_role;
 GRANT SELECT ON public.monthly_collection_summary TO authenticated, service_role;
-GRANT TRIGGER ON public.monthly_collection_summary TO anon, authenticated, service_role;
-GRANT TRUNCATE ON public.monthly_collection_summary TO anon, authenticated, service_role;
-GRANT UPDATE ON public.monthly_collection_summary TO anon, authenticated, service_role;
+GRANT TRIGGER ON public.monthly_collection_summary TO service_role;
+GRANT TRUNCATE ON public.monthly_collection_summary TO service_role;
+GRANT UPDATE ON public.monthly_collection_summary TO service_role;
 GRANT DELETE ON public.notices TO anon, authenticated, service_role;
 GRANT INSERT ON public.notices TO anon, authenticated, service_role;
 GRANT REFERENCES ON public.notices TO anon, authenticated, service_role;
