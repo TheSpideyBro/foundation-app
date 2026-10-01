@@ -8,6 +8,7 @@
   --font-anek: "Anek Bangla", "Hind Siliguri", sans-serif;
   --font-sabbir: "Li Sabbir Sorolota Unicode", "Baloo Da 2", sans-serif;
   --font-nakkhatra: "Li Alinur Nakkhatra Unicode", "Anek Bangla", sans-serif;
+  --font-akkas: "Li Abu J M Akkas Unicode", "Hind Siliguri", sans-serif;
   
   --color-primary: #064E3B;
   --color-primary-light: #059669;
@@ -28,7 +29,7 @@
   body {
     background-color: var(--color-background);
     color: var(--color-text-primary);
-    font-family: var(--font-hind), sans-serif;
+    font-family: var(--font-akkas), sans-serif;
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.01em;
   }

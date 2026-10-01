@@ -128,10 +128,10 @@ export default function ReceiptPaper({
               key={label}
               className="flex items-baseline justify-between gap-6 border-b border-stone-200/80 py-2 last:border-0"
             >
-              <dt className="shrink-0 text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">
+              <dt className="shrink-0 text-[12px] font-bold uppercase tracking-[0.12em] text-stone-500">
                 {label}
               </dt>
-              <dd className="text-right text-[15px] font-semibold text-stone-900">{value}</dd>
+              <dd className="text-right text-[17px] font-semibold text-stone-900">{value}</dd>
             </div>
           ))}
         </dl>

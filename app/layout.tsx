@@ -80,6 +80,26 @@ const alinurNakkhatra = localFont({
   display: "swap",
 });
 
+// Lipighor "Li Abu J M Akkas" — custom Bengali font supplied by Akash,
+// now the default body font (replaces Hind Siliguri). See app/fonts/
+// (Unicode TTFs only; ANSI variants not for web use).
+const abuJmAkkas = localFont({
+  src: [
+    {
+      path: "./fonts/LiAbuJMAkkasUnicode-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "./fonts/LiAbuJMAkkasUnicode-Italic.ttf",
+      weight: "400",
+      style: "italic",
+    },
+  ],
+  variable: "--font-akkas",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://daulkharfoundation.vercel.app"),
   title: {
@@ -135,7 +155,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable} ${anekBangla.variable} ${sabbirSorolota.variable} ${alinurNakkhatra.variable}`}>
+    <html lang="bn" className={`${tiroBangla.variable} ${hindSiliguri.variable} ${balooDa2.variable} ${galada.variable} ${anekBangla.variable} ${sabbirSorolota.variable} ${alinurNakkhatra.variable} ${abuJmAkkas.variable}`}>
       <body className="antialiased font-hind">
         <AuthProvider>
           <LayoutWrapper>{children}</LayoutWrapper>
