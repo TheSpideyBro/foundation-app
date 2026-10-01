@@ -59,6 +59,34 @@
 
 ---
 
+## 80cb38a — feat(receipt): QR/signature always side by side
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| QR/signature row | Stacked below 420px (phone preview showed উপর-নিচ) | Always `flex-row`: QR fixed left (`shrink-0`), signature flexible right (`flex-1`, `min-w-0`, `max-w-[280px]`) |
+
+### Why
+
+Akash viewed the preview on his phone (viewport < 420px) where the responsive stacking kicked in — he wants them পাশাপাশি everywhere.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## ce65534 — feat(receipt): QR left, signature right per sketch
 
 **Date:** 2026-10-01  
