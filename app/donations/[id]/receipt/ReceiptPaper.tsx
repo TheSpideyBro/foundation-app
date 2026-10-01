@@ -44,7 +44,7 @@ export default function ReceiptPaper({
 
   const signatureBlock = (
     <div className="min-w-0 flex-1 max-w-[280px] px-2 text-center">
-      <p className="-mb-4 font-galada text-[26px] leading-tight text-[#022C22]">{collectorName}</p>
+      <p className="-mb-3 font-galada text-[20px] leading-tight text-[#022C22]">{collectorName}</p>
       <div className="border-b border-stone-400/70 pb-6" aria-hidden="true" />
       <p className="mt-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-stone-500">
         আদায়কারীর স্বাক্ষর
