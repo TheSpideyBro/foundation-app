@@ -43,6 +43,8 @@ type VerifyDonation = {
   donation_end_month: string | null;
   coverage_start_month: string | null;
   coverage_end_month: string | null;
+  batch_id: string | null;
+  member_id: string | null;
   members: { name: string | null } | null;
   collector: { name: string | null; members: { name: string | null } | null } | null;
 };
@@ -142,7 +144,7 @@ export default async function VerifyReceiptPage({
   const { data, error } = await client
     .from("donations")
     .select(
-      "receipt_no, amount, date, donation_month, donation_end_month, coverage_start_month, coverage_end_month, members!member_id(name), collector:users!collected_by(name, members(name))"
+      "receipt_no, amount, date, donation_month, donation_end_month, coverage_start_month, coverage_end_month, batch_id, member_id, members!member_id(name), collector:users!collected_by(name, members(name))"
     )
     .eq("receipt_no", receipt_no.trim())
     .maybeSingle();
@@ -159,6 +161,42 @@ export default async function VerifyReceiptPage({
     donation.collector?.members?.name ||
     donation.collector?.name ||
     "অ্যাডমিন";
+
+  // The printed batch receipt shows the batch TOTAL, but its QR points at
+  // one row. Reconcile the two: when this donation belongs to a batch,
+  // show the batch total so the scan matches the paper in hand.
+  let batchBox: { total: number; count: number; label: string } | null = null;
+  if (donation.batch_id && !donation.coverage_start_month) {
+    const { data: batchRows } = await client
+      .from("donations")
+      .select("amount, donation_month")
+      .eq("batch_id", donation.batch_id)
+      .eq("member_id", donation.member_id)
+      .order("donation_month", { ascending: true });
+    if (batchRows && batchRows.length > 1) {
+      const months = Array.from(
+        new Set(
+          batchRows.map(
+            (r) => (r as { donation_month: string | null }).donation_month
+          )
+        )
+      )
+        .filter((m): m is string => !!m)
+        .sort();
+      const total = batchRows.reduce(
+        (s, r) => s + (Number((r as { amount: number }).amount) || 0),
+        0
+      );
+      batchBox = {
+        total,
+        count: months.length || batchRows.length,
+        label:
+          months.length > 0
+            ? `${monthLabelBengali(months[0])} – ${monthLabelBengali(months[months.length - 1])}`
+            : "—",
+      };
+    }
+  }
 
   const rows: Array<[string, ReactNode]> = [
     ["রসিদ নং", <span key="r" className="font-bold text-[#064E3B]">{donation.receipt_no}</span>],
@@ -189,6 +227,20 @@ export default async function VerifyReceiptPage({
               </div>
             ))}
           </dl>
+          {batchBox && (
+            <div className="mt-4 rounded-xl border border-[#C9A227]/50 bg-amber-50/70 px-4 py-3 text-center font-nakkhatra">
+              <p className="text-sm font-bold text-[#064E3B]">
+                📦 এই রসিদটি {toBengaliNumber(String(batchBox.count))} মাসের সম্মিলিত ব্যাচের অংশ
+              </p>
+              <p className="mt-1 text-sm text-gray-700">
+                ব্যাচের মোট:{" "}
+                <span className="font-bold text-[#064E3B]">
+                  {formatMoney(batchBox.total)}
+                </span>{" "}
+                <span className="text-gray-500">({batchBox.label})</span>
+              </p>
+            </div>
+          )}
           <p className="mt-5 rounded-xl bg-emerald-50/60 px-4 py-3 text-center text-xs leading-relaxed text-[#064E3B]">
             এই রসিদটি ফাউন্ডেশনের অফিসিয়াল রেকর্ড থেকে যাচাই করা হয়েছে।
             দাতার গোপনীয়তা রক্ষায় নাম আংশিক দেখানো হয়েছে।

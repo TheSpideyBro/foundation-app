@@ -79,14 +79,16 @@ export async function GET(
       .from('donations')
       .select('amount, donation_month, receipt_no')
       .eq('batch_id', donation.batch_id)
+      .eq('member_id', donation.member_id)
       .order('donation_month', { ascending: true });
 
     if (batchDonations && batchDonations.length > 1) {
-      const startMonth = getBengaliMonthName(batchDonations[0].donation_month);
-      const endMonth = getBengaliMonthName(batchDonations[batchDonations.length - 1].donation_month);
-      displayMonth = `${startMonth} - ${endMonth} (${batchDonations.length.toString().padStart(2, '০')} মাস)`;
-      displayAmount = batchDonations.reduce((sum: number, d: any) => sum + d.amount, 0);
-      displayReceiptNo = `${donation.receipt_no.split('-')[0]} (Batch)`;
+      const months = [...new Set(batchDonations.map((r: { donation_month: string | null }) => r.donation_month).filter(Boolean))].sort();
+      const startMonth = getBengaliMonthName(months[0] ?? batchDonations[0].donation_month);
+      const endMonth = getBengaliMonthName(months[months.length - 1] ?? batchDonations[batchDonations.length - 1].donation_month);
+      displayMonth = `${startMonth} - ${endMonth} (${months.length.toString().padStart(2, '০')} মাস)`;
+      displayAmount = batchDonations.reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
+      displayReceiptNo = `${donation.receipt_no} (Batch)`;
     }
   }
 
@@ -363,8 +365,8 @@ export async function GET(
     const qrX = cardMargin + 40;
     const qrY = height - 240;
     
-    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin).replace(/\/+$/, '');
-    const qrData = `${siteUrl}/verify/${donation.receipt_no}`;
+    const siteUrl = (request.nextUrl.origin || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, '');
+    const qrData = `${siteUrl}/verify/${encodeURIComponent(donation.receipt_no || "")}`;
     const qrBuffer = await QRCode.toBuffer(qrData, {
       margin: 1,
       width: qrSize,

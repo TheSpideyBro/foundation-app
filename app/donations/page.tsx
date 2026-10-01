@@ -55,7 +55,7 @@ export default function DonationsPage() {
     // Public verify link: the raw /api/receipts/{id} URL 401s for anyone
     // without a session, so recipients could never open it. /verify/{receipt_no}
     // is public and shows the same receipt.
-    const verifyUrl = donation.receipt_no ? `${window.location.origin}/verify/${donation.receipt_no}` : null;
+    const verifyUrl = donation.receipt_no ? `${window.location.origin}/verify/${encodeURIComponent(donation.receipt_no)}` : null;
     const shareUrl = verifyUrl || receiptUrl;
     try {
       const response = await fetch(receiptUrl, { credentials: "same-origin" });

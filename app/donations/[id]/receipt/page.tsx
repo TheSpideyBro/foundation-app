@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Printer, ArrowLeft, Shield, Loader2 } from "lucide-react";
@@ -50,7 +50,7 @@ function monthRangeLabel(start: string | null, end: string | null): string {
 
 export default function ReceiptViewPage() {
   const { id } = useParams<{ id: string }>();
-  const { role } = useAuth();
+  const { role, memberId } = useAuth();
   const isStaff = hasStaffRole(role);
 
   const [donation, setDonation] = useState<Donation | null>(null);
@@ -62,13 +62,14 @@ export default function ReceiptViewPage() {
   const [batchReceiptNo, setBatchReceiptNo] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id || !isStaff) {
+    if (!id) {
       setLoading(false);
       return;
     }
+    // Staff and members (own donations, enforced by RLS) may load.
     void loadDonation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isStaff]);
+  }, [id]);
 
   async function loadDonation() {
     setLoading(true);
@@ -92,31 +93,79 @@ export default function ReceiptViewPage() {
           .from("donations")
           .select("amount, donation_month, receipt_no")
           .eq("batch_id", d.batch_id)
+          .eq("member_id", d.member_id)
           .order("donation_month", { ascending: true });
         if (batchRows && batchRows.length > 1) {
-          const first = batchRows[0] as { amount: number; donation_month: string; receipt_no: string };
-          const last = batchRows[batchRows.length - 1] as { amount: number; donation_month: string };
-          setBatchMonth(
-            `${monthLabelBengali(first.donation_month)} – ${monthLabelBengali(last.donation_month)} (${toBengaliNumber(
-              String(batchRows.length).padStart(2, "0")
-            )} মাস)`
-          );
+          // Unique months only: two rows covering the same month must not
+          // inflate the "(০৩ মাস)" label. Null months are skipped safely.
+          const months = Array.from(
+            new Set(
+              batchRows.map(
+                (r) => (r as { donation_month: string | null }).donation_month
+              )
+            )
+          )
+            .filter((m): m is string => !!m)
+            .sort();
+          if (months.length > 0) {
+            setBatchMonth(
+              `${monthLabelBengali(months[0])} – ${monthLabelBengali(months[months.length - 1])} (${toBengaliNumber(
+                String(months.length).padStart(2, "0")
+              )} মাস)`
+            );
+          }
           setBatchAmount(
             batchRows.reduce((sum: number, r: { amount: number }) => sum + Number(r.amount), 0)
           );
-          setBatchReceiptNo(`${(d.receipt_no || "").split("-")[0]} (Batch)`);
+          setBatchReceiptNo(d.receipt_no ? `${d.receipt_no} (Batch)` : null);
         }
       }
     }
     setLoading(false);
   }
 
-  const verifyUrl = useMemo(() => {
-    if (typeof window === "undefined" || !donation?.receipt_no) return null;
-    return `${window.location.origin}/verify/${donation.receipt_no}`;
+  // Client-only after mount: window.location.origin differs between server
+  // and client render, so building this in render would cause a hydration
+  // mismatch (QR flicker). The QR stays hidden until the URL is ready.
+  const [verifyUrl, setVerifyUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (donation?.receipt_no) {
+      setVerifyUrl(
+        `${window.location.origin}/verify/${encodeURIComponent(donation.receipt_no)}`
+      );
+    } else {
+      setVerifyUrl(null);
+    }
   }, [donation?.receipt_no]);
 
-  if (!isStaff) {
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center gap-2 font-akkas text-gray-500">
+        <Loader2 className="animate-spin" size={24} />
+        রসিদ লোড হচ্ছে…
+      </div>
+    );
+  }
+
+  if (error || !donation) {
+    return (
+      <div className="mx-auto max-w-md p-8 text-center font-akkas">
+        <h1 className="mb-2 font-shadhinata text-2xl font-bold text-gray-900">
+          রসিদ পাওয়া যায়নি
+        </h1>
+        <p className="text-gray-500">{error || "এই আইডির কোনো দান পাওয়া যায়নি।"}</p>
+        <Link href="/donations" className="btn-outline mt-6 inline-flex items-center gap-2">
+          <ArrowLeft size={16} />
+          জমা তালিকায় ফিরুন
+        </Link>
+      </div>
+    );
+  }
+
+  // Same gate as the legacy JPEG receipt: staff OR the member who owns the
+  // donation. Row access itself is enforced by RLS; this is only the UI gate.
+  const canView = isStaff || (memberId !== null && memberId === donation.member_id);
+  if (!canView) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center font-akkas">
         <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-xl shadow-red-100">
@@ -126,8 +175,9 @@ export default function ReceiptViewPage() {
           প্রবেশাধিকার সংরক্ষিত
         </h1>
         <p className="max-w-xs text-gray-500">
-          এই রসিদ পেজটি শুধুমাত্র অ্যাডমিন ও ট্রেজারারদের জন্য। আপনার যদি মনে
-          হয় এটি ভুল, তবে প্রধান অ্যাডমিনের সাথে যোগাযোগ করুন।
+          এই রসিদটি শুধুমাত্র সংশ্লিষ্ট সদস্য, অ্যাডমিন ও ট্রেজারাররা দেখতে
+          পারেন। আপনার যদি মনে হয় এটি ভুল, তবে প্রধান অ্যাডমিনের সাথে
+          যোগাযোগ করুন।
         </p>
       </div>
     );
