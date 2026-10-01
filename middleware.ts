@@ -9,28 +9,29 @@ export async function middleware(req: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // If Supabase credentials are not configured (e.g. local run without
-  // .env.local or a deploy where env vars haven't been added yet), skip the
-  // auth gate entirely so the app can still serve. The client-side Supabase
-  // wrapper will fall back to a mock client in that case.
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return res;
-  }
+  // Fail closed: when Supabase credentials are missing we cannot verify a
+  // session, so treat every request as unauthenticated. Protected routes
+  // redirect to /login; public paths below stay public. (Previously the
+  // gate was skipped entirely, which exposed every page.)
+  const supabase =
+    supabaseUrl && supabaseAnonKey
+      ? createServerClient(supabaseUrl, supabaseAnonKey, {
+          cookies: {
+            getAll() {
+              return cookieStore.getAll();
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                res.cookies.set(name, value, options);
+              });
+            },
+          },
+        })
+      : null;
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          res.cookies.set(name, value, options);
-        });
-      },
-    },
-  });
-
-  const { data: { session } } = await supabase.auth.getSession();
+  const session = supabase
+    ? (await supabase.auth.getSession()).data.session
+    : null;
 
   const { pathname } = new URL(req.url);
   // PWA assets must be publicly reachable (service worker, manifest, icons)
@@ -46,6 +47,8 @@ export async function middleware(req: Request) {
     pathname.startsWith("/login/") || 
     pathname === "/signup" || 
     pathname.startsWith("/signup/") || 
+    pathname === "/verify" ||
+    pathname.startsWith("/verify/") ||
     isPwaAsset;
 
   if (!isPublic && !session) {

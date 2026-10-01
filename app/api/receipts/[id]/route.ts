@@ -97,7 +97,7 @@ export async function GET(
     .maybeSingle();
 
   // Staff OR the member who owns this donation may view the receipt.
-  const canView = isStaff(userData?.role, user?.email) || userData?.member_id === donation.member_id;
+  const canView = isStaff(userData?.role) || userData?.member_id === donation.member_id;
 
   if (!canView) {
     return new NextResponse('Forbidden', { status: 403 });
@@ -363,7 +363,8 @@ export async function GET(
     const qrX = cardMargin + 40;
     const qrY = height - 240;
     
-    const qrData = `https://daulkharfoundation.vercel.app/verify/${donation.receipt_no}`;
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin).replace(/\/+$/, '');
+    const qrData = `${siteUrl}/verify/${donation.receipt_no}`;
     const qrBuffer = await QRCode.toBuffer(qrData, {
       margin: 1,
       width: qrSize,
@@ -371,6 +372,12 @@ export async function GET(
     });
     const qrImage = await loadImage(qrBuffer);
     ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+    // Bangla caption under the QR so donors know what to do with it
+    ctx.fillStyle = '#064E3B';
+    ctx.font = '20px Bengali';
+    ctx.textAlign = 'center';
+    ctx.fillText("স্ক্যান করে যাচাই করুন", qrX + qrSize / 2, qrY + qrSize + 26);
     
     // Gold seal removed as requested
 
