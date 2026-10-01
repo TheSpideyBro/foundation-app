@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { todayISO } from "@/lib/utils";
+import { todayISO, formatMoney, formatDateBengali } from "@/lib/utils";
 import { 
   Plus, Search, Filter, Download, 
   Trash2, Edit2, Wallet, Calendar,
@@ -13,8 +13,8 @@ import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
 export default function ExpensesPage() {
   const { user, role } = useAuth();
-  const isAdmin = hasAdminRole(role, user?.email);
-  const isStaff = hasStaffRole(role, user?.email);
+  const isAdmin = hasAdminRole(role);
+  const isStaff = hasStaffRole(role);
   
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,13 +23,14 @@ export default function ExpensesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);   // modal form errors (was: alert())
+  const [actionError, setActionError] = useState<string | null>(null); // page-level action errors (e.g. delete)
 
   const [formData, setFormData] = useState({
     category: "General",
     amount: "",
     date: todayISO(),
-    description: "",
-    proof_url: ""
+    description: ""
   });
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export default function ExpensesPage() {
   const fetchExpenses = async () => {
     setLoading(true);
     setLoadError(null);
+    setActionError(null);
     try {
       if (!isStaff) {
         const { data, error } = await supabase().from("expense_summary").select("total_amount, expense_count").single();
@@ -59,14 +61,14 @@ export default function ExpensesPage() {
   };
 
   const handleOpenModal = (expense: any = null) => {
+    setFormError(null);
     if (expense) {
       setEditingExpense(expense);
       setFormData({
         category: expense.category,
         amount: expense.amount.toString(),
         date: expense.date,
-        description: expense.description || "",
-        proof_url: expense.proof_url || ""
+        description: expense.description || ""
       });
     } else {
       setEditingExpense(null);
@@ -74,8 +76,7 @@ export default function ExpensesPage() {
         category: "General",
         amount: "",
         date: todayISO(),
-        description: "",
-        proof_url: ""
+        description: ""
       });
     }
     setIsModalOpen(true);
@@ -83,8 +84,16 @@ export default function ExpensesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
     if (!formData.amount || !formData.date || !formData.description) {
-      alert("টাকার পরিমাণ, তারিখ এবং বিবরণ আবশ্যক।");
+      setFormError("টাকার পরিমাণ, তারিখ এবং বিবরণ আবশ্যক।");
+      return;
+    }
+    // The DB has CHECK (amount > 0): reject non-positive amounts up front
+    // with a Bengali message instead of a raw constraint error.
+    const amount = parseFloat(formData.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setFormError("টাকার পরিমাণ শূন্যের চেয়ে বেশি হতে হবে।");
       return;
     }
 
@@ -92,7 +101,7 @@ export default function ExpensesPage() {
     try {
       const payload = {
         ...formData,
-        amount: parseFloat(formData.amount),
+        amount,
         created_by: user?.id
       };
 
@@ -113,7 +122,7 @@ export default function ExpensesPage() {
       fetchExpenses();
     } catch (err) {
       console.error("Error saving expense:", err);
-      alert("সেভ করতে সমস্যা হয়েছে।");
+      setFormError("সেভ করতে সমস্যা হয়েছে।");
     } finally {
       setSubmitting(false);
     }
@@ -127,7 +136,7 @@ export default function ExpensesPage() {
       setExpenses(expenses.filter(e => e.id !== id));
     } catch (err) {
       console.error("Error deleting expense:", err);
-      alert("ডিলিট করতে সমস্যা হয়েছে।");
+      setActionError("ডিলিট করতে সমস্যা হয়েছে।");
     }
   };
 
@@ -137,13 +146,48 @@ export default function ExpensesPage() {
   ) : expenses;
 
   if (loading) return (
-    <div className="min-h-[400px] flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+    <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
+        <div className="space-y-2">
+          <div className="h-9 w-48 bg-gray-200 rounded-xl animate-pulse" />
+          <div className="h-4 w-64 bg-gray-100 rounded-lg animate-pulse" />
+        </div>
+        <div className="h-12 w-36 bg-gray-200 rounded-2xl animate-pulse" />
+      </div>
+      <div className="card-premium overflow-hidden border border-red-50 shadow-sm">
+        <div className="p-6 border-b border-gray-100">
+          <div className="h-10 max-w-md bg-gray-100 rounded-xl animate-pulse" />
+        </div>
+        <div className="divide-y divide-gray-50">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-5 sm:p-6 bg-white">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gray-200 animate-pulse" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-44 bg-gray-200 rounded-lg animate-pulse" />
+                    <div className="h-3 w-28 bg-gray-100 rounded-md animate-pulse" />
+                  </div>
+                </div>
+                <div className="h-6 w-24 bg-gray-200 rounded-lg animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 
   return (
     <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
+      {actionError && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-between gap-3">
+          <p className="text-sm font-bold text-rose-700">{actionError}</p>
+          <button onClick={() => setActionError(null)} className="p-1.5 text-rose-400 hover:text-rose-600 rounded-lg shrink-0" aria-label="বন্ধ করুন">
+            <X size={16} />
+          </button>
+        </div>
+      )}
       {loadError && (
         <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1">
@@ -201,7 +245,7 @@ export default function ExpensesPage() {
                       <p className="text-[15px] sm:text-base font-bold text-gray-900 leading-snug font-tiro">{e.description}</p>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
                         <span className="flex items-center gap-1.5 text-[11px] text-gray-500 font-medium bg-gray-50 px-2 py-0.5 rounded-md">
-                          <Calendar size={12} className="text-rose-600" /> {e.date}
+                          <Calendar size={12} className="text-rose-600" /> {e.date ? formatDateBengali(e.date) : ""}
                         </span>
                         <span className="px-2 py-0.5 bg-rose-50 text-rose-600 text-[9px] font-bold uppercase rounded-lg tracking-widest border border-rose-100">
                           {e.category}
@@ -212,7 +256,7 @@ export default function ExpensesPage() {
                   
                   <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-10">
                     <div className="text-right">
-                      <p className="text-lg sm:text-xl font-bold text-rose-600 font-tiro">৳{Number(e.amount).toLocaleString()}</p>
+                      <p className="text-lg sm:text-xl font-bold text-rose-600 font-tiro">{formatMoney(Number(e.amount))}</p>
                     </div>
                     
                     {isStaff && (
@@ -259,6 +303,14 @@ export default function ExpensesPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5 max-h-[70vh] overflow-y-auto">
+              {formError && (
+                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-start justify-between gap-3">
+                  <p className="text-sm font-bold text-rose-700">{formError}</p>
+                  <button type="button" onClick={() => setFormError(null)} className="p-1 text-rose-400 hover:text-rose-600 rounded-lg shrink-0" aria-label="বন্ধ করুন">
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-[13px] font-bold text-gray-700 ml-1">খরচের বিবরণ *</label>
                 <input 
@@ -278,7 +330,8 @@ export default function ExpensesPage() {
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">৳</span>
                     <input 
                       type="number"
-                      inputMode="numeric"
+                      inputMode="decimal"
+                      min="0.01"
                       value={formData.amount}
                       onChange={(e) => setFormData({...formData, amount: e.target.value})}
                       className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-red-500/20 transition-all"
