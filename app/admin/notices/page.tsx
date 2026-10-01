@@ -13,7 +13,7 @@ import { isAdmin as hasAdminRole } from "@/lib/auth";
 
 export default function NoticeManagementPage() {
   const { user, role } = useAuth();
-  const isAdmin = hasAdminRole(role, user?.email);
+  const isAdmin = hasAdminRole(role);
   
   const [notices, setNotices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +83,7 @@ export default function NoticeManagementPage() {
       )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
         <div className="flex items-center gap-4">
-          <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+          <Link href="/admin" aria-label="অ্যাডমিন প্যানেলে ফিরে যান" className="p-2.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors">
             <ArrowLeft size={24} />
           </Link>
           <div>

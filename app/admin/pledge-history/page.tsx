@@ -5,6 +5,7 @@ import { Search, Shield, TrendingDown, TrendingUp, Minus, RefreshCw } from "luci
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
+import AdminBackLink from "@/components/AdminBackLink";
 
 type PledgeEntry = {
   id: string;
@@ -17,8 +18,8 @@ type PledgeEntry = {
 };
 
 export default function AdminPledgeHistoryPage() {
-  const { user, role } = useAuth();
-  const isStaff = hasStaffRole(role, user?.email);
+  const { role } = useAuth();
+  const isStaff = hasStaffRole(role);
   const [entries, setEntries] = useState<PledgeEntry[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -58,7 +59,10 @@ export default function AdminPledgeHistoryPage() {
 
   return <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <div><h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">মাসিক অঙ্গীকার পরিবর্তনের ইতিহাস</h1><p className="text-sm text-gray-500 font-medium">কোন মাস থেকে pledge amount পরিবর্তন হয়েছে এবং পরিবর্তনের কারণ দেখুন</p></div>
+      <div className="flex items-center gap-4">
+        <AdminBackLink />
+        <div><h1 className="text-3xl sm:text-4xl font-bold font-tiro text-gray-900 mb-1">মাসিক অঙ্গীকার পরিবর্তনের ইতিহাস</h1><p className="text-sm text-gray-500 font-medium">কোন মাস থেকে pledge amount পরিবর্তন হয়েছে এবং পরিবর্তনের কারণ দেখুন</p></div>
+      </div>
       <button type="button" onClick={loadHistory} className="btn-outline h-11 px-4"><RefreshCw size={17} /> রিফ্রেশ</button>
     </div>
 

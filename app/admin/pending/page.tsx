@@ -12,8 +12,8 @@ import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole } from "@/lib/auth";
 
 export default function PendingPledgesPage() {
-  const { user, role } = useAuth();
-  const isAdmin = hasAdminRole(role, user?.email);
+  const { role } = useAuth();
+  const isAdmin = hasAdminRole(role);
   
   const [month, setMonth] = useState(currentMonthStr());
   const [pending, setPending] = useState<any[]>([]);
@@ -57,7 +57,7 @@ export default function PendingPledgesPage() {
   return (
     <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
       <div className="flex items-center gap-4 mb-2">
-        <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+        <Link href="/admin" aria-label="অ্যাডমিন প্যানেলে ফিরে যান" className="p-2.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors">
           <ArrowLeft size={24} />
         </Link>
         <div>

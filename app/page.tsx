@@ -129,8 +129,8 @@ export default function LandingPage() {
             <p className="text-[10px] text-gray-300 font-medium mt-1">Developed by Saddam Hossain Akash</p>
           </div>
           <div className="flex items-center gap-6">
-            <Link href="#" className="text-gray-400 hover:text-emerald-600 transition-colors"><Phone size={20} /></Link>
-            <Link href="#" className="text-gray-400 hover:text-emerald-600 transition-colors"><Globe size={20} /></Link>
+            <span className="text-gray-400" aria-hidden="true"><Phone size={20} /></span>
+            <span className="text-gray-400" aria-hidden="true"><Globe size={20} /></span>
           </div>
         </div>
       </footer>

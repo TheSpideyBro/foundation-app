@@ -9,10 +9,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole } from "@/lib/auth";
+import AdminBackLink from "@/components/AdminBackLink";
 
 export default function AdminUsersPage() {
   const { user: authUser, role: authRole } = useAuth();
-  const isAdmin = hasAdminRole(authRole, authUser?.email);
+  const isAdmin = hasAdminRole(authRole);
 
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -267,9 +268,12 @@ export default function AdminUsersPage() {
   return (
     <div className="p-4 sm:p-8 space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-[28px] font-bold font-tiro text-gray-900">ইউজার ম্যানেজমেন্ট</h1>
-          <p className="text-gray-500 text-[14px]">অ্যাপ ব্যবহারকারীদের তালিকা ও রোল নিয়ন্ত্রণ</p>
+        <div className="flex items-center gap-4">
+          <AdminBackLink />
+          <div>
+            <h1 className="text-[28px] font-bold font-tiro text-gray-900">ইউজার ম্যানেজমেন্ট</h1>
+            <p className="text-gray-500 text-[14px]">অ্যাপ ব্যবহারকারীদের তালিকা ও রোল নিয়ন্ত্রণ</p>
+          </div>
         </div>
       </div>
 
