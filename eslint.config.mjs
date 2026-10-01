@@ -22,11 +22,11 @@ const eslintConfig = defineConfig([
     // from blocking CI; new code should still prefer explicit types and
     // useCallback where practical.
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": "warn",
       "react-hooks/immutability": "off",
       "react-hooks/set-state-in-effect": "off",
-      "react-hooks/exhaustive-deps": "off",
+      "react-hooks/exhaustive-deps": "warn",
       "prefer-const": "error",
     },
   },
