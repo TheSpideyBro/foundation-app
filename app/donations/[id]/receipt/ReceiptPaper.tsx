@@ -68,7 +68,7 @@ export default function ReceiptPaper({
           <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#C9A227]">
             দান রসিদ
           </p>
-          <h1 className="mx-auto mt-1 max-w-md font-sabbir text-[23px] font-bold leading-snug text-[#022C22] sm:text-[26px]">
+          <h1 className="mx-auto mt-1 max-w-md font-sabbir text-[23px] font-bold leading-snug text-black sm:text-[26px]">
             দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন
           </h1>
           <p className="mx-auto mt-1.5 flex max-w-md flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11.5px] font-medium text-stone-500">
