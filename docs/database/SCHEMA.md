@@ -128,7 +128,7 @@ Written **only by database triggers** (`log_audit_event()` on `donations`, `expe
 | Column | Type | Notes |
 |--------|------|-------|
 | id | UUID PK | DEFAULT gen_random_uuid() |
-| actor_id | UUID | `auth.uid()`, falls back to the first admin row |
+| actor_id | UUID, nullable | `auth.uid()`; NULL for system/service-role writes (2026-10-02) |
 | actor_email | TEXT | from the JWT, else `system@foundation.app` |
 | action | TEXT | INSERT / UPDATE / DELETE |
 | target_table | TEXT | |
@@ -141,9 +141,13 @@ Admin-only SELECT (`audit_log_select_admin`); indexes on `actor_id` and `created
 
 ## Views
 
-All views run with **owner rights** (no `security_invoker`), so RLS on the base tables does
-not apply to them — column selection plus the grant is the boundary. `anon` has **no SELECT**
-on any view (BUG-015); `authenticated` and `service_role` do.
+The six dashboard views run with **`security_invoker = true`** (since `20261002_review_v2_db_hardening.sql`),
+so the base-table RLS policies apply to whoever queries them — owner-rights bypass was removed
+because every authenticated user could read foundation-wide financials and every member's
+`monthly_pledge` (review v2, H1). `anon` has **no SELECT** on any view (BUG-015);
+`authenticated` and `service_role` do. Consequences: staff and service_role see full aggregates;
+plain members see aggregates scoped to their own rows (expense views return a single zero row,
+so `.single()` keeps working); the members directory shows a member only their own row.
 
 - `member_summary`, `donation_summary`, `expense_summary`, `expense_category_summary`,
   `member_directory` — dashboard aggregates.
@@ -157,17 +161,17 @@ on any view (BUG-015); `authenticated` and `service_role` do.
 
 | Function | Executed by | Notes |
 |----------|-------------|-------|
-| `calculate_payment_allocation(p_payment_id, p_member_id, p_payment_amount, p_coverage_start, p_coverage_end, p_pledge_history)` | authenticated, service_role | Canonical allocation engine (SQL twin of `lib/payment-ledger.ts`, ADR-001). Returns `TABLE(month, amount, allocation_type)`. |
+| `calculate_payment_allocation(p_payment_id, p_member_id, p_payment_amount, p_coverage_start, p_coverage_end, p_pledge_history)` | **service_role only** (authenticated revoked 2026-10-02 — it was a pledge-amount oracle) | Canonical allocation engine (SQL twin of `lib/payment-ledger.ts`, ADR-001). Returns `TABLE(month, amount, allocation_type)`. |
 | `save_payment_entry(...)` | **service_role only** | 13 args on Main (incl. `p_extra_amount`), 12 on Test. Applies guards (positive amount, `YYYY-MM` coverage, span 1–120, pledge effective format/bound), then applies the pledge change to `members.monthly_pledge` **and** `member_pledge_history` **before** reading the history and inserting the donation + allocations (BUG-021/022/023). |
 | `reallocate_payment(...)` | **service_role only** | 6 args on Main (persists extra + coverage), 5 on Test. Deletes and regenerates a payment's allocations with the same coverage guards; the pledge block also runs before the history read (BUG-021). |
 | `backfill_payment_allocations()` | **service_role only** | Regenerates allocations for every donation that has none. Restored to Main by `20260929_backfill_legacy_donations.sql`. |
-| `generate_receipt_no()` | all (read-only, owner-rights) | Advisory lock + no `lpad` truncation (BUG-017). |
-| `admin_delete_user(target_user_id)` | authenticated, service_role | Internally checks admin/founder; refuses self-delete. |
+| `generate_receipt_no()` | authenticated, service_role (anon revoked 2026-10-02) | Advisory lock + no `lpad` truncation (BUG-017). Reachable only via the `set_receipt_no` trigger on staff donations INSERT. |
+| `admin_delete_user(target_user_id)` | authenticated, service_role | Internal `get_my_role() = 'admin'` check is the authorization boundary (the founder-email bypass was deleted 2026-10-02); refuses self-delete. `authenticated` keeps EXECUTE because the admin API route calls it via the cookie-scoped user client. |
 | `handle_new_user()` | trigger (auth.users) | Always inserts `role='member'`, `is_approved=false` — ignores client metadata (BUG-012). |
 | `enforce_member_self_update()` | trigger (members) | BUG-018 column guard. |
 | `log_audit_event()` | triggers | Zero-argument trigger function. |
 | `set_receipt_no()`, `set_donation_month()` | triggers | Defaults on `donations`. |
-| `get_my_role()`, `get_my_member_id()`, `get_my_is_approved()` | RLS helpers | `SECURITY DEFINER`, read `public.users`. |
+| `get_my_role()`, `get_my_member_id()`, `get_my_is_approved()` | RLS helpers | `SECURITY DEFINER`, read `public.users`. The `anon` EXECUTE grant is load-bearing: RLS policies are `TO PUBLIC` and call these on every evaluation, so revoking it would turn anon queries into permission errors. |
 
 > There is **no** `log_audit_event(p_action, ...)` RPC and no `delete_user(...)` — older docs
 > described both; the live signatures are the ones in the table above.
@@ -192,6 +196,8 @@ on any view (BUG-015); `authenticated` and `service_role` do.
 | 14 | `20260929_backfill_legacy_donations.sql` | 2026-09-29 | BUG-019: restore `backfill_payment_allocations()`, pin coverage, backfill, assert zero-sum — **Main** |
 | 15 | `20260930_pledge_change_before_allocation.sql` | 2026-09-30 | BUG-021/022/023: pledge block moved before the history read + allocation in `save_payment_entry()`/`reallocate_payment()`, coverage span ≤120 months, pledge effective format/bound checks, zero-sum assertion — **Main + Test** |
 | 16 | `20261001_pledge_history_akash_october.sql` | 2026-10-01 | BUG-031 (data): pledge row `2026-10 → ৳100` for member `a40ef6db` (Sep stays ৳1,000); asserts the resolution and `members.monthly_pledge`, no allocation touched — **Main** |
+| 17 | `20261002_review_v2_db_hardening.sql` | 2026-10-02 | Review v2 DB fixes — **Main, APPLIED 2026-10-02 ~02:45 +06** via Management API (BEGIN; … COMMIT; + NOTIFY pgrst reload), all 5 premises re-verified against the live catalog at apply time, 10/10 post-apply checks green, `supabase/schema.sql` regenerated from live: C1 deletes the founder-email bypass in `admin_delete_user` (role table is sole authority); H1 sets `security_invoker = true` on the six summary views so RLS applies; M1 revokes `authenticated` EXECUTE on `calculate_payment_allocation` (pledge oracle → service_role only); M2 makes `audit_log.actor_id` nullable and stops misattributing system writes to a random admin; L6 revokes `anon` EXECUTE on `generate_receipt_no` |
+| 18 | `20261002_audit_followup_hygiene.sql` | 2026-10-02 | Supabase audit follow-ups — **Main, APPLIED 2026-10-02 ~02:55 +06** via Management API (BEGIN; … COMMIT; + NOTIFY pgrst reload), premises re-verified live at apply time, post-apply checks green (incl. rolled-back INSERT proving triggers still fire), `supabase/schema.sql` regenerated: L-A1 revokes `PUBLIC`/`anon`/`authenticated` EXECUTE on the 5 trigger functions (postgres + service_role keep); L-A2 revokes meaningless INSERT/UPDATE/DELETE/TRUNCATE/TRIGGER on the six views from `PUBLIC`/`anon`/`authenticated` (SELECT untouched); L-A3 pins `SET search_path = public` on `set_donation_month`/`set_receipt_no` (bodies byte-identical) |
 | — | `supabase/migrations-test/20260929_harden_test_project.sql` | 2026-09-29 | The same hardening for the **Test** project (different RPC signatures) |
 | — | `supabase/migrations-test/20260930_pledge_change_before_allocation.sql` | 2026-09-30 | Row 15 for the **Test** project (12-arg `save_payment_entry`, no `extra_amount`) |
 
