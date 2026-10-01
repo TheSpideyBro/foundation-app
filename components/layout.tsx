@@ -96,7 +96,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (loading && !user) return null;
 
   return (
-    <div className="min-h-screen bg-[#FDFCF9] flex flex-col lg:flex-row font-hind overflow-x-hidden">
+    <div className="min-h-screen bg-[#FDFCF9] flex flex-col lg:flex-row font-akkas overflow-x-hidden">
       {/* Mobile Top Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-xl border-b border-emerald-100/50 z-[40] px-5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-2">
