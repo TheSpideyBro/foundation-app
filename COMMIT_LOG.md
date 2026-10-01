@@ -59,6 +59,35 @@
 
 ---
 
+## ce65534 — feat(receipt): QR left, signature right per sketch
+
+**Date:** 2026-10-01  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Bottom row | QR card + signature in adjacent centered columns | QR at left edge, signature at right edge (`justify-between`, bottom-aligned) — matches Akash's sketch |
+| QR treatment | White card with title + caption | Minimal: gold-ringed QR + small "স্ক্যান করে যাচাই করুন" label |
+
+### Why
+
+Akash's sketch showed the classic receipt footer: QR left, signature right, spread apart.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## 3913ea8 — feat(receipt): pure black masthead
 
 **Date:** 2026-10-01  
