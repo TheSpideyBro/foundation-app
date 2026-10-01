@@ -59,6 +59,35 @@
 
 ---
 
+## dc2136b — feat(receipt): gratitude back to Galada, signature keeps Teesta
+
+**Date:** 2026-10-02  
+**Author:** Muse (for Akash)  
+**Branch:** feat/premium-receipt  
+**Files changed:** app/donations/[id]/receipt/ReceiptPaper.tsx, CHANGELOG.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| "জাযাকাল্লাহু খাইরান" | Li Chayana Teesta | **Galada** (reverted) |
+| Collector signature name | Li Chayana Teesta | Li Chayana Teesta (unchanged) |
+
+### Why
+
+Akash: keep the two different — gratitude in Galada, signature in Chayana Teesta.
+
+### Tests Run
+
+- `pnpm exec tsc --noEmit` — clean
+- `pnpm build` — green
+
+### Known Risks / Follow-ups
+
+- Still awaiting Akash's visual approval before push/PR.
+
+---
+
 ## 5205a00 — feat(receipt): Li Chayana Teesta for gratitude + signature
 
 **Date:** 2026-10-02  
