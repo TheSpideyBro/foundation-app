@@ -141,8 +141,22 @@ export default function AnalyticsPage() {
   const months = useMemo(() => {
     const out: string[] = [];
     for (let i = 0; i < WINDOW_MONTHS; i++) out.push(shiftMonth(startYm, i));
+    // Extend to include future months that have allocation data
+    // (e.g., advance payments for Jan 2027+). No upper limit.
+    let maxAllocMonth: string | null = null;
+    for (const a of allocs) {
+      if (a.month && (!maxAllocMonth || a.month > maxAllocMonth)) maxAllocMonth = a.month;
+    }
+    if (maxAllocMonth) {
+      const lastShown = out[out.length - 1];
+      let ym = shiftMonth(lastShown, 1);
+      while (ym <= maxAllocMonth) {
+        out.push(ym);
+        ym = shiftMonth(ym, 1);
+      }
+    }
     return out;
-  }, [startYm]);
+  }, [startYm, allocs]);
 
   const activeMembers = useMemo(
     () => members.filter((m) => (m.status || "active") === "active"),
