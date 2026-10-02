@@ -70,6 +70,12 @@ Complete feature inventory with route, role access, and implementation status.
 - **Implementation**: `app/analytics/page.tsx` (client-side aggregation; no DB migration)
 - **Description**: Treasurer sees where money is leaking instead of guessing. KPI cards (this month's collection % vs target, total arrears, active members, avg monthly collection over last 6 full months), 12-month expected-vs-collected trend chart, defaulter/arrears list (months behind, sorted by arrears amount), collector performance leaderboard (last 12 months by `collected_by`), and annual projection from the 6-month run rate vs annual pledge target. Paid = `payment_allocations` with type pledge/advance (canonical); expected = active members' current `monthly_pledge` (join-month aware).
 
+### 7d. Pledge Reminders (WhatsApp) — F5
+- **Routes**: `GET /api/cron/pledge-reminders` (Vercel Cron, monthly), `POST /api/notify/reminder` (manual, staff)
+- **Roles**: automatic (cron) + staff (treasurer, admin) for manual sends
+- **Implementation**: `lib/reminder-notify.ts`, `supabase/migrations/20261002_f5_reminder_log.sql`, `vercel.json` (cron: 5th of month, 01:00 UTC)
+- **Description**: On the 5th of each month, active members whose previous-month pledge is still unpaid get a Bengali WhatsApp reminder (month + due amount) — skips members already reminded that month, without phone numbers, or when WhatsApp isn't configured. Every attempt is logged to `reminder_log` (member, month, channel, recipient, status, error, sent_by; NULL sent_by = automatic). Staff can send a manual per-member reminder from the analytics বকেয়া তালিকা, which shows a "পাঠানো" badge once sent. Cron secured by `CRON_SECRET` (Bearer); manual route uses staff auth.
+
 ## Admin Features
 
 ### 8. Admin Dashboard
