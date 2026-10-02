@@ -104,7 +104,9 @@ export default function CashbookPage() {
   };
 
   const totalIn = entries.filter((e) => e.type === "in").reduce((s, e) => s + e.amount, 0);
-  const totalOut = entries.filter((e) => e.type === "out").reduce((s, e) => s + e.amount, 0);
+  const totalExpense = entries.filter((e) => e.type === "out" && !e.id.startsWith("b-")).reduce((s, e) => s + e.amount, 0);
+  const totalBankDeposit = entries.filter((e) => e.type === "out" && e.id.startsWith("b-")).reduce((s, e) => s + e.amount, 0);
+  const totalOut = totalExpense + totalBankDeposit;
   const closing = totalIn - totalOut;
 
   if (!isStaff) {
@@ -140,7 +142,7 @@ export default function CashbookPage() {
       )}
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div className="card-premium p-4 text-center">
           <p className="text-[10px] font-bold text-gray-500 mb-1">মোট জমা</p>
           <p className="text-lg sm:text-xl font-bold text-emerald-700 font-baloo">
@@ -150,7 +152,13 @@ export default function CashbookPage() {
         <div className="card-premium p-4 text-center">
           <p className="text-[10px] font-bold text-gray-500 mb-1">মোট খরচ</p>
           <p className="text-lg sm:text-xl font-bold text-rose-600 font-baloo">
-            ৳{toBengaliNumber(totalOut.toLocaleString("en-US"))}
+            ৳{toBengaliNumber(totalExpense.toLocaleString("en-US"))}
+          </p>
+        </div>
+        <div className="card-premium p-4 text-center">
+          <p className="text-[10px] font-bold text-gray-500 mb-1">ব্যাংক ডিপোজিট</p>
+          <p className="text-lg sm:text-xl font-bold text-blue-600 font-baloo">
+            ৳{toBengaliNumber(totalBankDeposit.toLocaleString("en-US"))}
           </p>
         </div>
         <div className="card-premium p-4 text-center bg-emerald-50/50">
