@@ -45,6 +45,7 @@ export async function POST(
     particulars?: string;
     remarks?: string;
     to_account_id?: string;
+    from_account_id?: string;
   };
   try {
     body = await request.json();
@@ -80,37 +81,48 @@ export async function POST(
   const rows: Record<string, unknown>[] = [];
 
   if (kind === "transfer") {
+    // Two modes:
+    // - to_account_id: out from THIS account → in to target (withdrawal/transfer out)
+    // - from_account_id: out from source → in to THIS account (deposit/transfer in)
     const toId = body.to_account_id;
-    if (!toId) return fail(400, "ট্রান্সফারের গন্তব্য হিসাব দিন");
-    if (toId === accountId) return fail(400, "একই হিসাবে ট্রান্সফার করা যাবে না");
+    const fromId = body.from_account_id;
+    if (!toId && !fromId) return fail(400, "ট্রান্সফারের উৎস বা গন্তব্য হিসাব দিন");
+    if (toId && fromId) return fail(400, "উৎস ও গন্তব্য একসাথে দেওয়া যাবে না");
 
-    const { data: dest, error: destError } = await auth.supabase
+    const otherId = toId || fromId;
+    const isDeposit = !!fromId; // money coming INTO this account
+    if (otherId === accountId) return fail(400, "একই হিসাবে ট্রান্সফার করা যাবে না");
+
+    const { data: other, error: otherError } = await auth.supabase
       .from("accounts")
-      .select("id, is_active")
-      .eq("id", toId)
+      .select("id, name, is_active")
+      .eq("id", otherId)
       .maybeSingle();
-    if (destError) return fail(500, "গন্তব্য হিসাব যাচাই করা যায়নি");
-    if (!dest) return fail(404, "গন্তব্য হিসাব পাওয়া যায়নি");
-    if (!dest.is_active) return fail(400, "বন্ধ হিসাবে ট্রান্সফার করা যাবে না");
+    if (otherError) return fail(500, "হিসাব যাচাই করা যায়নি");
+    if (!other) return fail(404, "হিসাব পাওয়া যায়নি");
+    if (!other.is_active) return fail(400, "বন্ধ হিসাবে ট্রান্সফার করা যাবে না");
 
     const transferId = randomUUID();
+    const label = isDeposit ? `ব্যাংক জমা — ${other.name}` : `ট্রান্সফার — ${particulars}`;
+    const outParticulars = isDeposit ? `${label}` : `ট্রান্সফার — ${particulars}`;
+    const inParticulars = isDeposit ? `${label}` : `ট্রান্সফার — ${particulars}`;
     rows.push(
       {
-        account_id: accountId,
+        account_id: isDeposit ? otherId : accountId,
         date,
         direction: "out",
         amount,
-        particulars: `ট্রান্সফার — ${particulars}`,
+        particulars: outParticulars,
         remarks,
         transfer_id: transferId,
         created_by: auth.userId,
       },
       {
-        account_id: toId,
+        account_id: isDeposit ? accountId : otherId,
         date,
         direction: "in",
         amount,
-        particulars: `ট্রান্সফার — ${particulars}`,
+        particulars: inParticulars,
         remarks,
         transfer_id: transferId,
         created_by: auth.userId,
