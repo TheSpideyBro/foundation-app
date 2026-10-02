@@ -57,6 +57,121 @@
 
 ## Commit History
 
+## f293f93 — fix(review): resolve 41 findings from third full review (v3) + receipt routing
+
+**Date:** 2026-10-02
+**Author:** Muse (for Akash)
+**Branch:** feat/premium-receipt
+**Files changed:** app/reports/page.tsx, app/joma/page.tsx, app/expenses/page.tsx, app/api/admin/bulk/route.ts, lib/sheets-sync.ts, app/api/members/[id]/qr/route.ts, app/api/notify/whatsapp/route.ts, app/api/admin/auto-link/route.ts, public/sw.js, app/offline/page.tsx (new), app/profile/page.tsx, app/dashboard/page.tsx, app/members/page.tsx, app/donations/page.tsx, app/donations/[id]/receipt/page.tsx, app/donations/[id]/receipt/ReceiptPaper.tsx, app/admin/users/page.tsx, app/admin/members/[id]/page.tsx, app/admin/bulk/page.tsx, app/login/page.tsx, app/signup/page.tsx, app/page.tsx, app/globals.css, app/layout.tsx, app/layout-wrapper.tsx, components/Modal.tsx (new), components/layout.tsx, middleware.ts → proxy.ts, app/fonts/*.ttf → *.woff2, public/fonts/LiAbuJMAkkasUnicode-Regular.ttf (new), public/manifest.json, public/patterns/cubes.png (new), CHANGELOG.md, docs/product/FEATURE_MAP.md, docs/architecture/SECURITY.md
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Reports PDF export | Bengali rendered as tofu (jsPDF Latin-1) | Bengali TTF embedded via addFileToVFS/addFont; header localized |
+| Bulk import / sheets restore | Wrote donations directly, zero-sum invariant broken until manual backfill | backfill_payment_allocations() runs automatically after |
+| Receipt preview/download/share | Served legacy JPEG via /api/receipts/[id] | Preview iframes new receipt (?embed=1); download auto-prints new receipt (?print=1); share sends verify link |
+| Fonts | 418KB TTF | 177KB WOFF2 (~58% smaller) |
+| Middleware | middleware.ts (deprecated in Next 16) | proxy.ts |
+| PWA offline | No-op SW, dead page offline | /offline fallback served for failed navigations |
+| Modals | No Escape/focus-trap (members/expenses/profile/donations) | Shared components/Modal.tsx |
+
+### Why
+
+Third full review (REVIEW_2026-10-03_v3.md): 41 findings, 0 critical, zero v2 regressions. Plus a user-reported bug: only রসিদ দেখুন showed the new premium receipt; preview/download/share still served the old JPEG.
+
+### Tests Run
+
+- [x] `tsc --noEmit` — clean
+- [x] `eslint` — 0 errors, 129 warnings (baseline was 130; no new warnings)
+- [x] `next build` — 31/31 green (middleware deprecation warning gone)
+- [x] `test:ledger` — 28/28 pass
+
+### Related
+
+- Review: REVIEW_2026-10-03_v3.md (untracked)
+- User-reported: receipt routing bug (2026-10-02)
+
+### Known Risks / Follow-ups
+
+- jsPDF has no Bengali complex-text shaping — conjuncts render unshaped in PDFs (legible, but Akash's typographic eye may notice).
+- `public/fonts/LiAbuJMAkkasUnicode-Regular.ttf` is a new public asset — same Lipighor licensing caveat as the other fonts.
+- Expenses modal + admin/users modals not yet migrated to shared Modal (out of scope for the fixing track).
+- `backfillWarning` in bulk-import response is not yet surfaced in the admin UI.
+
+## 87d569b — chore(db): record BUG-042/043 and add S-M1/S-M2 migration (not yet applied)
+
+**Date:** 2026-10-02
+**Author:** Muse (for Akash)
+**Branch:** feat/premium-receipt
+**Files changed:** docs/decisions/BUGS.md (BUG-042, BUG-043 as open), supabase/migrations/20261003_review_v3_db_fixes.sql (new)
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| BUG log | S-M1/S-M2 undocumented | BUG-042/043 open with fix plan |
+| Migration | — | 20261003_review_v3_db_fixes.sql written, structurally validated, NOT applied |
+
+### Why
+
+v3 security findings S-M1 (member self-update trigger bypass) and S-M2 (admin_delete_user FK 409s) need the same live-migration flow as v2. Migration is prepared; application needs a Supabase management token.
+
+### Tests Run
+
+- [x] Structural validation against supabase/schema.sql (identifiers, signatures, balanced $function$ tags)
+- [ ] Live apply + verification — pending token
+
+### Related
+
+- Bug: BUG-042, BUG-043
+- Migration: supabase/migrations/20261003_review_v3_db_fixes.sql
+
+### Known Risks / Follow-ups
+
+- ⏳ Not yet applied to live Main DB — S-M1/S-M2 vulnerabilities are still live until applied.
+
+## 7103aaf — fix(review): resolve 31 findings from second full review (v2)
+
+**Date:** 2026-10-02
+**Author:** Muse (for Akash)
+**Branch:** feat/premium-receipt
+**Files changed:** supabase/migrations/20261002_review_v2_db_hardening.sql (new), docs/database/SCHEMA.md, docs/decisions/TECH_DEBT.md, CHANGELOG.md, 20 app/lib files (api routes, pages, sheets-sync, whatsapp, utils, globals.css, layout)
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| `admin_delete_user` guard | Founder-email bypass live: any session with the founder's email could delete any user | Guard is `get_my_role() <> 'admin'`; email clause deleted (migration written, **not yet applied** to live DB) |
+| 6 financial/member views | Owner-rights + `GRANT SELECT TO authenticated` — every member saw foundation totals + all pledges | `security_invoker = true` — base-table RLS applies (migration written, not yet applied) |
+| `calculate_payment_allocation` | `authenticated` EXECUTE — pledge oracle for any member | Revoked to service_role only (migration written, not yet applied) |
+| `log_audit_event` | Service-role writes misattributed to random admin (`LIMIT 1`) | actor NULL + `system@foundation.app` (migration written, not yet applied) |
+| reset-password API | No audit trail; could reset fellow admins | Audit row written; fellow-admin resets refused |
+| restore/sync-sheets POST | Config check before auth — unauthenticated config oracle | `requireAuth('admin')` first |
+| sheets-sync restore | Wrote removed `members.user_id`, swallowed errors, NaN pledges | Column dropped, errors surfaced, NaN guarded |
+| Unbounded queries | reports/dashboard/pending-pledges could silently truncate at 1000 rows | Explicit `.limit()` |
+| WhatsApp receipt | Auth-walled URL as mediaUrl → Meta got 401 | Public verify link sent as text |
+
+### Why
+
+Second full review (`REVIEW_2026-10-02_v2.md`) found 31 new issues; the Critical + High lived in the live DB layer. App-code items fixed directly; DB items captured as an idempotent migration awaiting application.
+
+### Tests Run
+
+- `./node_modules/.bin/tsc --noEmit` — clean
+- `./node_modules/.bin/eslint` — 0 errors, 130 warnings (was 140; no new warnings)
+- `./node_modules/.bin/next build` — green, 31/31 pages
+- `node --experimental-strip-types --test tests/payment-ledger.test.ts` — 28/28 pass (allocation engine untouched)
+
+### Known risks
+
+- The DB migration is **not applied** to the live Main project (no `SUPABASE_ACCESS_TOKEN` in this environment). Until applied, C1/H1/M1/M2 remain live. `docs/database/SCHEMA.md` marks it NOT YET APPLIED.
+- H1 trade-off: with `security_invoker`, members no longer see foundation-wide dashboard totals (degrade to own scope). Restoring requires a staff-gated RPC + app change (product decision).
+
+---
+
+
+
 ---
 
 ## 2a80430 — fix(review): resolve full-repo review findings H2, M1–M4, L1–L11
