@@ -130,10 +130,19 @@ async function renderReceiptJpeg(
   try {
     onStage("goto");
     const page = await browser.newPage();
-    await page.goto(renderUrl, { waitUntil: "networkidle0", timeout: 45000 });
+    const resp = await page.goto(renderUrl, { waitUntil: "networkidle0", timeout: 45000 });
     onStage("find-element");
     const el = await page.$(".receipt-paper");
-    if (!el) throw new Error("receipt element not found");
+    if (!el) {
+      const status = resp?.status() ?? -1;
+      const title = await page.title().catch(() => "");
+      const bodyText = await page
+        .$eval("body", (b) => b.innerText.slice(0, 200))
+        .catch(() => "");
+      throw new Error(
+        `receipt element not found (http=${status} title=${title} body=${bodyText})`
+      );
+    }
     onStage("screenshot");
     const shot = await el.screenshot({ type: "jpeg", quality: 92 });
     // Fresh copy: Uint8Array<ArrayBuffer> — the exact type NextResponse
