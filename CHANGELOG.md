@@ -11,6 +11,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+- **F1 Member self-service portal — "আমার হিসাব" (`/amar-hisab`, 2026-10-02)**: members see their own account — summary cards (monthly pledge, total paid, arrears, payment rate), month-by-month ledger (Bengali months, status badges) built with the canonical `buildMemberLedgerFromAllocations`, payment history with premium-receipt links, profile edit (name/phone/address; pledge/status locked by DB trigger), latest notices. Nav: sidebar "আমার হিসাব" + mobile bottom-tab "হিসাব" (replaces হোম) for the member role. RLS migration `supabase/migrations/20261002_member_portal_rls.sql` (`payment_allocations_select_own` + `pledge_history_select_own`) **applied live 2026-10-02 ~11:50 +06** (premises re-verified at apply time, post-apply checks green); `supabase/schema.sql` regenerated, SCHEMA.md row 20 marked APPLIED.
+
 ### Fixed
 - **Review v3 fixes (2026-10-02, H1/S-L1–S-L4/U-M1–U-M22/U-L1–U-L12)** — third full review round, 41 findings, zero v2 regressions (tsc/eslint/build/test:ledger 28/28 all green):
   - **H1**: reports PDF export now embeds a Bengali TTF into jsPDF (`addFileToVFS`/`addFont`) — Bengali no longer renders as tofu; header localized to Bengali. Known jsPDF limitation: no complex-text shaping, so conjuncts render unshaped (still legible, infinitely better than tofu).

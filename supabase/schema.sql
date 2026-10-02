@@ -229,6 +229,9 @@ CREATE POLICY "expenses_update_staff" ON public.expenses
 CREATE POLICY "pledge_history_insert_staff" ON public.member_pledge_history
   FOR INSERT TO PUBLIC
   WITH CHECK ((get_my_role() = ANY (ARRAY['admin'::text, 'treasurer'::text])));
+CREATE POLICY "pledge_history_select_own" ON public.member_pledge_history
+  FOR SELECT TO PUBLIC
+  USING ((member_id = get_my_member_id()));
 CREATE POLICY "pledge_history_select_staff" ON public.member_pledge_history
   FOR SELECT TO PUBLIC
   USING ((get_my_role() = ANY (ARRAY['admin'::text, 'treasurer'::text])));
@@ -269,6 +272,9 @@ CREATE POLICY "payment_allocations_delete_admin" ON public.payment_allocations
 CREATE POLICY "payment_allocations_insert_staff" ON public.payment_allocations
   FOR INSERT TO PUBLIC
   WITH CHECK ((get_my_role() = ANY (ARRAY['admin'::text, 'treasurer'::text])));
+CREATE POLICY "payment_allocations_select_own" ON public.payment_allocations
+  FOR SELECT TO PUBLIC
+  USING ((member_id = get_my_member_id()));
 CREATE POLICY "payment_allocations_select_staff" ON public.payment_allocations
   FOR SELECT TO PUBLIC
   USING ((get_my_role() = ANY (ARRAY['admin'::text, 'treasurer'::text])));

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, CreditCard, Wallet,
   BarChart3, UserCircle, LogOut, Menu, X,
   ShieldCheck, Settings,
-  Leaf, Home, History, ReceiptText
+  Leaf, Home, History, ReceiptText, BookOpenCheck
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
@@ -69,6 +69,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const menuItems = [
+    { name: "আমার হিসাব", icon: BookOpenCheck, path: "/amar-hisab", roles: ["member"] },
     { name: "ড্যাশবোর্ড", icon: LayoutDashboard, path: "/dashboard", roles: ["admin", "treasurer", "member"] },
     { name: "সদস্য তালিকা", icon: Users, path: "/members", roles: ["admin", "treasurer", "member"] },
     { name: "জমা এন্ট্রি", icon: ReceiptText, path: "/joma", roles: ["admin", "treasurer"] },
@@ -301,10 +302,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         aria-label="মোবাইল নেভিগেশন"
         className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-xl border-t border-emerald-100/50 z-[40] flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.03)]"
       >
-        <Link href="/dashboard" aria-current={isActive('/dashboard') ? "page" : undefined} className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/dashboard') ? 'text-emerald-600' : 'text-gray-400'}`}>
-          <Home size={22} />
-          <span className="text-[10px] font-bold">হোম</span>
-        </Link>
+        {role === "member" ? (
+          <Link href="/amar-hisab" aria-current={isActive('/amar-hisab') ? "page" : undefined} className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/amar-hisab') ? 'text-emerald-600' : 'text-gray-400'}`}>
+            <BookOpenCheck size={22} />
+            <span className="text-[10px] font-bold">হিসাব</span>
+          </Link>
+        ) : (
+          <Link href="/dashboard" aria-current={isActive('/dashboard') ? "page" : undefined} className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/dashboard') ? 'text-emerald-600' : 'text-gray-400'}`}>
+            <Home size={22} />
+            <span className="text-[10px] font-bold">হোম</span>
+          </Link>
+        )}
         <Link href="/donations" aria-current={isActive('/donations') ? "page" : undefined} className={`flex flex-col items-center gap-1 p-2 active:scale-90 transition-transform ${isActive('/donations') ? 'text-emerald-600' : 'text-gray-400'}`}>
           <CreditCard size={22} />
           <span className="text-[10px] font-bold">দান</span>

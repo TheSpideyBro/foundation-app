@@ -52,6 +52,12 @@ Complete feature inventory with route, role access, and implementation status.
 - **Implementation**: `app/profile/page.tsx`
 - **Description**: User profile with password change, member linking status, phone number
 
+### 7a. Member Self-Service Portal (আমার হিসাব) — F1
+- **Route**: `/amar-hisab`
+- **Roles**: member (sidebar + mobile bottom nav show "আমার হিসাব"/"হিসাব" for members; on mobile it replaces the হোম tab)
+- **Implementation**: `app/amar-hisab/page.tsx`
+- **Description**: Member's own account — summary cards (monthly pledge, total paid, arrears, payment rate), month-by-month ledger with Bengali month labels and status badges (built with the canonical `buildMemberLedgerFromAllocations`), payment history linking to premium receipts, profile edit (name/phone/address only — pledge/status locked by the `enforce_member_self_update` trigger), latest notices. Reads own rows via `members_select_own` / `donations_select_own` plus the F1 RLS policies `payment_allocations_select_own` and `pledge_history_select_own` (`supabase/migrations/20261002_member_portal_rls.sql`, not yet applied live as of 2026-10-02)
+
 ## Admin Features
 
 ### 8. Admin Dashboard
