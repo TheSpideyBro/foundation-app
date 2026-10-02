@@ -1,23 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { currentMonthStr, monthLabelBengali, methodLabels } from "@/lib/utils";
+import { currentMonthStr, monthLabelBengali } from "@/lib/utils";
 import { 
   Users, CreditCard, Wallet, TrendingUp, 
-  ArrowUpRight, ArrowDownRight, Calendar,
-  ChevronRight, RefreshCw, Activity, Heart,
+  ArrowUpRight, ArrowDownRight,
+  RefreshCw, Activity,
   Plus
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import Link from "next/link";
 import { useAuth } from "@/components/providers";
-import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
+import { isStaff as hasStaffRole } from "@/lib/auth";
 
 export default function Dashboard() {
   const { role } = useAuth();
   // Role gates are purely role-based (lib/auth) — resolved from users.role.
   const isStaffView = hasStaffRole(role);
-  const isAdminView = hasAdminRole(role);
   const [stats, setStats] = useState({
     totalMembers: 0,
     totalDonations: 0,
@@ -28,7 +27,6 @@ export default function Dashboard() {
     currentDue: 0,
     collectionRate: 0,
   });
-  const [recentDonations, setRecentDonations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"monthly" | "yearly" | "total">("monthly");
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
@@ -36,7 +34,6 @@ export default function Dashboard() {
   const [syncing, setSyncing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notices, setNotices] = useState<any[]>([]);
-  const [collectionRows, setCollectionRows] = useState<Array<{ month: string; target_amount: number; collected_amount: number }>>([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -67,7 +64,6 @@ export default function Dashboard() {
       const monthlyRows = (monthlySummary || []) as Array<{ month: string; target_amount: number; collected_amount: number; due_amount: number; collection_rate: number; active_members: number; expense_amount: number; net_balance: number }>;
       const selectedRows = period === "monthly" ? monthlyRows.filter((row) => row.month.slice(0, 7) === selectedMonth) : period === "yearly" ? monthlyRows.filter((row) => row.month.slice(0, 4) === selectedYear) : monthlyRows;
       const selectedSummary = selectedRows[selectedRows.length - 1];
-      setCollectionRows(selectedRows.slice(-6));
       const donations = (donationRows || []) as Array<{ amount: number | string; date: string; donation_month?: string | null; donation_end_month?: string | null }>;
       const periodStart = period === "monthly" ? `${selectedMonth}-01` : period === "yearly" ? `${selectedYear}-01-01` : "0000-01-01";
       const periodEnd = period === "monthly" ? `${selectedMonth}-31` : period === "yearly" ? `${selectedYear}-12-31` : "9999-12-31";
@@ -88,17 +84,6 @@ export default function Dashboard() {
         currentDue,
         collectionRate: monthlyTarget ? Math.round((coverageCollection / monthlyTarget) * 100) : 0,
       });
-
-      if (isStaffView) {
-        const { data: recent } = await supabase()
-          .from("donations")
-          .select("*, members(name)")
-          .order("date", { ascending: false })
-          .limit(5);
-        setRecentDonations(recent || []);
-      } else {
-        setRecentDonations([]);
-      }
 
 
     } catch (error) {
@@ -175,27 +160,6 @@ export default function Dashboard() {
         {[{ label: "এই মাসে সংগ্রহ", value: stats.currentCollection, icon: CreditCard, color: "bg-emerald-600" }, { label: "মাসিক লক্ষ্য", value: stats.monthlyTarget, icon: Wallet, color: "bg-blue-600" }, { label: "এই মাসে বকেয়া", value: stats.currentDue, icon: ArrowDownRight, color: "bg-rose-600" }, { label: "সংগ্রহের হার", value: stats.collectionRate, icon: TrendingUp, color: "bg-amber-600", percent: true }].map((stat) => <div key={stat.label} className="card-premium p-4 sm:p-6 group border border-emerald-50/50"><div className="flex items-center justify-between mb-3"><div className={`w-10 h-10 sm:w-12 sm:h-12 ${stat.color} rounded-xl flex items-center justify-center text-white`}><stat.icon size={21} /></div><span className="text-[10px] font-bold text-gray-500">{monthLabelBengali(selectedMonth)}</span></div><h3 className="text-gray-500 text-[10px] sm:text-[11px] font-bold mb-1">{stat.label}</h3><p className="text-xl sm:text-2xl font-bold text-gray-900 font-baloo truncate">{stat.percent ? `${stat.value}%` : `৳${stat.value.toLocaleString("bn-BD")}`}</p></div>)}
       </div>
 
-      <div className="card-premium p-5 sm:p-8"><div className="flex items-center justify-between mb-5"><div><h3 className="text-lg sm:text-xl font-bold text-gray-900 font-shadhinata">সংগ্রহ বনাম লক্ষ্য</h3><p className="text-xs sm:text-sm text-gray-500">নির্বাচিত সময়কালের অর্জন</p></div><Link href="/reports" className="text-xs font-bold text-emerald-700">বিস্তারিত দেখুন</Link></div><div className="space-y-3">{collectionRows.length ? collectionRows.map((row) => <div key={row.month}><div className="flex justify-between text-xs font-bold mb-1"><span>{monthLabelBengali(row.month.slice(0, 7))}</span><span>৳{Number(row.collected_amount).toLocaleString('bn-BD')} / ৳{Number(row.target_amount).toLocaleString('bn-BD')}</span></div><div className="h-3 rounded-full bg-gray-100 overflow-hidden"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Number(row.target_amount) ? Number(row.collected_amount) / Number(row.target_amount) * 100 : 0)}%` }} /></div></div>) : <p className="py-8 text-center text-sm text-gray-500">এই সময়কালে কোনো সংগ্রহের তথ্য নেই</p>}</div></div>\n\n      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
-        <div className="card-premium p-5 sm:p-8">
-          <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-shadhinata mb-2">বকেয়া সারাংশ</h3>
-          <p className="text-xs sm:text-sm text-gray-500 mb-6">নির্বাচিত সময়কালের বকেয়া চিত্র</p>
-          <div className="flex items-end justify-between gap-4">
-            <div><p className="text-3xl font-bold text-rose-600">৳{stats.currentDue.toLocaleString('bn-BD')}</p><p className="text-xs text-gray-500 mt-1">মোট বকেয়া</p></div>
-            {isAdminView && (
-              <Link href="/admin/pending" className="btn-outline text-xs">বকেয়া সদস্য দেখুন <ChevronRight size={14} /></Link>
-            )}
-          </div>
-        </div>
-        <div className="card-premium p-5 sm:p-8">
-          <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-shadhinata mb-2">রিপোর্ট শর্টকাট</h3>
-          <p className="text-xs sm:text-sm text-gray-500 mb-6">বিস্তারিত period-wise হিসাব দেখুন</p>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/reports" className="btn-emerald text-xs">পূর্ণাঙ্গ রিপোর্ট <ArrowUpRight size={14} /></Link>
-            <Link href="/donations" className="btn-outline text-xs">জমার হিসাব <ChevronRight size={14} /></Link>
-          </div>
-        </div>
-      </div>
-
       {/* Notices Section */}
       {notices.length > 0 && (
         <div className="mb-8">
@@ -218,46 +182,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recent Donations */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
-        {isStaffView && (
-          <div className="lg:col-span-2 card-premium p-4 sm:p-8">
-            <div className="flex items-center justify-between mb-4 sm:mb-8">
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900 font-shadhinata">সাম্প্রতিক দান</h3>
-              <Link href="/donations" className="text-emerald-700 text-xs sm:text-sm font-bold flex items-center gap-1 hover:underline">
-                সব দেখুন <ChevronRight size={14} />
-              </Link>
-            </div>
-            <div className="space-y-3 sm:space-y-4">
-              {recentDonations.map((donation, i) => (
-                <div key={i} className="flex items-center justify-between p-3 sm:p-5 rounded-xl sm:rounded-[1.5rem] hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 group">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-sm sm:text-lg">
-                      {donation.members?.name?.[0] || "স"}
-                    </div>
-                    <div>
-                      <p className="text-sm sm:text-base font-bold text-gray-900 truncate max-w-[100px] sm:max-w-none">{donation.members?.name || "অজ্ঞাত সদস্য"}</p>
-                      <div className="flex items-center gap-1 text-[9px] sm:text-xs text-gray-500 font-medium">
-                        <Calendar size={10} />
-                        {donation.date ? new Date(donation.date).toLocaleDateString('bn-BD') : 'তারিখ নেই'}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm sm:text-lg font-bold text-emerald-700">৳{Number(donation.amount).toLocaleString("bn-BD")}</p>
-                    <p className="text-[8px] sm:text-[10px] text-gray-500 font-bold">{methodLabels[donation.method || "cash"] ?? "ক্যাশ"}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
+      {/* Foundation Status */}
+      <div className="mt-4 sm:mt-8">
         <div className="card-premium p-6 sm:p-8 bg-[#064E3B] text-white border-none overflow-hidden relative">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
           <div className="relative z-10">
             <h3 className="text-lg sm:text-xl font-bold font-shadhinata mb-6 sm:mb-8">ফাউন্ডেশন স্ট্যাটাস</h3>
-            <div className="space-y-6 sm:space-y-8">
+            <div className="grid grid-cols-2 gap-6 sm:gap-8">
               <div className="flex items-center gap-4 sm:gap-5">
                 <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300 border border-white/10 shadow-inner">
                   <Activity size={20} className="sm:hidden" />
@@ -278,11 +209,11 @@ export default function Dashboard() {
                   <p className="text-xl sm:text-3xl font-bold font-baloo">{stats.totalMembers}</p>
                 </div>
               </div>
-              <div className="pt-4 sm:pt-6">
-                <Link href="/reports" className="w-full flex items-center justify-center gap-2 py-3 sm:py-4 bg-white/10 hover:bg-white/20 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all border border-white/10">
-                  পূর্ণাঙ্গ রিপোর্ট দেখুন <ArrowUpRight size={16} />
-                </Link>
-              </div>
+            </div>
+            <div className="pt-4 sm:pt-6">
+              <Link href="/reports" className="w-full flex items-center justify-center gap-2 py-3 sm:py-4 bg-white/10 hover:bg-white/20 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all border border-white/10">
+                পূর্ণাঙ্গ রিপোর্ট দেখুন <ArrowUpRight size={16} />
+              </Link>
             </div>
           </div>
         </div>
