@@ -33,19 +33,30 @@ export default function CashbookPage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [{ data: donations, error: dErr }, { data: expenses, error: eErr }] =
-        await Promise.all([
-          supabase()
-            .from("donations")
-            .select("id, amount, date, members(name)")
-            .order("date", { ascending: true }),
-          supabase()
-            .from("expenses")
-            .select("id, amount, date, description")
-            .order("date", { ascending: true }),
-        ]);
+      const [
+        { data: donations, error: dErr },
+        { data: expenses, error: eErr },
+        { data: bankTxns, error: bErr },
+      ] = await Promise.all([
+        supabase()
+          .from("donations")
+          .select("id, amount, date, members(name)")
+          .order("date", { ascending: true }),
+        supabase()
+          .from("expenses")
+          .select("id, amount, date, description")
+          .order("date", { ascending: true }),
+        // Bank deposits are cash outflows (transferred to bank)
+        supabase()
+          .from("account_transactions")
+          .select("id, amount, date, particulars, account_id, accounts!inner(type)")
+          .eq("direction", "in")
+          .eq("accounts.type", "bank")
+          .order("date", { ascending: true }),
+      ]);
       if (dErr) throw new Error("জমার তথ্য আনা যায়নি");
       if (eErr) throw new Error("খরচের তথ্য আনা যায়নি");
+      if (bErr) throw new Error("ব্যাংক জমার তথ্য আনা যায়নি");
 
       const raw: Omit<Entry, "balance">[] = [
         ...(donations || []).map((d: any) => ({
@@ -61,6 +72,13 @@ export default function CashbookPage() {
           particulars: e.description || "খরচ",
           type: "out" as const,
           amount: Number(e.amount),
+        })),
+        ...(bankTxns || []).map((t: any) => ({
+          id: `b-${t.id}`,
+          date: t.date,
+          particulars: `ব্যাংক ডিপোজিট — ${t.particulars}`,
+          type: "out" as const,
+          amount: Number(t.amount),
         })),
       ];
 

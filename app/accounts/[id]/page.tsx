@@ -40,19 +40,20 @@ export default function AccountDetailPage() {
 
   const [account, setAccount] = useState<Account | null>(null);
   const [txns, setTxns] = useState<Txn[]>([]);
-  const [allAccounts, setAllAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [allAccounts, setAllAccounts] = useState<{ id: string; name: string; type: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState({
-    kind: "in" as "in" | "out" | "transfer",
+    kind: "deposit" as "in" | "out" | "transfer" | "deposit",
     amount: "",
     date: todayISO(),
     particulars: "",
     remarks: "",
     to_account_id: "",
+    from_account_id: "",
   });
 
   const fetchData = async () => {
@@ -69,9 +70,17 @@ export default function AccountDetailPage() {
       setAccount(detail.account);
       setTxns(detail.transactions);
       if (listRes.ok) {
-        setAllAccounts(
-          (list.accounts as { id: string; name: string }[]).filter((a) => a.id !== id)
-        );
+        const others = (list.accounts as { id: string; name: string; type: string }[]).filter((a) => a.id !== id);
+        setAllAccounts(others);
+        // Bank accounts: default to deposit mode with cash as source
+        if (detail.account?.type === "bank") {
+          const cash = (list.accounts as { id: string; name: string; type: string }[]).find((a) => a.type === "cash");
+          setForm((f) => ({
+            ...f,
+            kind: "deposit",
+            from_account_id: cash?.id || "",
+          }));
+        }
       }
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "লোড করা যায়নি");
@@ -99,26 +108,31 @@ export default function AccountDetailPage() {
       setFormError("গন্তব্য হিসাব নির্বাচন করুন");
       return;
     }
+    if (form.kind === "deposit" && !form.from_account_id) {
+      setFormError("উৎস হিসাব নির্বাচন করুন");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch(`/api/accounts/${id}/transactions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          kind: form.kind,
+          kind: form.kind === "deposit" ? "transfer" : form.kind,
           amount: Number(form.amount),
           date: form.date,
           particulars: form.particulars.trim(),
           remarks: form.remarks.trim() || undefined,
           to_account_id: form.kind === "transfer" ? form.to_account_id : undefined,
+          from_account_id: form.kind === "deposit" ? form.from_account_id : undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "সংরক্ষণ করা যায়নি");
       setShowModal(false);
       setForm({
-        kind: "in", amount: "", date: todayISO(),
-        particulars: "", remarks: "", to_account_id: "",
+        kind: account?.type === "bank" ? "deposit" : "in", amount: "", date: todayISO(),
+        particulars: "", remarks: "", to_account_id: "", from_account_id: "",
       });
       fetchData();
     } catch (e) {
@@ -151,11 +165,16 @@ export default function AccountDetailPage() {
     );
   }
 
-  const kindTabs = [
-    { key: "in", label: "জমা", icon: ArrowDownLeft, active: "bg-emerald-600 text-white border-emerald-600" },
-    { key: "out", label: "খরচ", icon: ArrowUpRight, active: "bg-rose-600 text-white border-rose-600" },
-    { key: "transfer", label: "ট্রান্সফার", icon: ArrowLeftRight, active: "bg-blue-600 text-white border-blue-600" },
-  ] as const;
+  type KindKey = "in" | "out" | "transfer" | "deposit";
+  const kindTabs: { key: KindKey; label: string; icon: typeof ArrowDownLeft; active: string }[] = [
+    // Bank accounts: primary action is deposit FROM cash/balance
+    ...(account?.type === "bank"
+      ? [{ key: "deposit" as KindKey, label: "ব্যাংকে জমা", icon: ArrowDownLeft, active: "bg-emerald-600 text-white border-emerald-600" }]
+      : []),
+    { key: "in" as KindKey, label: account?.type === "bank" ? "বাইরে থেকে জমা" : "জমা", icon: ArrowDownLeft, active: "bg-emerald-600 text-white border-emerald-600" },
+    { key: "out" as KindKey, label: "খরচ", icon: ArrowUpRight, active: "bg-rose-600 text-white border-rose-600" },
+    { key: "transfer" as KindKey, label: "ট্রান্সফার", icon: ArrowLeftRight, active: "bg-blue-600 text-white border-blue-600" },
+  ];
 
   return (
     <div className="pb-8 px-1 sm:px-0 animate-slide-up">
@@ -278,6 +297,22 @@ export default function AccountDetailPage() {
                       <option key={a.id} value={a.id}>{a.name}</option>
                     ))}
                   </select>
+                </div>
+              )}
+              {form.kind === "deposit" && (
+                <div>
+                  <label className="text-xs font-bold text-gray-600 block mb-1">উৎস হিসাব (কোথা থেকে আসবে)</label>
+                  <select
+                    value={form.from_account_id}
+                    onChange={(e) => setForm({ ...form, from_account_id: e.target.value })}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium"
+                  >
+                    <option value="">নির্বাচন করুন</option>
+                    {allAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-gray-500 mt-1">সাধারণত ক্যাশ হিসাব থেকে ব্যাংকে জমা হয়</p>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
