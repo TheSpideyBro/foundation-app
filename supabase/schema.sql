@@ -16,6 +16,35 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 2. Tables (columns + primary key / unique / check inline)
 
+CREATE TABLE IF NOT EXISTS public.account_transactions (
+    CONSTRAINT "account_transactions_pkey" PRIMARY KEY (id),
+    CONSTRAINT "account_transactions_direction_check" CHECK ((direction = ANY (ARRAY['in'::text, 'out'::text]))),
+    CONSTRAINT "account_transactions_amount_check" CHECK ((amount > (0)::numeric)),
+    id uuid DEFAULT uuid_generate_v4() NOT NULL,
+    account_id uuid NOT NULL,
+    date date DEFAULT CURRENT_DATE NOT NULL,
+    direction text NOT NULL,
+    amount numeric NOT NULL,
+    particulars text NOT NULL,
+    remarks text,
+    transfer_id uuid,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.accounts (
+    CONSTRAINT "accounts_pkey" PRIMARY KEY (id),
+    CONSTRAINT "accounts_opening_balance_check" CHECK ((opening_balance >= (0)::numeric)),
+    CONSTRAINT "accounts_type_check" CHECK ((type = ANY (ARRAY['bank'::text, 'cash'::text]))),
+    id uuid DEFAULT uuid_generate_v4() NOT NULL,
+    name text NOT NULL,
+    type text NOT NULL,
+    opening_balance numeric DEFAULT 0 NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS public.audit_log (
     CONSTRAINT "audit_log_pkey" PRIMARY KEY (id),
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -32,9 +61,9 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
 CREATE TABLE IF NOT EXISTS public.donations (
     CONSTRAINT "donations_pkey" PRIMARY KEY (id),
     CONSTRAINT "donations_receipt_no_key" UNIQUE (receipt_no),
-    CONSTRAINT "donations_method_check" CHECK ((method = ANY (ARRAY['cash'::text, 'bkash'::text, 'nagad'::text, 'bank'::text]))),
     CONSTRAINT "donations_amount_positive" CHECK ((amount > (0)::numeric)),
     CONSTRAINT "donations_extra_amount_check" CHECK ((extra_amount >= (0)::numeric)),
+    CONSTRAINT "donations_method_check" CHECK ((method = ANY (ARRAY['cash'::text, 'bkash'::text, 'nagad'::text, 'bank'::text]))),
     id uuid DEFAULT uuid_generate_v4() NOT NULL,
     member_id uuid NOT NULL,
     amount numeric NOT NULL,
@@ -98,7 +127,8 @@ CREATE TABLE IF NOT EXISTS public.members (
     join_date date DEFAULT CURRENT_DATE NOT NULL,
     status text DEFAULT 'active'::text NOT NULL,
     monthly_pledge numeric DEFAULT 0 NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    member_code text
 );
 
 CREATE TABLE IF NOT EXISTS public.notices (
@@ -130,8 +160,8 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 CREATE TABLE IF NOT EXISTS public.payment_allocations (
     CONSTRAINT "payment_allocations_pkey" PRIMARY KEY (id),
     CONSTRAINT "uq_payment_allocations_payment_month_type" UNIQUE (payment_id, month, allocation_type),
-    CONSTRAINT "payment_allocations_allocation_type_check" CHECK ((allocation_type = ANY (ARRAY['pledge'::text, 'advance'::text, 'unallocated'::text]))),
     CONSTRAINT "payment_allocations_amount_check" CHECK ((amount >= (0)::numeric)),
+    CONSTRAINT "payment_allocations_allocation_type_check" CHECK ((allocation_type = ANY (ARRAY['pledge'::text, 'advance'::text, 'unallocated'::text]))),
     id uuid DEFAULT uuid_generate_v4() NOT NULL,
     payment_id uuid NOT NULL,
     member_id uuid NOT NULL,
@@ -145,8 +175,8 @@ CREATE TABLE IF NOT EXISTS public.payment_allocations (
 
 CREATE TABLE IF NOT EXISTS public.reminder_log (
     CONSTRAINT "reminder_log_pkey" PRIMARY KEY (id),
-    CONSTRAINT "reminder_log_status_check" CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text, 'skipped'::text]))),
     CONSTRAINT "reminder_log_channel_check" CHECK ((channel = ANY (ARRAY['whatsapp'::text, 'sms'::text]))),
+    CONSTRAINT "reminder_log_status_check" CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text, 'skipped'::text]))),
     id uuid DEFAULT uuid_generate_v4() NOT NULL,
     member_id uuid NOT NULL,
     month text NOT NULL,
@@ -172,24 +202,30 @@ CREATE TABLE IF NOT EXISTS public.users (
 );
 
 -- 3. Foreign keys (after all tables exist)
-ALTER TABLE public.donations ADD CONSTRAINT "donations_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
-ALTER TABLE public.donations ADD CONSTRAINT "donations_collected_by_fkey" FOREIGN KEY (collected_by) REFERENCES users(id);
+ALTER TABLE public.account_transactions ADD CONSTRAINT "account_transactions_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.account_transactions ADD CONSTRAINT "account_transactions_account_id_fkey" FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE;
+ALTER TABLE public.accounts ADD CONSTRAINT "accounts_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.donations ADD CONSTRAINT "donations_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id);
+ALTER TABLE public.donations ADD CONSTRAINT "donations_collected_by_fkey" FOREIGN KEY (collected_by) REFERENCES users(id);
+ALTER TABLE public.donations ADD CONSTRAINT "donations_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
 ALTER TABLE public.expenses ADD CONSTRAINT "expenses_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id);
 ALTER TABLE public.member_pledge_history ADD CONSTRAINT "member_pledge_history_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
 ALTER TABLE public.member_pledge_history ADD CONSTRAINT "member_pledge_history_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id);
 ALTER TABLE public.notices ADD CONSTRAINT "notices_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id);
-ALTER TABLE public.notifications ADD CONSTRAINT "notifications_donation_id_fkey" FOREIGN KEY (donation_id) REFERENCES donations(id) ON DELETE CASCADE;
 ALTER TABLE public.notifications ADD CONSTRAINT "notifications_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE SET NULL;
 ALTER TABLE public.notifications ADD CONSTRAINT "notifications_sent_by_fkey" FOREIGN KEY (sent_by) REFERENCES auth.users(id) ON DELETE SET NULL;
-ALTER TABLE public.payment_allocations ADD CONSTRAINT "payment_allocations_payment_id_fkey" FOREIGN KEY (payment_id) REFERENCES donations(id) ON DELETE CASCADE;
-ALTER TABLE public.payment_allocations ADD CONSTRAINT "payment_allocations_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id);
+ALTER TABLE public.notifications ADD CONSTRAINT "notifications_donation_id_fkey" FOREIGN KEY (donation_id) REFERENCES donations(id) ON DELETE CASCADE;
 ALTER TABLE public.payment_allocations ADD CONSTRAINT "payment_allocations_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
+ALTER TABLE public.payment_allocations ADD CONSTRAINT "payment_allocations_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id);
+ALTER TABLE public.payment_allocations ADD CONSTRAINT "payment_allocations_payment_id_fkey" FOREIGN KEY (payment_id) REFERENCES donations(id) ON DELETE CASCADE;
 ALTER TABLE public.reminder_log ADD CONSTRAINT "reminder_log_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
 ALTER TABLE public.users ADD CONSTRAINT "users_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE SET NULL;
 ALTER TABLE public.users ADD CONSTRAINT "users_id_fkey" FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 -- 4. Indexes (constraint backing indexes omitted)
+CREATE INDEX idx_account_transactions_account ON public.account_transactions USING btree (account_id);
+CREATE INDEX idx_account_transactions_date ON public.account_transactions USING btree (date DESC);
+CREATE INDEX idx_account_transactions_transfer ON public.account_transactions USING btree (transfer_id) WHERE (transfer_id IS NOT NULL);
 CREATE INDEX idx_audit_log_actor ON public.audit_log USING btree (actor_id);
 CREATE INDEX idx_audit_log_created ON public.audit_log USING btree (created_at);
 CREATE INDEX idx_donations_batch_id ON public.donations USING btree (batch_id);
@@ -200,6 +236,7 @@ CREATE INDEX idx_donations_member_date ON public.donations USING btree (member_i
 CREATE INDEX idx_donations_member_id ON public.donations USING btree (member_id);
 CREATE INDEX idx_expenses_created_by ON public.expenses USING btree (created_by);
 CREATE INDEX idx_member_pledge_history_member_month ON public.member_pledge_history USING btree (member_id, effective_from_month);
+CREATE UNIQUE INDEX idx_members_member_code ON public.members USING btree (member_code) WHERE (member_code IS NOT NULL);
 CREATE INDEX idx_notifications_donation ON public.notifications USING btree (donation_id);
 CREATE INDEX idx_notifications_member ON public.notifications USING btree (member_id);
 CREATE INDEX idx_payment_allocations_member_month ON public.payment_allocations USING btree (member_id, month);
@@ -211,6 +248,8 @@ CREATE INDEX idx_reminder_log_month ON public.reminder_log USING btree (month);
 CREATE INDEX idx_users_member_id ON public.users USING btree (member_id);
 
 -- 5. Row Level Security
+ALTER TABLE public.account_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.donations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expense_categories ENABLE ROW LEVEL SECURITY;
@@ -224,6 +263,19 @@ ALTER TABLE public.reminder_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
 -- 6. Policies (verbatim from the live catalog)
+CREATE POLICY "account_transactions_insert_staff" ON public.account_transactions
+  FOR INSERT TO PUBLIC
+  WITH CHECK ((get_my_role() = ANY (ARRAY['admin'::text, 'treasurer'::text])));
+CREATE POLICY "account_transactions_select_staff" ON public.account_transactions
+  FOR SELECT TO PUBLIC
+  USING ((get_my_role() = ANY (ARRAY['admin'::text, 'treasurer'::text])));
+CREATE POLICY "accounts_manage_staff" ON public.accounts
+  FOR ALL TO PUBLIC
+  USING ((get_my_role() = ANY (ARRAY['admin'::text, 'treasurer'::text])))
+  WITH CHECK ((get_my_role() = ANY (ARRAY['admin'::text, 'treasurer'::text])));
+CREATE POLICY "accounts_select_staff" ON public.accounts
+  FOR SELECT TO PUBLIC
+  USING ((get_my_role() = ANY (ARRAY['admin'::text, 'treasurer'::text])));
 CREATE POLICY "audit_log_select_admin" ON public.audit_log
   FOR SELECT TO PUBLIC
   USING ((get_my_role() = 'admin'::text));
@@ -692,6 +744,21 @@ DROP TRIGGER IF EXISTS trg_member_self_update ON public.members;
 CREATE TRIGGER trg_member_self_update BEFORE UPDATE ON public.members FOR EACH ROW EXECUTE FUNCTION enforce_member_self_update();
 
 -- 9. Views (security_invoker is emitted per-view where set)
+CREATE OR REPLACE VIEW public.account_balances AS
+ SELECT a.id,
+    a.name,
+    a.type,
+    a.opening_balance,
+    a.is_active,
+    a.opening_balance + COALESCE(sum(
+        CASE
+            WHEN t.direction = 'in'::text THEN t.amount
+            ELSE - t.amount
+        END), 0::numeric) AS current_balance,
+    count(t.id) AS transaction_count
+   FROM accounts a
+     LEFT JOIN account_transactions t ON t.account_id = a.id
+  GROUP BY a.id;
 CREATE OR REPLACE VIEW public.donation_summary AS
  SELECT COALESCE(sum(amount), 0::numeric) AS total_amount,
     count(*) AS donation_count
@@ -710,6 +777,7 @@ CREATE OR REPLACE VIEW public.expense_summary AS
 ALTER VIEW public.expense_summary SET (security_invoker = true);
 CREATE OR REPLACE VIEW public.member_directory AS
  SELECT id,
+    member_code,
     name,
     join_date,
     status,
@@ -874,6 +942,27 @@ ALTER VIEW public.monthly_collection_summary SET (security_invoker = true);
 --     Supabase's default grants are permissive for anon/authenticated:
 --     RLS on the tables (section 5) is the real boundary for tables, and
 --     EXECUTE (section 7) is the boundary for RPCs.
+GRANT DELETE ON public.account_balances TO anon, authenticated, service_role;
+GRANT INSERT ON public.account_balances TO anon, authenticated, service_role;
+GRANT REFERENCES ON public.account_balances TO anon, authenticated, service_role;
+GRANT SELECT ON public.account_balances TO anon, authenticated, service_role;
+GRANT TRIGGER ON public.account_balances TO anon, authenticated, service_role;
+GRANT TRUNCATE ON public.account_balances TO anon, authenticated, service_role;
+GRANT UPDATE ON public.account_balances TO anon, authenticated, service_role;
+GRANT DELETE ON public.account_transactions TO anon, authenticated, service_role;
+GRANT INSERT ON public.account_transactions TO anon, authenticated, service_role;
+GRANT REFERENCES ON public.account_transactions TO anon, authenticated, service_role;
+GRANT SELECT ON public.account_transactions TO anon, authenticated, service_role;
+GRANT TRIGGER ON public.account_transactions TO anon, authenticated, service_role;
+GRANT TRUNCATE ON public.account_transactions TO anon, authenticated, service_role;
+GRANT UPDATE ON public.account_transactions TO anon, authenticated, service_role;
+GRANT DELETE ON public.accounts TO anon, authenticated, service_role;
+GRANT INSERT ON public.accounts TO anon, authenticated, service_role;
+GRANT REFERENCES ON public.accounts TO anon, authenticated, service_role;
+GRANT SELECT ON public.accounts TO anon, authenticated, service_role;
+GRANT TRIGGER ON public.accounts TO anon, authenticated, service_role;
+GRANT TRUNCATE ON public.accounts TO anon, authenticated, service_role;
+GRANT UPDATE ON public.accounts TO anon, authenticated, service_role;
 GRANT DELETE ON public.audit_log TO anon, authenticated, service_role;
 GRANT INSERT ON public.audit_log TO anon, authenticated, service_role;
 GRANT REFERENCES ON public.audit_log TO anon, authenticated, service_role;
@@ -923,13 +1012,13 @@ GRANT SELECT ON public.expenses TO anon, authenticated, service_role;
 GRANT TRIGGER ON public.expenses TO anon, authenticated, service_role;
 GRANT TRUNCATE ON public.expenses TO anon, authenticated, service_role;
 GRANT UPDATE ON public.expenses TO anon, authenticated, service_role;
-GRANT DELETE ON public.member_directory TO service_role;
-GRANT INSERT ON public.member_directory TO service_role;
+GRANT DELETE ON public.member_directory TO anon, authenticated, service_role;
+GRANT INSERT ON public.member_directory TO anon, authenticated, service_role;
 GRANT REFERENCES ON public.member_directory TO anon, authenticated, service_role;
-GRANT SELECT ON public.member_directory TO authenticated, service_role;
-GRANT TRIGGER ON public.member_directory TO service_role;
-GRANT TRUNCATE ON public.member_directory TO service_role;
-GRANT UPDATE ON public.member_directory TO service_role;
+GRANT SELECT ON public.member_directory TO anon, authenticated, service_role;
+GRANT TRIGGER ON public.member_directory TO anon, authenticated, service_role;
+GRANT TRUNCATE ON public.member_directory TO anon, authenticated, service_role;
+GRANT UPDATE ON public.member_directory TO anon, authenticated, service_role;
 GRANT DELETE ON public.member_pledge_history TO anon, authenticated, service_role;
 GRANT INSERT ON public.member_pledge_history TO anon, authenticated, service_role;
 GRANT REFERENCES ON public.member_pledge_history TO anon, authenticated, service_role;
