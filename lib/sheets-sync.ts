@@ -156,10 +156,14 @@ export async function readRange(cfg: SheetsConfig, token: string, tab: string) {
 export interface MemberRow { id: string; name: string; phone: string; address: string; join_date: string; status: string; monthly_pledge: number; created_at: string }
 export interface DonationRow { id: string; member_id: string; member_name: string; amount: number; date: string; method: string; receipt_no: string; received_by: string; donation_month: string; created_at: string }
 export interface ExpenseRow { id: string; category: string; amount: number; date: string; description: string; proof_url: string; created_at: string }
+export interface AccountRow { id: string; name: string; type: string; opening_balance: number; is_active: boolean; created_at: string }
+export interface AccountTransactionRow { id: string; account_id: string; account_name: string; date: string; direction: string; amount: number; particulars: string; remarks: string; transfer_id: string; created_at: string }
 
 export const MEMBERS_HEADER = ["id", "name", "phone", "address", "join_date", "status", "monthly_pledge", "created_at"];
 export const DONATIONS_HEADER = ["id", "member_id", "member_name", "amount", "date", "method", "receipt_no", "received_by", "donation_month", "created_at"];
 export const EXPENSES_HEADER = ["id", "category", "amount", "date", "description", "proof_url", "created_at"];
+export const ACCOUNTS_HEADER = ["id", "name", "type", "opening_balance", "is_active", "created_at"];
+export const ACCOUNT_TRANSACTIONS_HEADER = ["id", "account_id", "account_name", "date", "direction", "amount", "particulars", "remarks", "transfer_id", "created_at"];
 
 // ---------- full sync (source of truth = DB) ----------
 import { createClient } from "@supabase/supabase-js";
@@ -173,19 +177,24 @@ function serviceRoleClient() {
 
 export async function fullSync(cfg: SheetsConfig): Promise<{ sheets: Record<string, number>; tabStatus: string; formattedTabs: string[] }> {
   const token = await getAccessToken(cfg.jsonKey);
-  await ensureTabs(cfg, token, ["Members", "Donations", "Expenses"]);
+  await ensureTabs(cfg, token, ["Members", "Donations", "Expenses", "Accounts", "AccountTransactions"]);
 
   const supa = serviceRoleClient();
-  const [members, donations, expenses] = await Promise.all([
+  const [members, donations, expenses, accounts, accountTxns] = await Promise.all([
     supa.from("members").select("*").order("created_at", { ascending: true }),
     supa.from("donations").select("*, members(name)").order("created_at", { ascending: true }),
     supa.from("expenses").select("*").order("created_at", { ascending: true }),
+    supa.from("accounts").select("*").order("created_at", { ascending: true }),
+    supa.from("account_transactions").select("*, accounts(name)").order("date", { ascending: true }),
   ]);
   if (members.error) throw new Error(`members read: ${members.error.message}`);
   if (donations.error) throw new Error(`donations read: ${donations.error.message}`);
   if (expenses.error) throw new Error(`expenses read: ${expenses.error.message}`);
+  if (accounts.error) throw new Error(`accounts read: ${accounts.error.message}`);
+  if (accountTxns.error) throw new Error(`account_transactions read: ${accountTxns.error.message}`);
 
   const memById = new Map((members.data || []).map((m) => [m.id, m]));
+  const accById = new Map((accounts.data || []).map((a) => [a.id, a]));
 
   const mRows = [MEMBERS_HEADER, ...(members.data || []).map((m: any) => [
     m.id, m.name, m.phone ?? "", m.address ?? "", m.join_date, m.status, Number(m.monthly_pledge ?? 0), m.created_at,
@@ -196,11 +205,19 @@ export async function fullSync(cfg: SheetsConfig): Promise<{ sheets: Record<stri
   const eRows = [EXPENSES_HEADER, ...(expenses.data || []).map((e: any) => [
     e.id, e.category, Number(e.amount), e.date, e.description ?? "", e.proof_url ?? "", e.created_at,
   ])];
+  const aRows = [ACCOUNTS_HEADER, ...(accounts.data || []).map((a: any) => [
+    a.id, a.name, a.type, Number(a.opening_balance ?? 0), a.is_active, a.created_at,
+  ])];
+  const tRows = [ACCOUNT_TRANSACTIONS_HEADER, ...(accountTxns.data || []).map((t: any) => [
+    t.id, t.account_id, accById.get(t.account_id)?.name ?? "", t.date, t.direction, Number(t.amount), t.particulars ?? "", t.remarks ?? "", t.transfer_id ?? "", t.created_at,
+  ])];
 
   await Promise.all([
     writeRange(cfg, token, "Members", mRows),
     writeRange(cfg, token, "Donations", dRows),
     writeRange(cfg, token, "Expenses", eRows),
+    writeRange(cfg, token, "Accounts", aRows),
+    writeRange(cfg, token, "AccountTransactions", tRows),
   ]);
 
     // Apply the modern Bengali header row + professional styling so the sheet
@@ -209,8 +226,8 @@ export async function fullSync(cfg: SheetsConfig): Promise<{ sheets: Record<stri
   const dash = buildDashboardData(members.data || [], donations.data || []);
   const fmt = await formatSheets(cfg, token, dash);
   return {
-    sheets: { Members: mRows.length - 1, Donations: dRows.length - 1, Expenses: eRows.length - 1 },
-    tabStatus: "Members ✓ | Donations ✓ | Expenses ✓",
+    sheets: { Members: mRows.length - 1, Donations: dRows.length - 1, Expenses: eRows.length - 1, Accounts: aRows.length - 1, AccountTransactions: tRows.length - 1 },
+    tabStatus: "Members ✓ | Donations ✓ | Expenses ✓ | Accounts ✓ | AccountTransactions ✓",
     formattedTabs: fmt,
   };
 }
@@ -220,16 +237,20 @@ export interface RestoreResult {
   members: { added: number; updated: number };
   donations: { added: number; updated: number };
   expenses: { added: number; updated: number };
+  accounts: { added: number; updated: number };
+  account_transactions: { added: number; updated: number };
   /** Every failed write / skipped row is recorded here — counts only reflect successful writes. */
   errors: string[];
 }
 
 export async function restoreFromSheets(cfg: SheetsConfig, opts: { dryRun?: boolean } = {}): Promise<RestoreResult> {
   const token = await getAccessToken(cfg.jsonKey);
-  const [mVals, dVals, eVals] = await Promise.all([
+  const [mVals, dVals, eVals, aVals, tVals] = await Promise.all([
     readRange(cfg, token, "Members"),
     readRange(cfg, token, "Donations"),
     readRange(cfg, token, "Expenses"),
+    readRange(cfg, token, "Accounts"),
+    readRange(cfg, token, "AccountTransactions"),
   ]);
 
   const supa = serviceRoleClient();
@@ -237,6 +258,8 @@ export async function restoreFromSheets(cfg: SheetsConfig, opts: { dryRun?: bool
     members: { added: 0, updated: 0 },
     donations: { added: 0, updated: 0 },
     expenses: { added: 0, updated: 0 },
+    accounts: { added: 0, updated: 0 },
+    account_transactions: { added: 0, updated: 0 },
     errors: [],
   };
 
@@ -314,6 +337,51 @@ export async function restoreFromSheets(cfg: SheetsConfig, opts: { dryRun?: bool
     }
   }
 
+  // Accounts restore
+  const aRows = dataRows(aVals);
+  for (const r of aRows) {
+    const [id, name, type, openingBalance, isActive] = r;
+    const row: any = {
+      id: String(id), name: String(name),
+      type: ["bank", "cash"].includes(String(type)) ? type : "cash",
+      opening_balance: Number(openingBalance ?? 0),
+      is_active: String(isActive).toLowerCase() !== "false",
+    };
+    const existing = await supa.from("accounts").select("id").eq("id", row.id);
+    if ((existing.data || []).length > 0) {
+      if (!opts.dryRun) await supa.from("accounts").update(row).eq("id", row.id);
+      result.accounts.updated++;
+    } else {
+      if (!opts.dryRun) await supa.from("accounts").insert(row);
+      result.accounts.added++;
+    }
+  }
+
+  // Account transactions restore — only for existing accounts
+  const tRows = dataRows(tVals);
+  for (const r of tRows) {
+    const [id, accountId, , date, direction, amount, particulars, remarks, transferId] = r;
+    const row: any = {
+      id: String(id), account_id: String(accountId), date: date || null,
+      direction: ["in", "out"].includes(String(direction)) ? direction : "in",
+      amount: Number(amount), particulars: String(particulars || ""),
+      remarks: String(remarks || "") || null,
+      transfer_id: String(transferId || "") || null,
+    };
+    if (row.amount <= 0) continue;
+    const existing = await supa.from("account_transactions").select("id").eq("id", row.id);
+    if ((existing.data || []).length > 0) {
+      if (!opts.dryRun) await supa.from("account_transactions").update(row).eq("id", row.id);
+      result.account_transactions.updated++;
+    } else {
+      const acc = await supa.from("accounts").select("id").eq("id", row.account_id);
+      if ((acc.data || []).length > 0) {
+        if (!opts.dryRun) await supa.from("account_transactions").insert(row);
+        result.account_transactions.added++;
+      }
+    }
+  }
+
   return result;
 }
 
@@ -322,13 +390,17 @@ const HEADER_DISPLAY: Record<string, string[]> = {
   Members: ["সদস্য আইডি", "নাম", "ফোন", "ঠিকানা", "যোগদান", "অবস্থা", "মাসিক প্রতিশ্রুতি (৳)", "তৈরির তারিখ"],
   Donations: ["দান আইডি", "সদস্য আইডি", "সদস্যের নাম", "পরিমাণ (৳)", "তারিখ", "পদ্ধতি", "রসিদ নম্বর", "গ্রহণকারী", "মাস", "তৈরির তারিখ"],
   Expenses: ["খরচ আইডি", "ক্যাটাগরি", "পরিমাণ (৳)", "তারিখ", "বিবরণ", "প্রমাণ (URL)", "তৈরির তারিখ"],
+  Accounts: ["হিসাব আইডি", "নাম", "ধরন", "প্রারম্ভিক ব্যালেন্স (৳)", "সক্রিয়", "তৈরির তারিখ"],
+  AccountTransactions: ["লেনদেন আইডি", "হিসাব আইডি", "হিসাবের নাম", "তারিখ", "দিক", "পরিমাণ (৳)", "বিবরণ", "মন্তব্য", "ট্রান্সফার আইডি", "তৈরির তারিখ"],
 };
 const COL_WIDTHS: Record<string, number[]> = {
   Members: [150, 140, 130, 180, 110, 90, 120, 150],
   Donations: [150, 150, 120, 100, 110, 100, 110, 120, 120, 150],
   Expenses: [150, 120, 100, 110, 220, 150, 150],
+  Accounts: [150, 180, 100, 140, 90, 150],
+  AccountTransactions: [150, 150, 140, 110, 90, 110, 220, 150, 150, 150],
 };
-const AMOUNT_COL: Record<string, number> = { Members: 7, Donations: 4, Expenses: 3 };
+const AMOUNT_COL: Record<string, number> = { Members: 7, Donations: 4, Expenses: 3, Accounts: 4, AccountTransactions: 6 };
 // column index (0-based) of the currency column per tab (last amount col)
 const GREEN: [number, number, number] = [0.106, 0.263, 0.2]; // #1B4332
 const GOLD: [number, number, number] = [0.788, 0.592, 0.176]; // #C9972D

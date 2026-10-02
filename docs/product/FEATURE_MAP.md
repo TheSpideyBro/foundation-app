@@ -82,6 +82,12 @@ Complete feature inventory with route, role access, and implementation status.
 - **Implementation**: `lib/offline-queue.ts` (IndexedDB outbox), `lib/sync-engine.ts` (replay engine), `components/OfflineIndicator.tsx` (status pill + queue UI)
 - **Description**: Joma entry works without internet — the payment is saved to a local IndexedDB outbox with status "pending" and the form shows "অফলাইনে সংরক্ষিত". When connectivity returns, the sync engine replays queued payments FIFO via `POST /api/payments` (automatic on `online` event, app start, every 5 min, or manual "এখনই সিঙ্ক করুন"). Duplicate receipt_no on replay is treated as already-synced (timeout-after-write safety). A floating indicator shows অনলাইন/অফলাইন status plus the pending count; tapping it lists queued ops with discard option. No DB migration — purely client-side.
 
+### 7f. Bank/Cash Accounts (ব্যাংক/ক্যাশ হিসাব)
+- **Routes**: `/accounts`, `/accounts/[id]`
+- **Roles**: staff (treasurer, admin)
+- **Implementation**: `supabase/migrations/20261003_bank_cash_accounts.sql` (applied live 2026-10-03) — `accounts` table (name, type bank/cash, opening_balance), `account_transactions` (date, direction in/out, amount, particulars, transfer_id), `account_balances` view (opening + in − out). API: `GET/POST /api/accounts`, `GET /api/accounts/[id]` (statement with running balance), `POST /api/accounts/[id]/transactions` (in/out/transfer — transfer creates paired rows atomically).
+- **Description**: Excel-er "Bank Statement & Summary" sheet-er digital version. Staff can create bank/cash accounts with opening balances, record জমা (in) / খরচ (out) / ট্রান্সফার between accounts, and view per-account statements with running balances.
+
 ## Admin Features
 
 ### 8. Admin Dashboard
