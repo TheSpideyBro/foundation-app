@@ -40,10 +40,16 @@ export default function ReceiptJpegButton({
         try {
           const body = await res.json();
           if (body?.error) msg = body.error;
-          // Temporary diagnostic: show which stage failed.
           if (body?.diag) msg += ` [${body.diag}]`;
         } catch {
-          /* keep default */
+          // Not JSON — capture raw body snippet (e.g. Vercel error page).
+          try {
+            const text = await res.text();
+            const snippet = text.replace(/\s+/g, " ").slice(0, 200);
+            msg += ` [http=${res.status} raw=${snippet}]`;
+          } catch {
+            /* keep default */
+          }
         }
         throw new Error(msg);
       }
