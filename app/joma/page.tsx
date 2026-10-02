@@ -456,25 +456,69 @@ export default function JomaEntryPage() {
       const extraAmount = submitExtra;
       const endMonth = form.coverageMode === "range" ? form.coverageEndMonth : form.coverageStartMonth;
 
+      const payload = {
+        member_id: form.memberId,
+        amount,
+        extra_amount: extraAmount,
+        date: form.paymentDate,
+        method: form.paymentMethod,
+        receipt_no: form.receiptNo,
+        coverage_start_month: form.coverageStartMonth,
+        coverage_end_month: endMonth,
+        collected_by: form.collectedBy,
+        note: form.note || null,
+        pledge_change_amount: form.pledgeChangeEnabled ? parseFloat(form.newPledgeAmount) : null,
+        pledge_effective_month: form.pledgeChangeEnabled ? form.pledgeEffectiveMonth || null : null,
+        pledge_change_note: form.pledgeChangeNote || null,
+        notify: sendReceipt,
+      };
+
+      // F2 offline-first: if there's no network, queue the payment for
+      // later sync instead of failing.
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        const { queueOp } = await import("@/lib/offline-queue");
+        const { notifyQueueChanged } = await import("@/lib/sync-engine");
+        const memberName = memberSearch || form.memberId;
+        await queueOp(
+          "payment.create",
+          payload,
+          `জমা ৳${amount} — ${memberName} (${form.receiptNo})`
+        );
+        notifyQueueChanged();
+        setSuccessData({
+          id: `offline-${Date.now()}`,
+          receipt: form.receiptNo,
+          amount,
+          extraAmount,
+          allocatedAmount: allocationPreview.allocatedAmount,
+          notifyStatus: "queued-offline",
+        });
+        // Reset form (same as online success below)
+        setForm({
+          memberId: "",
+          paymentAmount: "",
+          paymentDate: today,
+          paymentMethod: "cash",
+          receiptNo: generateReceiptNo(),
+          collectedBy: form.collectedBy,
+          note: "",
+          coverageMode: "single",
+          coverageStartMonth: curMonth,
+          coverageEndMonth: curMonth,
+          pledgeChangeEnabled: false,
+          newPledgeAmount: "",
+          pledgeEffectiveMonth: curMonth,
+          pledgeChangeNote: "",
+        });
+        setMemberSearch("");
+        setShowMemberDropdown(false);
+        return;
+      }
+
       const res = await fetch("/api/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          member_id: form.memberId,
-          amount,
-          extra_amount: extraAmount,
-          date: form.paymentDate,
-          method: form.paymentMethod,
-          receipt_no: form.receiptNo,
-          coverage_start_month: form.coverageStartMonth,
-          coverage_end_month: endMonth,
-          collected_by: form.collectedBy,
-          note: form.note || null,
-          pledge_change_amount: form.pledgeChangeEnabled ? parseFloat(form.newPledgeAmount) : null,
-          pledge_effective_month: form.pledgeChangeEnabled ? form.pledgeEffectiveMonth || null : null,
-          pledge_change_note: form.pledgeChangeNote || null,
-          notify: sendReceipt,
-        }),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       });
 
@@ -526,6 +570,80 @@ export default function JomaEntryPage() {
     } catch (e: any) {
       if (e?.name === "AbortError") {
         setError("সার্ভার থেকে সাড়া পাওয়া যায়নি — আবার চেষ্টা করুন");
+      } else if (
+        // F2: network failure mid-submit → queue for later sync.
+        /network|fetch|failed to fetch|load failed|timeout/i.test(
+          String(e?.message || "")
+        ) ||
+        (typeof navigator !== "undefined" && !navigator.onLine)
+      ) {
+        try {
+          const { queueOp } = await import("@/lib/offline-queue");
+          const { notifyQueueChanged } = await import("@/lib/sync-engine");
+          // Rebuild the payload (same shape as above).
+          const amount = submitAmount;
+          const extraAmount = submitExtra;
+          const endMonth =
+            form.coverageMode === "range"
+              ? form.coverageEndMonth
+              : form.coverageStartMonth;
+          const memberName = memberSearch || form.memberId;
+          await queueOp(
+            "payment.create",
+            {
+              member_id: form.memberId,
+              amount,
+              extra_amount: extraAmount,
+              date: form.paymentDate,
+              method: form.paymentMethod,
+              receipt_no: form.receiptNo,
+              coverage_start_month: form.coverageStartMonth,
+              coverage_end_month: endMonth,
+              collected_by: form.collectedBy,
+              note: form.note || null,
+              pledge_change_amount: form.pledgeChangeEnabled
+                ? parseFloat(form.newPledgeAmount)
+                : null,
+              pledge_effective_month: form.pledgeChangeEnabled
+                ? form.pledgeEffectiveMonth || null
+                : null,
+              pledge_change_note: form.pledgeChangeNote || null,
+              notify: sendReceipt,
+            },
+            `জমা ৳${amount} — ${memberName} (${form.receiptNo})`
+          );
+          notifyQueueChanged();
+          setSuccessData({
+            id: `offline-${Date.now()}`,
+            receipt: form.receiptNo,
+            amount,
+            extraAmount,
+            allocatedAmount: allocationPreview.allocatedAmount,
+            notifyStatus: "queued-offline",
+          });
+          setForm({
+            memberId: "",
+            paymentAmount: "",
+            paymentDate: today,
+            paymentMethod: "cash",
+            receiptNo: generateReceiptNo(),
+            collectedBy: form.collectedBy,
+            note: "",
+            coverageMode: "single",
+            coverageStartMonth: curMonth,
+            coverageEndMonth: curMonth,
+            pledgeChangeEnabled: false,
+            newPledgeAmount: "",
+            pledgeEffectiveMonth: curMonth,
+            pledgeChangeNote: "",
+          });
+          setMemberSearch("");
+          setShowMemberDropdown(false);
+          return;
+        } catch {
+          // Queue itself failed — fall through to the generic error.
+        }
+        setError(e.message || "সেভ করতে সমস্যা হয়েছে");
       } else {
         setError(e.message || "সেভ করতে সমস্যা হয়েছে");
       }
@@ -618,12 +736,22 @@ export default function JomaEntryPage() {
                   রসিদ পাঠানো যায়নি — জমা তালিকা থেকে আবার পাঠাতে পারবেন
                 </p>
               )}
-              <a href={`/donations/${successData.id}/receipt`} target="_blank" rel="noreferrer" className="btn-emerald">
-                <Eye size={17} /> রসিদ প্রিভিউ
-              </a>
-              <ReceiptJpegButton donationId={successData.id} mode="download" className="btn-outline" title="রসিদ ডাউনলোড (JPG)" ariaLabel="রসিদ ডাউনলোড">
-                <Download size={17} /> ডাউনলোড
-              </ReceiptJpegButton>
+              {successData.notifyStatus === "queued-offline" && (
+                <p className="w-full text-center text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                  ⏳ অফলাইনে সংরক্ষিত — ইন্টারনেট ফিরলে স্বয়ংক্রিয়ভাবে সার্ভারে পাঠানো হবে
+                </p>
+              )}
+              {/* Receipt actions only for server-confirmed payments. */}
+              {successData.notifyStatus !== "queued-offline" && (
+                <>
+                  <a href={`/donations/${successData.id}/receipt`} target="_blank" rel="noreferrer" className="btn-emerald">
+                    <Eye size={17} /> রসিদ প্রিভিউ
+                  </a>
+                  <ReceiptJpegButton donationId={successData.id} mode="download" className="btn-outline" title="রসিদ ডাউনলোড (JPG)" ariaLabel="রসিদ ডাউনলোড">
+                    <Download size={17} /> ডাউনলোড
+                  </ReceiptJpegButton>
+                </>
+              )}
               <button onClick={() => setSuccessData(null)} className="btn-outline">
                 <Plus size={17} /> নতুন জমা
               </button>
