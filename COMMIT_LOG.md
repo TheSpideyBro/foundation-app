@@ -57,6 +57,19 @@
 
 ## Commit History
 
+## 0b9ba87 — fix(receipt): headless shell mode + externalize chromium (API 500)
+
+**Date:** 2026-10-02  
+**Scope:** `/api/receipt-image` production 500 ("রসিদের ছবি তৈরি করা যায়নি")
+
+**Before → after:** The route 500'd on Vercel after PR #21 merged. Two root causes, both in how the headless browser is launched/packaged:
+1. `puppeteer-core` defaults to `headless: true` (= new headless mode), but `@sparticuz/chromium` v121+ ships **only** the `chrome-headless-shell` binary — the modes conflict and launch fails. Now `headless: "shell"` (per sparticuz README).
+2. Next.js bundled `@sparticuz/chromium`, so its relative `../../bin` path resolution broke at runtime (`The input directory ... does not exist` — the README's "Bundler Configuration" calls this out explicitly). Now in `serverExternalPackages` in `next.config.ts`; verified the build emits an `[externals]` chunk for the package.
+
+**Tests run:** real pipeline test locally — `executablePath()` → launch headless-shell → `goto` local page → element JPEG screenshot (140KB, valid JPEG magic bytes, Bengali title rendered); `tsc`/`eslint`/`next build` green. The full Vercel run (their infra) remains the final proof — first production share/download after deploy.
+
+**Known risks:** first production invocation pays the Chromium cold start (binary extract to `/tmp`, ~67MB brotli); `maxDuration: 60` covers it.
+
 ## 67d6ab6 — fix(receipt): render share/download JPEG server-side (white image on iOS)
 
 **Date:** 2026-10-02  
