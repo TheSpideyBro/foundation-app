@@ -44,6 +44,7 @@ export default function Dashboard() {
         { data: donationRows },
         { data: expenseRows },
         { data: bankTxns },
+        { data: bankOutTxns },
         { data: accounts },
         { data: monthlySummary },
       ] = await Promise.all([
@@ -51,7 +52,8 @@ export default function Dashboard() {
         supabase().from("member_summary").select("total_members").single(),
         supabase().from("donations").select("amount, date").order("date", { ascending: true }),
         supabase().from("expenses").select("amount").order("date", { ascending: true }),
-        supabase().from("account_transactions").select("amount, account_id, accounts!inner(type)").eq("direction", "in").eq("accounts.type", "bank"),
+        supabase().from("account_transactions").select("amount, accounts!inner(type)").eq("direction", "in").eq("accounts.type", "bank"),
+        supabase().from("account_transactions").select("amount, accounts!inner(type)").eq("direction", "out").eq("accounts.type", "bank"),
         supabase().from("accounts").select("id, type, opening_balance").eq("is_active", true),
         supabase().from("monthly_collection_summary").select("month, due_amount").eq("month", `${thisMonth}-01`).maybeSingle(),
       ]);
@@ -66,16 +68,14 @@ export default function Dashboard() {
       const monthDonations = donations.filter((d) => (d.date || "").slice(0, 7) === thisMonth);
       const currentCollection = monthDonations.reduce((sum, d) => sum + Number(d.amount || 0), 0);
 
-      // Bank balance: opening + deposits (via account_balances logic)
+      // Bank balance: opening + deposits - outflows
       let bankBalance = 0;
       for (const acc of (accounts || []) as Array<{ id: string; type: string; opening_balance: number | string }>) {
         if (acc.type !== "bank") continue;
         bankBalance += Number(acc.opening_balance || 0);
       }
       bankBalance += totalBankDeposits;
-      // Subtract bank outflows
-      const { data: bankOut } = await supabase().from("account_transactions").select("amount, accounts!inner(type)").eq("direction", "out").eq("accounts.type", "bank");
-      bankBalance -= ((bankOut || []) as Array<{ amount: number | string }>).reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      bankBalance -= ((bankOutTxns || []) as Array<{ amount: number | string }>).reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
       setStats({
         totalMembers: Number(memberSummary?.total_members) || 0,

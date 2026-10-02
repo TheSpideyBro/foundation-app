@@ -12,6 +12,7 @@ type Entry = {
   date: string;
   particulars: string;
   type: "in" | "out";
+  source: "donation" | "expense" | "bank_deposit";
   amount: number;
   balance: number;
 };
@@ -64,6 +65,7 @@ export default function CashbookPage() {
           date: d.date,
           particulars: d.members?.name || "অজ্ঞাত সদস্য",
           type: "in" as const,
+          source: "donation" as const,
           amount: Number(d.amount),
         })),
         ...(expenses || []).map((e: any) => ({
@@ -71,6 +73,7 @@ export default function CashbookPage() {
           date: e.date,
           particulars: e.description || "খরচ",
           type: "out" as const,
+          source: "expense" as const,
           amount: Number(e.amount),
         })),
         ...(bankTxns || []).map((t: any) => ({
@@ -78,6 +81,7 @@ export default function CashbookPage() {
           date: t.date,
           particulars: `ব্যাংক ডিপোজিট — ${t.particulars}`,
           type: "out" as const,
+          source: "bank_deposit" as const,
           amount: Number(t.amount),
         })),
       ];
@@ -104,8 +108,8 @@ export default function CashbookPage() {
   };
 
   const totalIn = entries.filter((e) => e.type === "in").reduce((s, e) => s + e.amount, 0);
-  const totalExpense = entries.filter((e) => e.type === "out" && !e.id.startsWith("b-")).reduce((s, e) => s + e.amount, 0);
-  const totalBankDeposit = entries.filter((e) => e.type === "out" && e.id.startsWith("b-")).reduce((s, e) => s + e.amount, 0);
+  const totalExpense = entries.filter((e) => e.source === "expense").reduce((s, e) => s + e.amount, 0);
+  const totalBankDeposit = entries.filter((e) => e.source === "bank_deposit").reduce((s, e) => s + e.amount, 0);
   const totalOut = totalExpense + totalBankDeposit;
   const closing = totalIn - totalOut;
 
