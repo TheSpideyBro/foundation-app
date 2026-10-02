@@ -1103,7 +1103,7 @@ Performance degrades as the log grows; one huge initial query per admin visit.
 
 ## BUG-042: enforce_member_self_update Trigger Lets Members Self-Reduce Pledge / Flip Status
 
-**Status:** open
+**Status:** fixed (2026-10-02 — `supabase/migrations/20261003_review_v3_db_fixes.sql` applied live to Main ~11:40 +06; premises re-verified at apply time, post-apply checks green)
 **Found:** 2026-10-03 (review v3, S-M1)
 **Region:** database
 
@@ -1155,7 +1155,7 @@ protected fields is permitted, which is exactly the documented intent.
 
 ## BUG-043: admin_delete_user Fails on FK Constraints — Cannot Delete Staff With History
 
-**Status:** open
+**Status:** fixed (2026-10-02 — `supabase/migrations/20261003_review_v3_db_fixes.sql` applied live to Main ~11:40 +06; premises re-verified at apply time, post-apply checks green)
 **Found:** 2026-10-03 (review v3, S-M2)
 **Region:** database
 
