@@ -30,6 +30,7 @@ export default function MembersPage() {
 
   const [formData, setFormData] = useState({
     name: "",
+    member_code: "",
     phone: "",
     address: "",
     join_date: todayISO(),
@@ -77,6 +78,7 @@ export default function MembersPage() {
       setEditingMember(member);
       setFormData({
         name: member.name,
+        member_code: member.member_code || "",
         phone: member.phone || "",
         address: member.address || "",
         join_date: member.join_date,
@@ -89,6 +91,7 @@ export default function MembersPage() {
       setEditingMember(null);
       setFormData({
         name: "",
+        member_code: "",
         phone: "",
         address: "",
         join_date: todayISO(),
@@ -124,6 +127,7 @@ export default function MembersPage() {
     try {
       const payload = {
         name: formData.name,
+        member_code: formData.member_code.trim() || null,
         phone: formData.phone,
         address: formData.address,
         join_date: formData.join_date,
@@ -313,7 +317,14 @@ export default function MembersPage() {
                 </div>
               </div>
               
-              <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors font-shadhinata">{member.name}</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors font-shadhinata">
+                {member.member_code && (
+                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mr-2">
+                    #{member.member_code}
+                  </span>
+                )}
+                {member.name}
+              </h3>
               <p className="text-[11px] text-gray-500 font-bold mb-4">{member.role || 'সদস্য'}</p>
               
               <div className="space-y-3 pt-4 border-t border-gray-50">
@@ -364,6 +375,17 @@ export default function MembersPage() {
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   placeholder="পুরো নাম লিখুন"
                   required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="member-code" className="text-[13px] font-bold text-gray-700 ml-1">সদস্য আইডি</label>
+                <input id="member-code"
+                  type="text"
+                  value={formData.member_code}
+                  onChange={(e) => setFormData({...formData, member_code: e.target.value})}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  placeholder="যেমন: 1, 2, 45"
                 />
               </div>
 
