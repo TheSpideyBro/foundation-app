@@ -8,6 +8,7 @@ import {
   TrendingDown, ArrowUpRight, X, Save
 } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
+import { exportToExcel } from "@/lib/export";
 import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
@@ -214,15 +215,25 @@ export default function ExpensesPage() {
           <h1 className="text-3xl sm:text-4xl font-bold font-shadhinata text-gray-900 mb-1">ব্যয় ও খরচ</h1>
           <p className="text-sm text-gray-500 font-medium">ফাউন্ডেশনের সকল খরচের হিসাব</p>
         </div>
-        {isStaff && (
-          <button 
-            onClick={() => handleOpenModal()}
-            className="flex items-center justify-center gap-2 bg-rose-600 text-white rounded-2xl font-bold h-12 px-6 hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 active:scale-95"
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => exportToExcel(expenses.map((e) => ({ তারিখ: e.date, খাত: e.category, বিবরণ: e.description, টাকা: e.amount })), "khoroch-report")}
+            className="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 rounded-2xl font-bold h-12 px-5 hover:bg-gray-50 transition-all active:scale-95"
+            title="Excel ডাউনলোড"
           >
-            <Plus size={20} />
-            <span>নতুন খরচ</span>
+            <Download size={18} />
+            <span>Excel</span>
           </button>
-        )}
+          {isStaff && (
+            <button 
+              onClick={() => handleOpenModal()}
+              className="flex items-center justify-center gap-2 bg-rose-600 text-white rounded-2xl font-bold h-12 px-6 hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 active:scale-95"
+            >
+              <Plus size={20} />
+              <span>নতুন খরচ</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="card-premium overflow-hidden border border-red-50 shadow-sm">

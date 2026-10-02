@@ -332,62 +332,6 @@ export default function AnalyticsPage() {
           </div>
         ) : (
           <>
-            {/* KPI cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-white rounded-2xl p-4 border border-gray-100">
-                <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
-                  <Wallet size={14} className="text-emerald-600" />
-                  চলতি মাসে আদায়
-                </div>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
-                  {money(thisMonth.collected)}
-                </p>
-                <p className="text-xs mt-1 font-bold text-emerald-700">
-                  {toBengaliNumber(thisMonth.rate.toFixed(0))}% সংগ্রহ
-                  <span className="text-gray-400 font-normal">
-                    {" "}
-                    (লক্ষ্য {money(thisMonth.expected)})
-                  </span>
-                </p>
-              </div>
-              <div className="bg-white rounded-2xl p-4 border border-gray-100">
-                <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
-                  <AlertTriangle size={14} className="text-rose-500" />
-                  মোট বকেয়া
-                </div>
-                <p className="text-2xl font-bold text-rose-600 mt-2">
-                  {money(totalArrears)}
-                </p>
-                <p className="text-xs mt-1 text-gray-500">
-                  {toBengaliNumber(defaulters.length)} জন সদস্যের বকেয়া
-                </p>
-              </div>
-              <div className="bg-white rounded-2xl p-4 border border-gray-100">
-                <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
-                  <Users size={14} className="text-blue-600" />
-                  সক্রিয় সদস্য
-                </div>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
-                  {toBengaliNumber(activeMembers.length)}
-                </p>
-                <p className="text-xs mt-1 text-gray-500">
-                  মাসিক প্রতিশ্রুতি মোট {money(avgMonthlyExpected)}
-                </p>
-              </div>
-              <div className="bg-white rounded-2xl p-4 border border-gray-100">
-                <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
-                  <TrendingUp size={14} className="text-amber-600" />
-                  গড় মাসিক আদায়
-                </div>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
-                  {money(avgMonthlyCollected)}
-                </p>
-                <p className="text-xs mt-1 text-gray-500">
-                  শেষ {toBengaliNumber(fullMonths.length)} পূর্ণ মাসের গড়
-                </p>
-              </div>
-            </div>
-
             {/* Monthly trend */}
             <section className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
               <h2 className="font-bold text-gray-900">

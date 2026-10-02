@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { currentMonthStr, monthLabelBengali } from "@/lib/utils";
 import { 
-  Users, CreditCard, Wallet, TrendingUp, 
+  Users, CreditCard, Wallet, Landmark,
   ArrowUpRight, ArrowDownRight,
   RefreshCw, Activity,
   Plus
@@ -19,76 +19,74 @@ export default function Dashboard() {
   const isStaffView = hasStaffRole(role);
   const [stats, setStats] = useState({
     totalMembers: 0,
-    totalDonations: 0,
-    totalExpenses: 0,
-    netBalance: 0,
     currentCollection: 0,
-    monthlyTarget: 0,
     currentDue: 0,
-    collectionRate: 0,
+    netCashBalance: 0,
+    bankBalance: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<"monthly" | "yearly" | "total">("monthly");
-  const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
-  const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   const [syncing, setSyncing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notices, setNotices] = useState<any[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [role, period, selectedMonth, selectedYear]);
+  }, [role]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      // Parallel data fetching for better performance
+      const thisMonth = currentMonthStr();
       const [
         { data: noticeData },
         { data: memberSummary },
-        { data: donationSummary },
-        { data: expenseSummary },
+        { data: donationRows },
+        { data: expenseRows },
+        { data: bankTxns },
+        { data: accounts },
         { data: monthlySummary },
-        { data: donationRows }
       ] = await Promise.all([
         supabase().from("notices").select("*").eq("is_active", true).order("created_at", { ascending: false }).limit(3),
         supabase().from("member_summary").select("total_members").single(),
-        supabase().from("donation_summary").select("total_amount").single(),
-        supabase().from("expense_summary").select("total_amount").single(),
-        supabase().from("monthly_collection_summary").select("month, target_amount, collected_amount, due_amount, collection_rate, active_members, expense_amount, net_balance").order("month", { ascending: true }),
-        supabase().from("donations").select("id, member_id, amount, date, donation_month, donation_end_month").order("date", { ascending: true })
+        supabase().from("donations").select("amount, date").order("date", { ascending: true }),
+        supabase().from("expenses").select("amount").order("date", { ascending: true }),
+        supabase().from("account_transactions").select("amount, account_id, accounts!inner(type)").eq("direction", "in").eq("accounts.type", "bank"),
+        supabase().from("accounts").select("id, type, opening_balance").eq("is_active", true),
+        supabase().from("monthly_collection_summary").select("month, due_amount").eq("month", `${thisMonth}-01`).maybeSingle(),
       ]);
 
       setNotices(noticeData || []);
-      const monthlyRows = (monthlySummary || []) as Array<{ month: string; target_amount: number; collected_amount: number; due_amount: number; collection_rate: number; active_members: number; expense_amount: number; net_balance: number }>;
-      const selectedRows = period === "monthly" ? monthlyRows.filter((row) => row.month.slice(0, 7) === selectedMonth) : period === "yearly" ? monthlyRows.filter((row) => row.month.slice(0, 4) === selectedYear) : monthlyRows;
-      const selectedSummary = selectedRows[selectedRows.length - 1];
-      const donations = (donationRows || []) as Array<{ amount: number | string; date: string; donation_month?: string | null; donation_end_month?: string | null }>;
-      const periodStart = period === "monthly" ? `${selectedMonth}-01` : period === "yearly" ? `${selectedYear}-01-01` : "0000-01-01";
-      const periodEnd = period === "monthly" ? `${selectedMonth}-31` : period === "yearly" ? `${selectedYear}-12-31` : "9999-12-31";
-      const selectedDonations = donations.filter((donation) => donation.date >= periodStart && donation.date <= periodEnd);
-      const cashCollection = period === "total" ? Number(donationSummary?.total_amount) || donations.reduce((sum, donation) => sum + Number(donation.amount || 0), 0) : selectedDonations.reduce((sum, donation) => sum + Number(donation.amount || 0), 0);
-      const coverageCollection = selectedRows.reduce((sum, row) => sum + Number(row.collected_amount || 0), 0);
-      const totalExpenses = period === "total" ? Number(expenseSummary?.total_amount) || 0 : selectedRows.reduce((sum, row) => sum + Number(row.expense_amount || 0), 0);
-      const monthlyTarget = selectedRows.reduce((sum, row) => sum + Number(row.target_amount || 0), 0);
-      const currentCollection = cashCollection;
-      const currentDue = period === "total" ? 0 : Math.max(0, monthlyTarget - coverageCollection);
+      const donations = (donationRows || []) as Array<{ amount: number | string; date: string }>;
+      const totalDonations = donations.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+      const totalExpenses = ((expenseRows || []) as Array<{ amount: number | string }>).reduce((sum, e) => sum + Number(e.amount || 0), 0);
+      const totalBankDeposits = ((bankTxns || []) as Array<{ amount: number | string }>).reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+      // Current month collection
+      const monthDonations = donations.filter((d) => (d.date || "").slice(0, 7) === thisMonth);
+      const currentCollection = monthDonations.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+
+      // Bank balance: opening + deposits (via account_balances logic)
+      let bankBalance = 0;
+      for (const acc of (accounts || []) as Array<{ id: string; type: string; opening_balance: number | string }>) {
+        if (acc.type !== "bank") continue;
+        bankBalance += Number(acc.opening_balance || 0);
+      }
+      bankBalance += totalBankDeposits;
+      // Subtract bank outflows
+      const { data: bankOut } = await supabase().from("account_transactions").select("amount, accounts!inner(type)").eq("direction", "out").eq("accounts.type", "bank");
+      bankBalance -= ((bankOut || []) as Array<{ amount: number | string }>).reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
       setStats({
-        totalMembers: period === "monthly" ? Number(selectedSummary?.active_members) || Number(memberSummary?.total_members) || 0 : Number(memberSummary?.total_members) || 0,
-        totalDonations: Number(donationSummary?.total_amount) || 0,
-        totalExpenses: Number(expenseSummary?.total_amount) || 0,
-        netBalance: cashCollection - totalExpenses,
+        totalMembers: Number(memberSummary?.total_members) || 0,
         currentCollection,
-        monthlyTarget,
-        currentDue,
-        collectionRate: monthlyTarget ? Math.round((coverageCollection / monthlyTarget) * 100) : 0,
+        currentDue: Number((monthlySummary as any)?.due_amount) || 0,
+        netCashBalance: totalDonations - totalExpenses - totalBankDeposits,
+        bankBalance,
       });
 
 
     } catch (error) {
-      // Previously swallowed: the page rendered all-zero stats that looked
-      // like "no data yet", which is indistinguishable from a failed load.
       console.error("Error fetching dashboard data:", error);
       setLoadError(error instanceof Error ? error.message : "ড্যাশবোর্ড লোড করা যায়নি");
     } finally {
@@ -154,10 +152,10 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-6 mb-4"><div><h2 className="text-xl sm:text-2xl font-bold font-shadhinata text-gray-900">সংগ্রহের সারাংশ</h2><p className="text-xs sm:text-sm text-gray-500">নির্বাচিত সময়কালের সংগ্রহের চিত্র</p></div><div className="flex items-center gap-2"><div className="flex bg-gray-100 p-1 rounded-xl">{([["monthly", "মাসিক"], ["yearly", "বাৎসরিক"], ["total", "সর্বমোট"]] as const).map(([key, label]) => <button key={key} onClick={() => setPeriod(key)} className={`px-4 min-h-[44px] min-w-[44px] rounded-lg text-xs font-bold ${period === key ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500"}`}>{label}</button>)}</div>{period === "monthly" ? <input type="month" aria-label="মাস নির্বাচন করুন" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold text-sm" /> : period === "yearly" ? <select aria-label="বছর নির্বাচন করুন" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 font-bold text-sm">{Array.from({ length: 8 }, (_, i) => String(new Date().getFullYear() - i)).map((year) => <option key={year}>{year}</option>)}</select> : null}</div></div>
+      <div className="mt-6 mb-4"><div><h2 className="text-xl sm:text-2xl font-bold font-shadhinata text-gray-900">সংগ্রহের সারাংশ</h2><p className="text-xs sm:text-sm text-gray-500">সর্বশেষ তথ্য — {monthLabelBengali(currentMonthStr())}</p></div></div>
       {/* KPI Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-        {[{ label: "এই মাসে সংগ্রহ", value: stats.currentCollection, icon: CreditCard, color: "bg-emerald-600" }, { label: "মাসিক লক্ষ্য", value: stats.monthlyTarget, icon: Wallet, color: "bg-blue-600" }, { label: "এই মাসে বকেয়া", value: stats.currentDue, icon: ArrowDownRight, color: "bg-rose-600" }, { label: "সংগ্রহের হার", value: stats.collectionRate, icon: TrendingUp, color: "bg-amber-600", percent: true }].map((stat) => <div key={stat.label} className="card-premium p-4 sm:p-6 group border border-emerald-50/50"><div className="flex items-center justify-between mb-3"><div className={`w-10 h-10 sm:w-12 sm:h-12 ${stat.color} rounded-xl flex items-center justify-center text-white`}><stat.icon size={21} /></div><span className="text-[10px] font-bold text-gray-500">{monthLabelBengali(selectedMonth)}</span></div><h3 className="text-gray-500 text-[10px] sm:text-[11px] font-bold mb-1">{stat.label}</h3><p className="text-xl sm:text-2xl font-bold text-gray-900 font-baloo truncate">{stat.percent ? `${stat.value}%` : `৳${stat.value.toLocaleString("bn-BD")}`}</p></div>)}
+        {[{ label: "এই মাসে সংগ্রহ", value: stats.currentCollection, icon: CreditCard, color: "bg-emerald-600" }, { label: "এই মাসে বকেয়া", value: stats.currentDue, icon: ArrowDownRight, color: "bg-rose-600" }, { label: "নেট ক্যাশ ব্যালেন্স", value: stats.netCashBalance, icon: Wallet, color: "bg-blue-600" }, { label: "ব্যাংক ব্যালেন্স", value: stats.bankBalance, icon: Landmark, color: "bg-amber-600" }].map((stat) => <div key={stat.label} className="card-premium p-4 sm:p-6 group border border-emerald-50/50"><div className="flex items-center justify-between mb-3"><div className={`w-10 h-10 sm:w-12 sm:h-12 ${stat.color} rounded-xl flex items-center justify-center text-white`}><stat.icon size={21} /></div></div><h3 className="text-gray-500 text-[10px] sm:text-[11px] font-bold mb-1">{stat.label}</h3><p className="text-xl sm:text-2xl font-bold text-gray-900 font-baloo truncate">৳{stat.value.toLocaleString("bn-BD")}</p></div>)}
       </div>
 
       {/* Notices Section */}
@@ -196,7 +194,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="text-white/50 text-[8px] sm:text-[10px] font-bold mb-0.5 sm:mb-1">বর্তমান ব্যালেন্স</p>
-                  <p className="text-xl sm:text-3xl font-bold font-baloo">৳{stats.netBalance.toLocaleString('bn-BD')}</p>
+                  <p className="text-xl sm:text-3xl font-bold font-baloo">৳{stats.netCashBalance.toLocaleString('bn-BD')}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4 sm:gap-5">
