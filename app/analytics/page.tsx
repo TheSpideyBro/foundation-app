@@ -12,6 +12,7 @@ import {
   TrendingUp,
   ShieldAlert,
 } from "lucide-react";
+import DefaulterReminderButton from "@/components/DefaulterReminderButton";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
 import { isStaff as hasStaffRole } from "@/lib/auth";
@@ -77,9 +78,12 @@ export default function AnalyticsPage() {
   const [donations, setDonations] = useState<DonationRow[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [showAllDefaulters, setShowAllDefaulters] = useState(false);
+  // F5: reminder status per member for the previous month
+  const [reminderMap, setReminderMap] = useState<Record<string, string>>({});
 
   const nowYm = currentMonthStr();
   const startYm = shiftMonth(nowYm, -(WINDOW_MONTHS - 1));
+  const reminderMonth = shiftMonth(nowYm, -1);
 
   useEffect(() => {
     if (!isStaff) {
@@ -95,7 +99,7 @@ export default function AnalyticsPage() {
     setError(null);
     try {
       const client = supabase();
-      const [mRes, aRes, dRes, uRes] = await Promise.all([
+      const [mRes, aRes, dRes, uRes, rRes] = await Promise.all([
         client
           .from("members")
           .select("id, name, phone, monthly_pledge, status, join_date"),
@@ -109,6 +113,11 @@ export default function AnalyticsPage() {
           .select("id, member_id, amount, date, collected_by")
           .gte("date", `${startYm}-01`),
         client.from("users").select("id, name"),
+        // F5: reminders already sent for the previous month
+        client
+          .from("reminder_log")
+          .select("member_id, status")
+          .eq("month", reminderMonth),
       ]);
       if (mRes.error) throw mRes.error;
       if (aRes.error) throw aRes.error;
@@ -117,6 +126,12 @@ export default function AnalyticsPage() {
       setAllocs((aRes.data || []) as AllocRow[]);
       setDonations((dRes.data || []) as DonationRow[]);
       setUsers(((uRes.data || []) as UserRow[]).filter(Boolean));
+      const rMap: Record<string, string> = {};
+      for (const r of (rRes.data || []) as Array<{ member_id: string; status: string }>) {
+        if (r.status === "sent") rMap[r.member_id] = "sent";
+        else if (!rMap[r.member_id]) rMap[r.member_id] = r.status;
+      }
+      setReminderMap(rMap);
     } catch (err) {
       setError(err instanceof Error ? err.message : "তথ্য লোড করা যায়নি");
     }
@@ -464,9 +479,19 @@ export default function AnalyticsPage() {
                             বকেয়া
                           </p>
                         </div>
-                        <p className="text-sm font-bold text-rose-600 shrink-0">
-                          {money(d.arrears)}
-                        </p>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <p className="text-sm font-bold text-rose-600">
+                            {money(d.arrears)}
+                          </p>
+                          <DefaulterReminderButton
+                            memberId={d.id}
+                            month={reminderMonth}
+                            alreadySent={reminderMap[d.id] === "sent"}
+                            onSent={(id, status) =>
+                              setReminderMap((prev) => ({ ...prev, [id]: status }))
+                            }
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
