@@ -1,6 +1,8 @@
 -- Add member_code to member_directory view (was missing after 20261003_member_code).
 
-CREATE OR REPLACE VIEW public.member_directory AS
+DROP VIEW IF EXISTS public.member_directory;
+
+CREATE VIEW public.member_directory AS
  SELECT id,
     member_code,
     name,
