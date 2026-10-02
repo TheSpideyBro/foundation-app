@@ -214,10 +214,10 @@ export default function AnalyticsPage() {
     [months, expectedByMonth, collectedByMonth]
   );
 
-  const thisMonth = trend[trend.length - 1];
-
-  // Last 6 *full* months (exclude the in-progress current month) for averages.
-  const fullMonths = trend.slice(-7, -1);
+  // Last 6 *full* months (exclude the in-progress current month AND future months)
+  // for averages. With future advance payments in trend, find current month first.
+  const currentIdx = trend.findIndex((t) => t.ym === nowYm);
+  const fullMonths = currentIdx >= 0 ? trend.slice(Math.max(0, currentIdx - 6), currentIdx) : trend.slice(-7, -1);
   const avgMonthlyCollected =
     fullMonths.length > 0
       ? fullMonths.reduce((s, t) => s + t.collected, 0) / fullMonths.length
