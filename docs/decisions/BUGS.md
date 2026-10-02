@@ -1191,3 +1191,63 @@ written; the RPC's null-out list was never extended to cover them.
 Migration `supabase/migrations/20261003_review_v3_db_fixes.sql` (prepared, not yet
 applied to live): `UPDATE ... SET created_by = NULL` on the four tables before
 the `DELETE FROM auth.users`, mirroring the existing `donations` nulling.
+
+## BUG-044: Receipt JPEG Share/Download Renders Fully White on iOS Safari
+
+**Status:** fixed (2026-10-02 — server-side rendering via `GET /api/receipt-image`, PR #21)
+**Found:** 2026-10-02 (Akash: WhatsApp share + download showed a fully white image)
+**Region:** frontend
+
+### Description
+
+`components/ReceiptJpegButton.tsx` rasterized the premium `ReceiptPaper` in the
+browser with `html-to-image` (SVG `foreignObject` → canvas). On iOS Safari the
+SVG silently fails to rasterize — `drawImage` draws nothing over the
+pre-filled `#FDFCF7` background — so the shared/downloaded JPEG was solid
+white. No error was thrown; the failure is silent.
+
+### Root Cause
+
+`html-to-image`'s `toCanvas` fills the canvas with `backgroundColor` *before*
+`drawImage(img, …)`. When WebKit cannot rasterize the foreignObject SVG, the
+canvas keeps only the background fill: a fully white image.
+
+### Fix
+
+Receipt images are now rendered **server-side** with headless Chromium:
+`GET /api/receipt-image?donationId=` (staff: any receipt; members: own
+receipts via RLS) screenshots the token-authenticated, chromeless
+`/receipt-shot/[id]` page (5-min HMAC token, `lib/receipt-shot-token.ts`) and
+returns real JPEG bytes. `ReceiptJpegButton` just fetches the image.
+`html-to-image` dependency removed. Identical output on every client; Bengali
+shaping, fonts, and QR unchanged.
+
+## BUG-045: /api/receipt-image 500s in Production — Headless Mode + Bundling
+
+**Status:** fixed (2026-10-02 — `headless: "shell"` + `serverExternalPackages`, PR #22)
+**Found:** 2026-10-02 (Akash: "রসিদের ছবি তৈরি করা যায়নি" after PR #21 deployed)
+**Region:** backend
+
+### Description
+
+`GET /api/receipt-image` returned 500 on Vercel even though the pipeline worked
+locally. Two independent causes:
+
+1. `puppeteer-core` defaults to `headless: true` (= new headless mode), but
+   `@sparticuz/chromium` v121+ ships **only** the `chrome-headless-shell`
+   binary — the modes conflict and the browser fails to launch.
+2. Next.js bundled `@sparticuz/chromium`, breaking its relative `../../bin`
+   path resolution at runtime (`The input directory … does not exist` — called
+   out in the package README's "Bundler Configuration").
+
+### Root Cause
+
+Wrong launch mode for the shipped binary; bundler relocated a package that
+relies on relative paths.
+
+### Fix
+
+`headless: "shell"` in `puppeteer.launch` (per sparticuz README) and
+`serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"]` in
+`next.config.ts` — verified the build emits an `[externals]` chunk. Real
+pipeline test run locally (executablePath → launch → goto → 140KB valid JPEG).
