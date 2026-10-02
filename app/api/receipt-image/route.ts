@@ -55,15 +55,24 @@ export async function GET(request: Request) {
   }
 
   let jpeg: Uint8Array<ArrayBuffer>;
+  let failStage = "init";
   try {
     jpeg = await renderReceiptJpeg(
       new URL(request.url).origin,
-      donationId
+      donationId,
+      (stage) => {
+        failStage = stage;
+      }
     );
   } catch (err) {
-    console.error("[api/receipt-image]", err);
+    console.error(`[api/receipt-image] stage=${failStage}`, err);
     return NextResponse.json(
-      { error: "রসিদের ছবি তৈরি করা যায়নি" },
+      {
+        error: "রসিদের ছবি তৈরি করা যায়নি",
+        // Temporary diagnostic: which pipeline stage failed + message.
+        // Remove once the production issue is resolved.
+        diag: `${failStage}: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300),
+      },
       { status: 500 }
     );
   }
@@ -84,10 +93,12 @@ export async function GET(request: Request) {
 
 async function renderReceiptJpeg(
   origin: string,
-  donationId: string
+  donationId: string,
+  onStage: (stage: string) => void
 ): Promise<Uint8Array<ArrayBuffer>> {
   // Lazy imports keep the heavy browser deps out of the module graph
   // unless this route actually runs.
+  onStage("import");
   const [{ default: chromium }, { default: puppeteer }] = await Promise.all([
     import("@sparticuz/chromium-min"),
     import("puppeteer-core"),
@@ -102,22 +113,28 @@ async function renderReceiptJpeg(
   // release and extracted to /tmp at runtime. This keeps the deployment
   // small and avoids bundler path-resolution issues entirely (nothing to
   // trace — the only deployment dependency is the tiny JS package).
+  onStage("executablePath");
+  const executablePath = await chromium.executablePath(
+    "https://github.com/Sparticuz/chromium/releases/download/v153.0.0/chromium-v153.0.0-pack.x64.tar"
+  );
+  onStage("launch");
   const browser = await puppeteer.launch({
     args: chromium.args,
     defaultViewport: { width: 860, height: 1400, deviceScaleFactor: 2 },
-    executablePath: await chromium.executablePath(
-      "https://github.com/Sparticuz/chromium/releases/download/v153.0.0/chromium-v153.0.0-pack.x64.tar"
-    ),
+    executablePath,
     // sparticuz v121+ ships ONLY chrome-headless-shell: puppeteer's default
     // headless:true (= new headless mode) conflicts with it and the browser
     // fails to launch. 'shell' is the only supported mode (see sparticuz README).
     headless: "shell",
   });
   try {
+    onStage("goto");
     const page = await browser.newPage();
     await page.goto(renderUrl, { waitUntil: "networkidle0", timeout: 45000 });
+    onStage("find-element");
     const el = await page.$(".receipt-paper");
     if (!el) throw new Error("receipt element not found");
+    onStage("screenshot");
     const shot = await el.screenshot({ type: "jpeg", quality: 92 });
     // Fresh copy: Uint8Array<ArrayBuffer> — the exact type NextResponse
     // accepts as BodyInit (mirrors app/api/qr/route.ts).

@@ -40,6 +40,8 @@ export default function ReceiptJpegButton({
         try {
           const body = await res.json();
           if (body?.error) msg = body.error;
+          // Temporary diagnostic: show which stage failed.
+          if (body?.diag) msg += ` [${body.diag}]`;
         } catch {
           /* keep default */
         }
