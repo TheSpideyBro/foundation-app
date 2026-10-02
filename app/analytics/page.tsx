@@ -387,6 +387,40 @@ export default function AnalyticsPage() {
               </div>
             </section>
 
+            {/* Monthly collection table */}
+            <section className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
+              <h2 className="font-bold text-gray-900">
+                মাসিক সংগ্রহ তালিকা
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">
+                প্রতিটা মাসে কত সংগ্রহ হয়েছে
+              </p>
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 border-b border-gray-100">
+                      <th className="py-2 pr-4 font-bold">মাস</th>
+                      <th className="py-2 pr-4 font-bold text-right">সংগ্রহ</th>
+                      <th className="py-2 pr-4 font-bold text-right">লক্ষ্য</th>
+                      <th className="py-2 font-bold text-right">হার</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...trend].reverse().map((t) => (
+                      <tr key={t.ym} className="border-b border-gray-50 last:border-0">
+                        <td className="py-2.5 pr-4 font-bold text-gray-900">{monthLabelBengali(t.ym)}</td>
+                        <td className="py-2.5 pr-4 text-right font-bold text-emerald-700">{money(t.collected)}</td>
+                        <td className="py-2.5 pr-4 text-right text-gray-500">{money(t.expected)}</td>
+                        <td className={`py-2.5 text-right font-bold ${t.rate >= 90 ? "text-emerald-700" : t.rate >= 60 ? "text-amber-600" : "text-rose-500"}`}>
+                          {toBengaliNumber(t.rate.toFixed(0))}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
             {/* Defaulters */}
             <section className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
               <div className="flex items-center justify-between">

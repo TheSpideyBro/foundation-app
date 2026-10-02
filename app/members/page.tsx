@@ -21,6 +21,8 @@ export default function MembersPage() {
   const isStaff = hasStaffRole(role);
   
   const [members, setMembers] = useState<any[]>([]);
+  const [memberTotals, setMemberTotals] = useState<Record<string, number>>({});
+  const [sortBy, setSortBy] = useState<"name" | "total">("name");
   const [pledgeHistory, setPledgeHistory] = useState<PledgeHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -50,14 +52,21 @@ export default function MembersPage() {
       const query = isStaff
         ? supabase().from("members").select("*")
         : supabase().from("member_directory").select("*");
-      const [{ data }, { data: history, error: historyError }] = await Promise.all([
+      const [{ data }, { data: history, error: historyError }, { data: allocations }] = await Promise.all([
         query.order("name"),
         supabase().from("member_pledge_history").select("member_id, monthly_amount, effective_from_month").order("effective_from_month", { ascending: true }),
+        supabase().from("payment_allocations").select("member_id, amount"),
       ]);
       // History decides the "মাসিক অঙ্গীকার" label (BUG-031); a denied read
       // must not break the list — it just falls back to members.monthly_pledge.
       if (historyError) console.warn("Pledge history unavailable:", historyError.message);
       setPledgeHistory((history || []) as PledgeHistoryEntry[]);
+      // Member lifetime totals from canonical payment_allocations
+      const totals: Record<string, number> = {};
+      for (const a of (allocations || []) as Array<{ member_id: string; amount: number | string }>) {
+        totals[a.member_id] = (totals[a.member_id] || 0) + Number(a.amount || 0);
+      }
+      setMemberTotals(totals);
       setMembers(data || []);
 
     } catch (err) {
@@ -190,7 +199,10 @@ export default function MembersPage() {
   const filteredMembers = members.filter(m => 
     m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     m.phone?.includes(searchQuery)
-  );
+  ).sort((a, b) => {
+    if (sortBy === "total") return (memberTotals[b.id] || 0) - (memberTotals[a.id] || 0);
+    return a.name.localeCompare(b.name, "bn");
+  });
 
   if (loading) return (
     <div className="p-4 sm:p-8 space-y-8" aria-hidden="true">
@@ -241,6 +253,21 @@ export default function MembersPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-[14px] outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all" 
             />
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-xs font-bold text-gray-500">সাজান:</span>
+            <button
+              onClick={() => setSortBy("name")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold ${sortBy === "name" ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600"}`}
+            >
+              নাম
+            </button>
+            <button
+              onClick={() => setSortBy("total")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold ${sortBy === "total" ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600"}`}
+            >
+              মোট অনুযায়ী
+            </button>
           </div>
         </div>
 
@@ -325,7 +352,10 @@ export default function MembersPage() {
                 )}
                 {member.name}
               </h3>
-              <p className="text-[11px] text-gray-500 font-bold mb-4">{member.role || 'সদস্য'}</p>
+              <p className="text-[11px] text-gray-500 font-bold mb-1">{member.role || 'সদস্য'}</p>
+              <p className="text-sm font-bold text-emerald-700 mb-4">
+                মোট দিয়েছেন: ৳{(memberTotals[member.id] || 0).toLocaleString("bn-BD")}
+              </p>
               
               <div className="space-y-3 pt-4 border-t border-gray-50">
                 <div className="flex items-center gap-3 text-sm text-gray-600 font-medium">
