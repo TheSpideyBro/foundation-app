@@ -56,7 +56,13 @@ Complete feature inventory with route, role access, and implementation status.
 - **Route**: `/amar-hisab`
 - **Roles**: member (sidebar + mobile bottom nav show "আমার হিসাব"/"হিসাব" for members; on mobile it replaces the হোম tab)
 - **Implementation**: `app/amar-hisab/page.tsx`
-- **Description**: Member's own account — summary cards (monthly pledge, total paid, arrears, payment rate), month-by-month ledger with Bengali month labels and status badges (built with the canonical `buildMemberLedgerFromAllocations`), payment history linking to premium receipts, profile edit (name/phone/address only — pledge/status locked by the `enforce_member_self_update` trigger), latest notices. Reads own rows via `members_select_own` / `donations_select_own` plus the F1 RLS policies `payment_allocations_select_own` and `pledge_history_select_own` (`supabase/migrations/20261002_member_portal_rls.sql`, not yet applied live as of 2026-10-02)
+- **Description**: Member's own account — summary cards (monthly pledge, total paid, arrears, payment rate), month-by-month ledger with Bengali month labels and status badges (built with the canonical `buildMemberLedgerFromAllocations`), payment history linking to premium receipts, profile edit (name/phone/address only — pledge/status locked by the `enforce_member_self_update` trigger), latest notices. Reads own rows via `members_select_own` / `donations_select_own` plus the F1 RLS policies `payment_allocations_select_own` and `pledge_history_select_own` (`supabase/migrations/20261002_member_portal_rls.sql`, applied live 2026-10-02)
+
+### 7b. Automatic Receipt Delivery (WhatsApp) — F3
+- **Routes**: `POST /api/payments` (auto), `POST /api/notify/whatsapp` (manual resend)
+- **Roles**: staff (treasurer, admin)
+- **Implementation**: `lib/receipt-notify.ts`, `supabase/migrations/20261002_f3_notifications.sql`
+- **Description**: Every জমা automatically sends a WhatsApp receipt text (Bengali, with amount/date/receipt_no + public `/verify` link) to the member's phone — skips gracefully when the member has no phone or WhatsApp isn't configured, and never fails the payment. Joma form has a "WhatsApp-এ রসিদ পাঠান" checkbox (default on); the success screen shows delivery status. Donation cards show a "পাঠানো" badge when delivered and a staff-only resend button otherwise. All attempts are logged to the `notifications` table (recipient, channel, status, provider id, error). The table's `channel` already supports `sms` for a future SMS provider — none is configured yet.
 
 ## Admin Features
 
