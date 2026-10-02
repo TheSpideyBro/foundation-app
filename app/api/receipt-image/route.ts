@@ -102,8 +102,10 @@ async function renderReceiptJpeg(
     args: chromium.args,
     defaultViewport: { width: 860, height: 1400, deviceScaleFactor: 2 },
     executablePath: await chromium.executablePath(),
-    // Note: @sparticuz/chromium bakes --headless='shell' into args;
-    // do not pass headless here.
+    // sparticuz v121+ ships ONLY chrome-headless-shell: puppeteer's default
+    // headless:true (= new headless mode) conflicts with it and the browser
+    // fails to launch. 'shell' is the only supported mode (see sparticuz README).
+    headless: "shell",
   });
   try {
     const page = await browser.newPage();
