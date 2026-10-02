@@ -89,7 +89,7 @@ async function renderReceiptJpeg(
   // Lazy imports keep the heavy browser deps out of the module graph
   // unless this route actually runs.
   const [{ default: chromium }, { default: puppeteer }] = await Promise.all([
-    import("@sparticuz/chromium"),
+    import("@sparticuz/chromium-min"),
     import("puppeteer-core"),
   ]);
 
@@ -98,10 +98,16 @@ async function renderReceiptJpeg(
     donationId
   )}?token=${encodeURIComponent(token)}`;
 
+  // chromium-min ships no binaries: the pack is downloaded from the GitHub
+  // release and extracted to /tmp at runtime. This keeps the deployment
+  // small and avoids bundler path-resolution issues entirely (nothing to
+  // trace — the only deployment dependency is the tiny JS package).
   const browser = await puppeteer.launch({
     args: chromium.args,
     defaultViewport: { width: 860, height: 1400, deviceScaleFactor: 2 },
-    executablePath: await chromium.executablePath(),
+    executablePath: await chromium.executablePath(
+      "https://github.com/Sparticuz/chromium/releases/download/v153.0.0/chromium-v153.0.0-pack.x64.tar"
+    ),
     // sparticuz v121+ ships ONLY chrome-headless-shell: puppeteer's default
     // headless:true (= new headless mode) conflicts with it and the browser
     // fails to launch. 'shell' is the only supported mode (see sparticuz README).

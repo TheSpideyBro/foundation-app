@@ -57,6 +57,29 @@
 
 ## Commit History
 
+## 0800b64 — fix(receipt): use chromium-min + remote pack URL (bulletproof deploy)
+
+**Date:** 2026-10-02  
+**Scope:** `/api/receipt-image` production 500 ("রসিদের ছবি তৈরি করা যায়নি")
+
+**Before → after:** The full `@sparticuz/chromium` package needs its 70MB `bin/`
+folder present in the deployment for `executablePath()` to work — bundler /
+file-tracing can silently drop it, which 500s the route with no useful client
+signal. Switched to `@sparticuz/chromium-min` (tiny JS-only package) +
+`chromium.executablePath(<GitHub release pack.tar URL>)`: the binary downloads
+and extracts to `/tmp` at runtime. Zero binary files in the deployment → nothing
+for the bundler to break, and the deployment stays small. This is the package
+README's recommended path for constrained vendors. `pnpm-lock.yaml` regenerated.
+
+**Tests run:** real pipeline locally — `executablePath(URL)` → download+extract
+(15s) → launch headless-shell → `goto` → 140KB valid JPEG screenshot (JPEG magic
+bytes, Bengali page title rendered); `tsc`/`eslint`/`next build` green.
+BUG-044 (white JPEG) / BUG-045 (API 500) added to `docs/decisions/BUGS.md`.
+
+**Known risks:** first production invocation downloads ~50MB pack on cold start
+(few seconds on Vercel's network); depends on `github.com` release availability
+at runtime.
+
 ## 0b9ba87 — fix(receipt): headless shell mode + externalize chromium (API 500)
 
 **Date:** 2026-10-02  
