@@ -57,6 +57,24 @@
 
 ## Commit History
 
+## 67d6ab6 — fix(receipt): render share/download JPEG server-side (white image on iOS)
+
+**Date:** 2026-10-02  
+**Scope:** receipt JPEG share/download (`ReceiptJpegButton`, new `/api/receipt-image`, `/receipt-shot/[id]`)
+
+**Before → after:** Share/download rasterized the receipt in the browser with `html-to-image` (SVG foreignObject → canvas). On iOS Safari the SVG silently fails to rasterize — `drawImage` draws nothing over the pre-filled `#FDFCF7` background — so WhatsApp share and downloaded files were fully white. Now the button fetches a real JPEG from `GET /api/receipt-image?donationId=`, which screenshots the receipt with headless Chromium (`@sparticuz/chromium` + `puppeteer-core`) on the server. Identical output on every client; Bengali shaping/fonts/QR unchanged (same `ReceiptPaper`, same CSS).
+
+**Details:**
+- `/api/receipt-image` — staff: any receipt; members: own receipts only (RLS on the caller's cookie client). Mints a 5-min HMAC token, screenshots `.receipt-paper`, returns `image/jpeg` (+ `X-Receipt-No`). `maxDuration: 60`.
+- `/receipt-shot/[id]` — chromeless internal render target (no app nav via `LayoutWrapper`, `robots` noindex, public in `proxy.ts` but 404s without a valid `?token=`).
+- `lib/receipt-shot-token.ts` — HMAC-SHA256 tokens, secret derived from the service-role key, timing-safe compare, 5-min expiry.
+- `lib/server-auth.ts` — new `requireUser()` (any approved authenticated user) for the member-own fallback.
+- Deps: removed `html-to-image`, added `@sparticuz/chromium@153` + `puppeteer-core@25`; `pnpm-lock.yaml` regenerated.
+
+**Tests run:** `tsc` clean, `eslint` clean, `next build` green (both routes listed); `receipt-shot-token` unit checks 6/6 (valid / wrong-id / tampered / null / garbage / expired); `/receipt-shot/:id` returns 404 without token and with bad token (dev server).
+
+**Known risks:** the headless-Chromium screenshot path cannot run in this sandbox (no working browser) — first production share/download is the end-to-end confirmation. Cold start downloads the Chromium binary to `/tmp` on first invocation (standard sparticuz behavior; a few seconds).
+
 ## 858d0d1 — feat(reminders): F5 automatic monthly pledge reminders via WhatsApp
 
 **Date:** 2026-10-02  
