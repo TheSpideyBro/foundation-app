@@ -64,6 +64,12 @@ Complete feature inventory with route, role access, and implementation status.
 - **Implementation**: `lib/receipt-notify.ts`, `supabase/migrations/20261002_f3_notifications.sql`, `components/ReceiptJpegButton.tsx`, `lib/receipt-props.ts`
 - **Description**: Every জমা automatically sends a WhatsApp receipt text (Bengali, with amount/date/receipt_no + public `/verify` link) to the member's phone — skips gracefully when the member has no phone or WhatsApp isn't configured, and never fails the payment. Joma form has a "WhatsApp-এ রসিদ পাঠান" checkbox (default on); the success screen shows delivery status. Donation cards show a "পাঠানো" badge when delivered and a staff-only resend button otherwise. All attempts are logged to the `notifications` table (recipient, channel, status, provider id, error). The table's `channel` already supports `sms` for a future SMS provider — none is configured yet. **Receipt share sends the premium receipt as a JPG image** (native share sheet via `ReceiptJpegButton`, rasterized off-screen with `html-to-image`) and **download saves a JPEG file** — on donation cards, the joma success screen, and the receipt page action bar.
 
+### 7c. Analytics Dashboard — F4
+- **Route**: `/analytics`
+- **Roles**: staff (treasurer, admin)
+- **Implementation**: `app/analytics/page.tsx` (client-side aggregation; no DB migration)
+- **Description**: Treasurer sees where money is leaking instead of guessing. KPI cards (this month's collection % vs target, total arrears, active members, avg monthly collection over last 6 full months), 12-month expected-vs-collected trend chart, defaulter/arrears list (months behind, sorted by arrears amount), collector performance leaderboard (last 12 months by `collected_by`), and annual projection from the 6-month run rate vs annual pledge target. Paid = `payment_allocations` with type pledge/advance (canonical); expected = active members' current `monthly_pledge` (join-month aware).
+
 ## Admin Features
 
 ### 8. Admin Dashboard
