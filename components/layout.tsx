@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, CreditCard, Wallet,
-  BarChart3, UserCircle, LogOut, Menu, X,
+  UserCircle, LogOut, Menu, X,
   ShieldCheck, Settings, TrendingUp,
   Leaf, Home, History, ReceiptText, BookOpenCheck,
   Landmark, BookOpen
@@ -79,7 +79,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: "খরচের হিসাব", icon: Wallet, path: "/expenses", roles: ["admin", "treasurer", "member"] },
     { name: "ক্যাশ বই", icon: BookOpen, path: "/cashbook", roles: ["admin", "treasurer"] },
     { name: "ব্যাংক/ক্যাশ", icon: Landmark, path: "/accounts", roles: ["admin", "treasurer"] },
-    { name: "প্রতিবেদন", icon: BarChart3, path: "/reports", roles: ["admin", "treasurer", "member"] },
     { name: "অ্যানালিটিক্স", icon: TrendingUp, path: "/analytics", roles: ["admin", "treasurer"] },
     { name: "প্রোফাইল", icon: UserCircle, path: "/profile", roles: ["admin", "treasurer", "member"] },
   ];

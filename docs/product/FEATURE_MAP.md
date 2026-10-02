@@ -40,11 +40,9 @@ Complete feature inventory with route, role access, and implementation status.
 - **Implementation**: `app/members/page.tsx`
 - **Description**: Member directory with phone, address, join date, status, monthly pledge, QR codes
 
-### 6. Reports (রিপোর্ট)
-- **Route**: `/reports`
-- **Roles**: admin, treasurer
-- **Implementation**: `app/reports/page.tsx`
-- **Description**: Financial reports with tabs for donations, expenses, members, collectors. Uses `buildMemberLedgerFromAllocations` for allocation-based ledger display. Excel export via xlsx, PDF export via jsPDF
+### 6. Export (এক্সপোর্ট)
+- **Implementation**: `lib/export.ts`
+- **Description**: Excel/CSV export buttons on Donations and Expenses pages. (Former `/reports` page removed 2026-10-03 — duplicate tabs eliminated; PDF export dropped due to Bengali tofu bug)
 
 ### 7. Profile (প্রোফাইল)
 - **Route**: `/profile`
@@ -68,7 +66,7 @@ Complete feature inventory with route, role access, and implementation status.
 - **Route**: `/analytics`
 - **Roles**: staff (treasurer, admin)
 - **Implementation**: `app/analytics/page.tsx` (client-side aggregation; no DB migration)
-- **Description**: Treasurer sees where money is leaking instead of guessing. KPI cards (this month's collection % vs target, total arrears, active members, avg monthly collection over last 6 full months), 12-month expected-vs-collected trend chart, defaulter/arrears list (months behind, sorted by arrears amount), collector performance leaderboard (last 12 months by `collected_by`), and annual projection from the 6-month run rate vs annual pledge target. Paid = `payment_allocations` with type pledge/advance (canonical); expected = active members' current `monthly_pledge` (join-month aware).
+- **Description**: Treasurer sees where money is leaking instead of guessing. 12-month expected-vs-collected trend chart, defaulter/arrears list (months behind, sorted by arrears amount), collector performance leaderboard (last 12 months by `collected_by`), and annual projection from the 6-month run rate vs annual pledge target. Paid = `payment_allocations` with type pledge/advance (canonical); expected = active members' current `monthly_pledge` (join-month aware). (KPI cards removed 2026-10-03 — duplicated Dashboard stats.)
 
 ### 7d. Pledge Reminders (WhatsApp) — F5
 - **Routes**: `GET /api/cron/pledge-reminders` (Vercel Cron, monthly), `POST /api/notify/reminder` (manual, staff)
