@@ -8,7 +8,7 @@ import {
   BarChart3, UserCircle, LogOut, Menu, X,
   ShieldCheck, Settings, TrendingUp,
   Leaf, Home, History, ReceiptText, BookOpenCheck,
-  Landmark
+  Landmark, BookOpen
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
@@ -77,6 +77,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: "জমা এন্ট্রি", icon: ReceiptText, path: "/joma", roles: ["admin", "treasurer"] },
     { name: "দান সংগ্রহ", icon: CreditCard, path: "/donations", roles: ["admin", "treasurer", "member"] },
     { name: "খরচের হিসাব", icon: Wallet, path: "/expenses", roles: ["admin", "treasurer", "member"] },
+    { name: "ক্যাশ বই", icon: BookOpen, path: "/cashbook", roles: ["admin", "treasurer"] },
     { name: "ব্যাংক/ক্যাশ", icon: Landmark, path: "/accounts", roles: ["admin", "treasurer"] },
     { name: "প্রতিবেদন", icon: BarChart3, path: "/reports", roles: ["admin", "treasurer", "member"] },
     { name: "অ্যানালিটিক্স", icon: TrendingUp, path: "/analytics", roles: ["admin", "treasurer"] },
