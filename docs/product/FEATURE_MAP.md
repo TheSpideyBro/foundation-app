@@ -76,6 +76,12 @@ Complete feature inventory with route, role access, and implementation status.
 - **Implementation**: `lib/reminder-notify.ts`, `supabase/migrations/20261002_f5_reminder_log.sql`, `vercel.json` (cron: 5th of month, 01:00 UTC)
 - **Description**: On the 5th of each month, active members whose previous-month pledge is still unpaid get a Bengali WhatsApp reminder (month + due amount) — skips members already reminded that month, without phone numbers, or when WhatsApp isn't configured. Every attempt is logged to `reminder_log` (member, month, channel, recipient, status, error, sent_by; NULL sent_by = automatic). Staff can send a manual per-member reminder from the analytics বকেয়া তালিকা, which shows a "পাঠানো" badge once sent. Cron secured by `CRON_SECRET` (Bearer); manual route uses staff auth.
 
+### 7e. Offline-First Sync — F2
+- **Routes**: none (client-side only)
+- **Roles**: staff (treasurer, admin) — joma entry
+- **Implementation**: `lib/offline-queue.ts` (IndexedDB outbox), `lib/sync-engine.ts` (replay engine), `components/OfflineIndicator.tsx` (status pill + queue UI)
+- **Description**: Joma entry works without internet — the payment is saved to a local IndexedDB outbox with status "pending" and the form shows "অফলাইনে সংরক্ষিত". When connectivity returns, the sync engine replays queued payments FIFO via `POST /api/payments` (automatic on `online` event, app start, every 5 min, or manual "এখনই সিঙ্ক করুন"). Duplicate receipt_no on replay is treated as already-synced (timeout-after-write safety). A floating indicator shows অনলাইন/অফলাইন status plus the pending count; tapping it lists queued ops with discard option. No DB migration — purely client-side.
+
 ## Admin Features
 
 ### 8. Admin Dashboard

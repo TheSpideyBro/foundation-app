@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
+import OfflineIndicator from "@/components/OfflineIndicator";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -350,6 +351,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="hidden lg:block h-1 bg-emerald-600 w-full fixed top-0 z-20"></div>
         {children}
       </main>
+      <OfflineIndicator />
     </div>
   );
 }

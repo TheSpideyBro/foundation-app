@@ -57,6 +57,29 @@
 
 ## Commit History
 
+## 9ffb4d2 — feat(f2): offline-first sync for joma entry
+
+**Date:** 2026-10-02  
+**Scope:** F2 offline-first sync (joma entry)
+
+**Before → after:** Joma entry required an active network connection — offline,
+the form failed with "সেভ করতে সমস্যা হয়েছে" and the data was lost. Now,
+when `navigator.onLine` is false (or the POST fails with a network error),
+the payment payload is saved to a local IndexedDB outbox (`lib/offline-queue.ts`)
+and the success screen shows "অফলাইনে সংরক্ষিত". A sync engine
+(`lib/sync-engine.ts`) replays queued payments FIFO via `POST /api/payments`
+on `online` event, app start, every 5 minutes, or manual "এখনই সিঙ্ক করুন".
+Duplicate `receipt_no` on replay is treated as already-synced
+(timeout-after-write safety). A floating `OfflineIndicator`
+(`components/OfflineIndicator.tsx`) shows অনলাইন/অফলাইন status + pending
+count with a queue list and discard option. No DB migration — purely client-side.
+
+**Tests:** `tsc` clean, `eslint` 0 errors, `next build` green (all routes).
+
+**Known risks:** First version covers joma only (not member/expense forms).
+Conflict policy is last-write-wins via receipt_no uniqueness; true
+concurrent edits to the same member are rare and resolve naturally.
+
 ## 0800b64 — fix(receipt): use chromium-min + remote pack URL (bulletproof deploy)
 
 **Date:** 2026-10-02  
