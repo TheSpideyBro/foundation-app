@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   // @sparticuz/chromium resolves its binary via a path relative to the
   // package — bundling/relocating it breaks executablePath() at runtime
   // (see its README "Bundler Configuration"). Keep it external.
-  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  serverExternalPackages: ["@sparticuz/chromium-min", "puppeteer-core"],
   images: {
     remotePatterns: [],
     formats: ["image/avif", "image/webp"],
