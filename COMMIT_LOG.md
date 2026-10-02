@@ -57,6 +57,44 @@
 
 ## Commit History
 
+## 858d0d1 — feat(reminders): F5 automatic monthly pledge reminders via WhatsApp
+
+**Date:** 2026-10-02  
+**Author:** Muse  
+**Branch:** feat/pledge-reminders  
+**Files changed:** `lib/reminder-notify.ts`, `app/api/cron/pledge-reminders/route.ts`, `app/api/notify/reminder/route.ts`, `vercel.json`, `components/DefaulterReminderButton.tsx`, `app/analytics/page.tsx`, `supabase/migrations/20261002_f5_reminder_log.sql`, docs
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Arrears chasing | Manual — treasurer had to remember and call/text late payers | Automatic WhatsApp reminder on the 5th of each month for unpaid previous-month pledges |
+| Reminder logging | None | Every attempt logged to `reminder_log` (member, month, status, sent_by) |
+| Manual nudge | None | Staff can send per-defaulter reminder from analytics বকেয়া তালিকা; "পাঠানো" badge once sent |
+
+### Why
+
+F5 from NEXT_LEVEL_PLAN — fewer arrears, less manual chasing. Reuses F3's WhatsApp delivery plumbing.
+
+### Tests Run
+
+- `tsc --noEmit` — clean
+- `eslint` on touched files — 0 errors
+- `next build` — green, routes `/api/cron/pledge-reminders` + `/api/notify/reminder` listed
+- `test:ledger` — not run (no allocation logic touched)
+
+### Related
+
+- Migration: `supabase/migrations/20261002_f5_reminder_log.sql` (NOT yet applied live)
+
+### Known Risks / Follow-ups
+
+- Migration needs Supabase token to apply live; `supabase/schema.sql` regen + SCHEMA.md row 22 update after apply
+- Cron needs `CRON_SECRET` + `WHATSAPP_*` env vars set on Vercel or reminders silently skip
+- Vercel Cron on Hobby plan: verify the monthly schedule actually fires
+
+---
+
 ## f293f93 — fix(review): resolve 41 findings from third full review (v3) + receipt routing
 
 **Date:** 2026-10-02
