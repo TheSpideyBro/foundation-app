@@ -1,5 +1,3 @@
-"use client";
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   formatMoney,
@@ -153,20 +151,4 @@ export function buildReceiptPaperProps(
         : null,
     verifyUrl,
   };
-}
-
-/** Convenience: fetch everything and build props in one call. */
-export async function loadReceiptPaperProps(
-  client: SupabaseClient,
-  donationId: string
-): Promise<ReceiptPaperProps | null> {
-  const donation = await fetchDonationForReceipt(client, donationId);
-  if (!donation) return null;
-  const batch = await fetchBatchConsolidation(client, donation);
-  const verifyUrl = donation.receipt_no
-    ? `${window.location.origin}/verify/${encodeURIComponent(
-        donation.receipt_no
-      )}`
-    : null;
-  return buildReceiptPaperProps(donation, batch, verifyUrl);
 }
