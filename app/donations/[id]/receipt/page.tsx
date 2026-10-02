@@ -3,50 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Printer, ArrowLeft, Shield, Loader2 } from "lucide-react";
+import { Printer, ArrowLeft, Shield, Loader2, Share2, Download } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
 import { isStaff as hasStaffRole } from "@/lib/auth";
+import ReceiptPaper from "@/components/ReceiptPaper";
+import ReceiptJpegButton from "@/components/ReceiptJpegButton";
 import {
-  formatMoney,
-  formatDateBengali,
-  numberToWordsBengali,
-  monthLabelBengali,
-  toBengaliNumber,
-  methodLabels,
-} from "@/lib/utils";
-import ReceiptPaper from "./ReceiptPaper";
-
-type Donation = {
-  id: string;
-  member_id: string;
-  amount: number;
-  extra_amount: number | null;
-  date: string;
-  donation_month: string | null;
-  donation_end_month: string | null;
-  coverage_start_month: string | null;
-  coverage_end_month: string | null;
-  receipt_no: string | null;
-  method: string | null;
-  batch_id: string | null;
-  members: { name: string | null; phone: string | null }[] | null;
-  collector: { name: string | null; members: { name: string | null }[] | null }[] | null;
-};
-
-/** Mirrors the month-range display logic of the JPEG receipt generator. */
-function monthRangeLabel(start: string | null, end: string | null): string {
-  const s = start;
-  const e = end && end !== s ? end : s;
-  if (!s) return "—";
-  if (!e || e === s) return monthLabelBengali(s);
-  const [sy, sm] = s.split("-").map(Number);
-  const [ey, em] = e.split("-").map(Number);
-  const count = Math.max(1, (ey - sy) * 12 + em - sm + 1);
-  return `${monthLabelBengali(s)} – ${monthLabelBengali(e)} (${toBengaliNumber(
-    String(count).padStart(2, "0")
-  )} মাস)`;
-}
+  fetchDonationForReceipt,
+  fetchBatchConsolidation,
+  buildReceiptPaperProps,
+  type ReceiptDonation as Donation,
+  type BatchConsolidation,
+} from "@/lib/receipt-props";
 
 export default function ReceiptViewPage() {
   const { id } = useParams<{ id: string }>();
@@ -57,9 +26,11 @@ export default function ReceiptViewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Batch-consolidated display (same logic as the JPEG receipt)
-  const [batchMonth, setBatchMonth] = useState<string | null>(null);
-  const [batchAmount, setBatchAmount] = useState<number | null>(null);
-  const [batchReceiptNo, setBatchReceiptNo] = useState<string | null>(null);
+  const [batch, setBatch] = useState<BatchConsolidation>({
+    batchMonth: null,
+    batchAmount: null,
+    batchReceiptNo: null,
+  });
 
   useEffect(() => {
     if (!id) {
@@ -74,52 +45,19 @@ export default function ReceiptViewPage() {
   async function loadDonation() {
     setLoading(true);
     setError(null);
-    const { data, error: queryError } = await supabase()
-      .from("donations")
-      .select(
-        "id, member_id, amount, extra_amount, date, donation_month, donation_end_month, coverage_start_month, coverage_end_month, receipt_no, method, batch_id, members!member_id(name, phone), collector:users!collected_by(name, members(name))"
-      )
-      .eq("id", id)
-      .maybeSingle();
-    if (queryError) {
-      setError("রসিদ লোড করা যায়নি: " + queryError.message);
-    } else if (data) {
-      const d = data as Donation;
-      setDonation(d);
-      // Same batch consolidation the JPEG receipt applies: a batch_id with no
-      // explicit coverage range rolls the whole batch into one month range.
-      if (d.batch_id && !d.coverage_start_month) {
-        const { data: batchRows } = await supabase()
-          .from("donations")
-          .select("amount, donation_month, receipt_no")
-          .eq("batch_id", d.batch_id)
-          .eq("member_id", d.member_id)
-          .order("donation_month", { ascending: true });
-        if (batchRows && batchRows.length > 1) {
-          // Unique months only: two rows covering the same month must not
-          // inflate the "(০৩ মাস)" label. Null months are skipped safely.
-          const months = Array.from(
-            new Set(
-              batchRows.map(
-                (r) => (r as { donation_month: string | null }).donation_month
-              )
-            )
-          )
-            .filter((m): m is string => !!m)
-            .sort();
-          if (months.length > 0) {
-            setBatchMonth(
-              `${monthLabelBengali(months[0])} – ${monthLabelBengali(months[months.length - 1])} (${toBengaliNumber(
-                String(months.length).padStart(2, "0")
-              )} মাস)`
-            );
-          }
-          setBatchAmount(
-            batchRows.reduce((sum: number, r: { amount: number }) => sum + Number(r.amount), 0)
-          );
-          setBatchReceiptNo(d.receipt_no ? `${d.receipt_no} (ব্যাচ)` : null);
-        }
+    try {
+      const d = await fetchDonationForReceipt(supabase(), id as string);
+      if (!d) {
+        setError("রসিদ লোড করা যায়নি");
+      } else {
+        setDonation(d);
+        setBatch(await fetchBatchConsolidation(supabase(), d));
       }
+    } catch (err) {
+      setError(
+        "রসিদ লোড করা যায়নি: " +
+          (err instanceof Error ? err.message : "অজানা ত্রুটি")
+      );
     }
     setLoading(false);
   }
@@ -233,16 +171,7 @@ export default function ReceiptViewPage() {
     );
   }
 
-  const amount = batchAmount ?? Number(donation.amount);
-  const monthLabel =
-    batchMonth ??
-    monthRangeLabel(
-      donation.coverage_start_month || donation.donation_month,
-      donation.coverage_end_month ||
-        donation.donation_end_month ||
-        donation.coverage_start_month ||
-        donation.donation_month
-    );
+  const receiptProps = buildReceiptPaperProps(donation, batch, verifyUrl);
 
   return (
     <>
@@ -283,39 +212,40 @@ export default function ReceiptViewPage() {
               <ArrowLeft size={16} />
               জমা তালিকা
             </Link>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-2 rounded-full bg-[#C9A227] px-5 py-2 text-sm font-bold text-[#022C22] shadow-[0_8px_24px_rgba(201,162,39,0.35)] transition hover:brightness-110"
-            >
-              <Printer size={16} />
-              প্রিন্ট করুন
-            </button>
+            <div className="flex items-center gap-2">
+              <ReceiptJpegButton
+                donationId={donation.id}
+                mode="share"
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-stone-200 transition hover:border-white/30 hover:text-white disabled:opacity-50"
+                title="রসিদ শেয়ার (JPG)"
+                ariaLabel="রসিদ শেয়ার"
+              >
+                <Share2 size={16} />
+                শেয়ার
+              </ReceiptJpegButton>
+              <ReceiptJpegButton
+                donationId={donation.id}
+                mode="download"
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-stone-200 transition hover:border-white/30 hover:text-white disabled:opacity-50"
+                title="রসিদ ডাউনলোড (JPG)"
+                ariaLabel="রসিদ ডাউনলোড"
+              >
+                <Download size={16} />
+                JPG
+              </ReceiptJpegButton>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-2 rounded-full bg-[#C9A227] px-5 py-2 text-sm font-bold text-[#022C22] shadow-[0_8px_24px_rgba(201,162,39,0.35)] transition hover:brightness-110"
+              >
+                <Printer size={16} />
+                প্রিন্ট করুন
+              </button>
+            </div>
           </div>
         )}
 
-        <ReceiptPaper
-          receiptNo={batchReceiptNo ?? donation.receipt_no}
-          dateLabel={formatDateBengali(donation.date)}
-          amountLabel={formatMoney(amount)}
-          amountWords={numberToWordsBengali(amount)}
-          donorName={donation.members?.[0]?.name || "অজ্ঞাত"}
-          monthLabel={monthLabel}
-          methodLabel={
-            donation.method ? methodLabels[donation.method] || donation.method : "—"
-          }
-          collectorName={
-            donation.collector?.[0]?.members?.[0]?.name ||
-            donation.collector?.[0]?.name ||
-            "অ্যাডমিন"
-          }
-          extraAmountLabel={
-            donation.extra_amount && Number(donation.extra_amount) > 0
-              ? formatMoney(Number(donation.extra_amount))
-              : null
-          }
-          verifyUrl={verifyUrl}
-        />
+        <ReceiptPaper {...receiptProps} />
 
         {!isEmbed && (
           <p className="no-print mx-auto mt-6 max-w-2xl text-center text-xs text-stone-500">

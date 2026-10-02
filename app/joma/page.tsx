@@ -20,6 +20,7 @@ import {
 } from "@/lib/payment-ledger";
 import { useAuth } from "@/components/providers";
 import { isStaff as hasStaffRole } from "@/lib/auth";
+import ReceiptJpegButton from "@/components/ReceiptJpegButton";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -111,13 +112,16 @@ export default function JomaEntryPage() {
     pledgeChangeNote: "",
   });
 
+  // F3: automatic WhatsApp receipt on save (default on when the member has a phone)
+  const [sendReceipt, setSendReceipt] = useState(true);
+
   // UI state
   const [memberSearch, setMemberSearch] = useState("");
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [successData, setSuccessData] = useState<{ id: string; receipt: string; amount: number; extraAmount: number; allocatedAmount: number } | null>(null);
+  const [successData, setSuccessData] = useState<{ id: string; receipt: string; amount: number; extraAmount: number; allocatedAmount: number; notifyStatus?: string } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Filtered members for search
@@ -469,6 +473,7 @@ export default function JomaEntryPage() {
           pledge_change_amount: form.pledgeChangeEnabled ? parseFloat(form.newPledgeAmount) : null,
           pledge_effective_month: form.pledgeChangeEnabled ? form.pledgeEffectiveMonth || null : null,
           pledge_change_note: form.pledgeChangeNote || null,
+          notify: sendReceipt,
         }),
         signal: controller.signal,
       });
@@ -494,6 +499,7 @@ export default function JomaEntryPage() {
         amount,
         extraAmount,
         allocatedAmount: allocationPreview.allocatedAmount,
+        notifyStatus: data.notify_status || "skipped",
       });
       // Reset form
       setForm({
@@ -602,12 +608,22 @@ export default function JomaEntryPage() {
             </div>
 
             <div className="flex gap-3 mt-8 justify-center flex-wrap">
+              {successData.notifyStatus === "sent" && (
+                <p className="w-full text-center text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
+                  ✓ WhatsApp-এ রসিদ পাঠানো হয়েছে
+                </p>
+              )}
+              {successData.notifyStatus === "failed" && (
+                <p className="w-full text-center text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                  রসিদ পাঠানো যায়নি — জমা তালিকা থেকে আবার পাঠাতে পারবেন
+                </p>
+              )}
               <a href={`/donations/${successData.id}/receipt`} target="_blank" rel="noreferrer" className="btn-emerald">
                 <Eye size={17} /> রসিদ প্রিভিউ
               </a>
-              <a href={`/donations/${successData.id}/receipt?print=1`} target="_blank" rel="noopener noreferrer" className="btn-outline">
+              <ReceiptJpegButton donationId={successData.id} mode="download" className="btn-outline" title="রসিদ ডাউনলোড (JPG)" ariaLabel="রসিদ ডাউনলোড">
                 <Download size={17} /> ডাউনলোড
-              </a>
+              </ReceiptJpegButton>
               <button onClick={() => setSuccessData(null)} className="btn-outline">
                 <Plus size={17} /> নতুন জমা
               </button>
@@ -735,6 +751,21 @@ export default function JomaEntryPage() {
                 <p className="text-sm text-gray-700">{form.note}</p>
               </div>
             )}
+          </div>
+          {/* F3: automatic WhatsApp receipt */}
+          <div className="px-6 pb-2">
+            <label className="flex items-center gap-3 p-4 bg-emerald-50/60 border border-emerald-100 rounded-2xl cursor-pointer min-h-[56px]">
+              <input
+                type="checkbox"
+                checked={sendReceipt}
+                onChange={(e) => setSendReceipt(e.target.checked)}
+                className="w-5 h-5 accent-emerald-600 shrink-0"
+              />
+              <span className="text-sm">
+                <span className="font-bold text-gray-900 block">WhatsApp-এ রসিদ পাঠান</span>
+                <span className="text-gray-500 text-xs">সংরক্ষণের পর সদস্যের ফোনে স্বয়ংক্রিয়ভাবে রসিদ যাবে</span>
+              </span>
+            </label>
           </div>
           <div className="p-4 border-t border-gray-100 flex gap-3">
             <button

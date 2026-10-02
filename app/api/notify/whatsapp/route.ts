@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/server-auth';
-import { sendDonationAlert } from '@/lib/whatsapp';
+import { sendReceiptNotification } from '@/lib/receipt-notify';
 
 /**
  * POST /api/notify/whatsapp { donationId }
- * Sends the member a WhatsApp donation alert with a receipt link.
+ * Manually resends the member a WhatsApp receipt (F3). Staff-only.
+ * Every attempt is logged to `notifications` via sendReceiptNotification.
  *
  * This route used to have NO authentication at all (middleware skips /api/*),
  * so anyone could trigger messages — and paid WhatsApp API calls — for any
@@ -20,38 +21,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'donationId is required' }, { status: 400 });
     }
 
-    // Get donation details (cookie-scoped client — RLS applies)
-    const { data: donation, error } = await auth.supabase
-      .from('donations')
-      .select('*, members(*)')
-      .eq('id', donationId)
-      .single();
+    const result = await sendReceiptNotification({
+      supabase: auth.supabase,
+      donationId,
+      sentBy: auth.userId,
+    });
 
-    if (error || !donation) {
-      return NextResponse.json({ error: 'Donation not found' }, { status: 404 });
-    }
-
-    if (!donation.members?.phone) {
-      return NextResponse.json({ error: 'Member has no phone number' }, { status: 400 });
-    }
-
-    // Receipt link. S-L3: fail closed on the configured site URL only —
-    // falling back to the request Host/x-forwarded-proto headers would let a
-    // caller point the member at an arbitrary origin.
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
-    if (!baseUrl) {
-      return NextResponse.json({ error: 'Site URL is not configured' }, { status: 500 });
-    }
-    const receiptUrl = `${baseUrl}/api/receipts/${donation.id}`;
-
-    const result = await sendDonationAlert(
-      donation.members,
-      donation.amount,
-      donation.date,
-      receiptUrl
-    );
-
-    return NextResponse.json({ success: true, result });
+    return NextResponse.json({ success: result.status === 'sent', ...result });
   } catch (err) {
     console.error('WhatsApp Notify Error:', err);
     return NextResponse.json({ error: 'Failed to send notification' }, { status: 500 });

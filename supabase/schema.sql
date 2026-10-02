@@ -32,9 +32,9 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
 CREATE TABLE IF NOT EXISTS public.donations (
     CONSTRAINT "donations_pkey" PRIMARY KEY (id),
     CONSTRAINT "donations_receipt_no_key" UNIQUE (receipt_no),
-    CONSTRAINT "donations_amount_positive" CHECK ((amount > (0)::numeric)),
     CONSTRAINT "donations_extra_amount_check" CHECK ((extra_amount >= (0)::numeric)),
     CONSTRAINT "donations_method_check" CHECK ((method = ANY (ARRAY['cash'::text, 'bkash'::text, 'nagad'::text, 'bank'::text]))),
+    CONSTRAINT "donations_amount_positive" CHECK ((amount > (0)::numeric)),
     id uuid DEFAULT uuid_generate_v4() NOT NULL,
     member_id uuid NOT NULL,
     amount numeric NOT NULL,
@@ -77,8 +77,8 @@ CREATE TABLE IF NOT EXISTS public.expenses (
 
 CREATE TABLE IF NOT EXISTS public.member_pledge_history (
     CONSTRAINT "member_pledge_history_pkey" PRIMARY KEY (id),
-    CONSTRAINT "member_pledge_history_monthly_amount_check" CHECK ((monthly_amount >= (0)::numeric)),
     CONSTRAINT "member_pledge_history_effective_from_month_check" CHECK ((effective_from_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'::text)),
+    CONSTRAINT "member_pledge_history_monthly_amount_check" CHECK ((monthly_amount >= (0)::numeric)),
     id uuid DEFAULT uuid_generate_v4() NOT NULL,
     member_id uuid NOT NULL,
     monthly_amount numeric NOT NULL,
@@ -111,11 +111,27 @@ CREATE TABLE IF NOT EXISTS public.notices (
     created_at timestamp with time zone DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.notifications (
+    CONSTRAINT "notifications_pkey" PRIMARY KEY (id),
+    CONSTRAINT "notifications_channel_check" CHECK ((channel = ANY (ARRAY['whatsapp'::text, 'sms'::text]))),
+    CONSTRAINT "notifications_status_check" CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text, 'skipped'::text]))),
+    id uuid DEFAULT uuid_generate_v4() NOT NULL,
+    donation_id uuid,
+    member_id uuid,
+    channel text DEFAULT 'whatsapp'::text NOT NULL,
+    recipient text NOT NULL,
+    status text DEFAULT 'skipped'::text NOT NULL,
+    provider_message_id text,
+    error text,
+    sent_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS public.payment_allocations (
     CONSTRAINT "payment_allocations_pkey" PRIMARY KEY (id),
     CONSTRAINT "uq_payment_allocations_payment_month_type" UNIQUE (payment_id, month, allocation_type),
-    CONSTRAINT "payment_allocations_allocation_type_check" CHECK ((allocation_type = ANY (ARRAY['pledge'::text, 'advance'::text, 'unallocated'::text]))),
     CONSTRAINT "payment_allocations_amount_check" CHECK ((amount >= (0)::numeric)),
+    CONSTRAINT "payment_allocations_allocation_type_check" CHECK ((allocation_type = ANY (ARRAY['pledge'::text, 'advance'::text, 'unallocated'::text]))),
     id uuid DEFAULT uuid_generate_v4() NOT NULL,
     payment_id uuid NOT NULL,
     member_id uuid NOT NULL,
@@ -142,15 +158,18 @@ CREATE TABLE IF NOT EXISTS public.users (
 
 -- 3. Foreign keys (after all tables exist)
 ALTER TABLE public.donations ADD CONSTRAINT "donations_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id);
-ALTER TABLE public.donations ADD CONSTRAINT "donations_collected_by_fkey" FOREIGN KEY (collected_by) REFERENCES users(id);
 ALTER TABLE public.donations ADD CONSTRAINT "donations_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
+ALTER TABLE public.donations ADD CONSTRAINT "donations_collected_by_fkey" FOREIGN KEY (collected_by) REFERENCES users(id);
 ALTER TABLE public.expenses ADD CONSTRAINT "expenses_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id);
-ALTER TABLE public.member_pledge_history ADD CONSTRAINT "member_pledge_history_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
 ALTER TABLE public.member_pledge_history ADD CONSTRAINT "member_pledge_history_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id);
+ALTER TABLE public.member_pledge_history ADD CONSTRAINT "member_pledge_history_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
 ALTER TABLE public.notices ADD CONSTRAINT "notices_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id);
+ALTER TABLE public.notifications ADD CONSTRAINT "notifications_donation_id_fkey" FOREIGN KEY (donation_id) REFERENCES donations(id) ON DELETE CASCADE;
+ALTER TABLE public.notifications ADD CONSTRAINT "notifications_sent_by_fkey" FOREIGN KEY (sent_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.notifications ADD CONSTRAINT "notifications_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE SET NULL;
 ALTER TABLE public.payment_allocations ADD CONSTRAINT "payment_allocations_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id);
-ALTER TABLE public.payment_allocations ADD CONSTRAINT "payment_allocations_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
 ALTER TABLE public.payment_allocations ADD CONSTRAINT "payment_allocations_payment_id_fkey" FOREIGN KEY (payment_id) REFERENCES donations(id) ON DELETE CASCADE;
+ALTER TABLE public.payment_allocations ADD CONSTRAINT "payment_allocations_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
 ALTER TABLE public.users ADD CONSTRAINT "users_id_fkey" FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.users ADD CONSTRAINT "users_member_id_fkey" FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE SET NULL;
 
@@ -165,6 +184,8 @@ CREATE INDEX idx_donations_member_date ON public.donations USING btree (member_i
 CREATE INDEX idx_donations_member_id ON public.donations USING btree (member_id);
 CREATE INDEX idx_expenses_created_by ON public.expenses USING btree (created_by);
 CREATE INDEX idx_member_pledge_history_member_month ON public.member_pledge_history USING btree (member_id, effective_from_month);
+CREATE INDEX idx_notifications_donation ON public.notifications USING btree (donation_id);
+CREATE INDEX idx_notifications_member ON public.notifications USING btree (member_id);
 CREATE INDEX idx_payment_allocations_member_month ON public.payment_allocations USING btree (member_id, month);
 CREATE INDEX idx_payment_allocations_month ON public.payment_allocations USING btree (month);
 CREATE INDEX idx_payment_allocations_payment ON public.payment_allocations USING btree (payment_id);
@@ -178,6 +199,7 @@ ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.member_pledge_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payment_allocations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
@@ -266,6 +288,12 @@ CREATE POLICY "notices_select_all" ON public.notices
 CREATE POLICY "notices_update_admin" ON public.notices
   FOR UPDATE TO PUBLIC
   USING ((get_my_role() = 'admin'::text));
+CREATE POLICY "notifications_insert_staff" ON public.notifications
+  FOR INSERT TO PUBLIC
+  WITH CHECK ((get_my_role() = ANY (ARRAY['admin'::text, 'treasurer'::text])));
+CREATE POLICY "notifications_select_staff" ON public.notifications
+  FOR SELECT TO PUBLIC
+  USING ((get_my_role() = ANY (ARRAY['admin'::text, 'treasurer'::text])));
 CREATE POLICY "payment_allocations_delete_admin" ON public.payment_allocations
   FOR DELETE TO PUBLIC
   USING ((get_my_role() = 'admin'::text));
@@ -911,6 +939,13 @@ GRANT SELECT ON public.notices TO authenticated, service_role;
 GRANT TRIGGER ON public.notices TO anon, authenticated, service_role;
 GRANT TRUNCATE ON public.notices TO anon, authenticated, service_role;
 GRANT UPDATE ON public.notices TO anon, authenticated, service_role;
+GRANT DELETE ON public.notifications TO anon, authenticated, service_role;
+GRANT INSERT ON public.notifications TO anon, authenticated, service_role;
+GRANT REFERENCES ON public.notifications TO anon, authenticated, service_role;
+GRANT SELECT ON public.notifications TO anon, authenticated, service_role;
+GRANT TRIGGER ON public.notifications TO anon, authenticated, service_role;
+GRANT TRUNCATE ON public.notifications TO anon, authenticated, service_role;
+GRANT UPDATE ON public.notifications TO anon, authenticated, service_role;
 GRANT DELETE ON public.payment_allocations TO anon, authenticated, service_role;
 GRANT INSERT ON public.payment_allocations TO anon, authenticated, service_role;
 GRANT REFERENCES ON public.payment_allocations TO anon, authenticated, service_role;

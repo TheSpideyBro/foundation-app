@@ -2,6 +2,7 @@ import { createClient as createSupaClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/server-auth';
 import { isApproved, isStaff } from '@/lib/auth';
+import { sendReceiptNotification } from '@/lib/receipt-notify';
 
 /** The only payment methods the app can produce (lib/supabase-client.ts). */
 const PAYMENT_METHODS = ['cash', 'bkash', 'nagad', 'bank'] as const;
@@ -167,6 +168,7 @@ export async function POST(request: Request) {
       pledge_change_amount,
       pledge_effective_month,
       pledge_change_note,
+      notify,
     } = body as {
       member_id: string;
       amount: number;
@@ -181,6 +183,8 @@ export async function POST(request: Request) {
       pledge_change_amount?: number | null;
       pledge_effective_month?: string | null;
       pledge_change_note?: string;
+      /** F3: set false to skip the automatic WhatsApp receipt (default true). */
+      notify?: boolean;
     };
 
     if (!member_id) return fail({ code: 'invalid_member', message: 'সদস্য নির্বাচন করুন', status: 400 });
@@ -266,7 +270,23 @@ export async function POST(request: Request) {
       return fail({ code: 'internal', message: 'জমা সংরক্ষণ ব্যর্থ হয়েছে — আবার চেষ্টা করুন', status: 500 });
     }
 
-    return NextResponse.json({ success: true, payment_id: data, code: 'ok' });
+    // F3: automatic WhatsApp receipt. Never fails the payment — delivery
+    // problems are logged to `notifications` and reported as notify_status.
+    let notify_status: 'sent' | 'failed' | 'skipped' = 'skipped';
+    if (notify !== false) {
+      try {
+        const notifyResult = await sendReceiptNotification({
+          supabase: adminClient,
+          donationId: data,
+          sentBy: null,
+        });
+        notify_status = notifyResult.status;
+      } catch (err) {
+        console.error('[/api/payments] receipt notify error:', err);
+      }
+    }
+
+    return NextResponse.json({ success: true, payment_id: data, code: 'ok', notify_status });
   } catch (err: any) {
     console.error('[/api/payments] POST error:', err);
     const status = err?.name === 'SyntaxError' ? 400 : 500;
