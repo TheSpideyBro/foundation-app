@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, CreditCard, Wallet,
   BarChart3, UserCircle, LogOut, Menu, X,
-  ShieldCheck, Settings,
+  ShieldCheck, Settings, TrendingUp,
   Leaf, Home, History, ReceiptText, BookOpenCheck
 } from "lucide-react";
 import { useAuth } from "@/components/providers";
@@ -76,6 +76,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: "দান সংগ্রহ", icon: CreditCard, path: "/donations", roles: ["admin", "treasurer", "member"] },
     { name: "খরচের হিসাব", icon: Wallet, path: "/expenses", roles: ["admin", "treasurer", "member"] },
     { name: "প্রতিবেদন", icon: BarChart3, path: "/reports", roles: ["admin", "treasurer", "member"] },
+    { name: "অ্যানালিটিক্স", icon: TrendingUp, path: "/analytics", roles: ["admin", "treasurer"] },
     { name: "প্রোফাইল", icon: UserCircle, path: "/profile", roles: ["admin", "treasurer", "member"] },
   ];
 
