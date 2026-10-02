@@ -35,12 +35,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Member has no phone number' }, { status: 400 });
     }
 
-    // Receipt link. Prefer the configured site URL: building it from the
-    // request Host/x-forwarded-proto headers lets a caller point the member
-    // at an arbitrary origin.
-    const host = req.headers.get('host');
-    const fallback = host ? `${req.headers.get('x-forwarded-proto') || 'http'}://${host}` : null;
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || fallback;
+    // Receipt link. S-L3: fail closed on the configured site URL only —
+    // falling back to the request Host/x-forwarded-proto headers would let a
+    // caller point the member at an arbitrary origin.
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
     if (!baseUrl) {
       return NextResponse.json({ error: 'Site URL is not configured' }, { status: 500 });
     }

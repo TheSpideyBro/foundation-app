@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
+import { createClient as createSupaClient } from "@supabase/supabase-js";
 import { requireAuth } from "@/lib/server-auth";
 import { toBengaliNumber } from "@/lib/utils";
+
+/** Service-role client for RPCs the cookie-scoped client cannot call
+ * (backfill_payment_allocations is EXECUTE-restricted to service_role). */
+function serviceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseServiceKey =
+    process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseServiceKey) return null;
+  return createSupaClient(supabaseUrl, supabaseServiceKey);
+}
 
 /**
  * GET  /api/admin/bulk?type=members|donations|expenses[&limit=&offset=] — export rows
@@ -320,7 +331,27 @@ export async function POST(request: Request) {
     const { error } = await auth.supabase.from(table).insert(sanitized);
     if (error) throw error;
 
-    return NextResponse.json({ success: true, count: sanitized.length });
+    // S-L1: bulk-inserted donations bypass save_payment_entry, so they have no
+    // payment_allocations rows — the SUM(payment_allocations)=SUM(donations)
+    // invariant breaks until backfilled. backfill_payment_allocations() only
+    // touches donations with no allocations (idempotent) and is
+    // service_role-only, so it runs here via the service client, still behind
+    // the admin gate above. A backfill failure must not roll back the import
+    // (rows are already committed) — it is surfaced as a warning instead.
+    let backfillWarning: string | null = null;
+    if (table === "donations") {
+      const svc = serviceClient();
+      if (!svc) {
+        backfillWarning = "সার্ভিস কী কনফিগার করা নেই — allocation backfill চালানো যায়নি, পরে চালান";
+      } else {
+        const { error: backfillError } = await svc.rpc("backfill_payment_allocations");
+        if (backfillError) {
+          backfillWarning = `ইম্পোর্ট সম্পন্ন, কিন্তু allocation backfill ব্যর্থ: ${backfillError.message}`;
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true, count: sanitized.length, backfillWarning });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "ইম্পোর্ট করতে সমস্যা হয়েছে" },

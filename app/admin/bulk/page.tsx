@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { ReactNode } from "react";
 import { todayISO, toBengaliNumber } from "@/lib/utils";
 import {
@@ -54,6 +54,46 @@ type Preview = {
 };
 
 type RowError = { row: number; error: string };
+
+/**
+ * U-M18: the import control used to be a <label> wrapping a hidden input —
+ * not keyboard-focusable, so keyboard users couldn't open the file picker.
+ * A real <button> triggers the input via ref instead.
+ */
+function ImportPicker({
+  section,
+  disabled,
+  onSelect,
+}: {
+  section: Section;
+  disabled: boolean;
+  onSelect: (e: React.ChangeEvent<HTMLInputElement>, section: Section) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={disabled}
+        className="w-full flex items-center justify-center gap-2 py-3 min-h-[44px] bg-emerald-600 text-white rounded-2xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 active:scale-95 disabled:opacity-50"
+      >
+        <Upload size={18} />
+        <span>ইম্পোর্ট করুন</span>
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".xlsx, .xls, .csv"
+        className="hidden"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(e) => onSelect(e, section)}
+        disabled={disabled}
+      />
+    </>
+  );
+}
 
 export default function BulkManagementPage() {
   const { role } = useAuth();
@@ -199,9 +239,9 @@ export default function BulkManagementPage() {
   if (!isAdmin) return <div className="p-20 text-center font-bold">প্রবেশাধিকার সংরক্ষিত</div>;
 
   return (
-    <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
+    <div className="p-4 sm:p-8 space-y-8 touch-spacing">
       <div className="flex items-center gap-4 mb-2">
-        <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+        <Link href="/admin" aria-label="অ্যাডমিন প্যানেলে ফিরে যান" className="p-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors">
           <ArrowLeft size={24} />
         </Link>
         <div>
@@ -213,7 +253,7 @@ export default function BulkManagementPage() {
       {status && (
         <div
           role="status"
-          className={`p-4 rounded-2xl flex items-center gap-3 animate-in slide-in-from-top-4 ${status.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-red-50 text-red-700 border border-red-100"}`}
+          className={`p-4 rounded-2xl flex items-center gap-3 ${status.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-red-50 text-red-700 border border-red-100"}`}
         >
           {status.type === "success" ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
           <p className="text-sm font-bold">{status.msg}</p>
@@ -316,17 +356,7 @@ export default function BulkManagementPage() {
                 <Download size={18} />
                 <span>এক্সপোর্ট করুন</span>
               </button>
-              <label className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-2xl text-sm font-bold hover:bg-emerald-700 transition-all cursor-pointer shadow-lg shadow-emerald-100 active:scale-95">
-                <Upload size={18} />
-                <span>ইম্পোর্ট করুন</span>
-                <input
-                  type="file"
-                  accept=".xlsx, .xls, .csv"
-                  className="hidden"
-                  onChange={(e) => handleFileSelect(e, s)}
-                  disabled={loading}
-                />
-              </label>
+              <ImportPicker section={s} disabled={loading} onSelect={handleFileSelect} />
             </div>
           </div>
         ))}

@@ -37,9 +37,14 @@ export async function POST() {
       .select('id, phone');
     if (membersError) return NextResponse.json({ error: membersError.message }, { status: 500 });
 
+    // S-L4: only APPROVED accounts are linked. An unapproved account must
+    // never inherit a member's donation visibility via member_id — the admin
+    // may later approve the wrong account, which would then see the victim's
+    // donations through RLS (users.member_id -> donations.member_id).
     const { data: users, error: usersError } = await adminClient
       .from('users')
-      .select('id, phone, member_id');
+      .select('id, phone, member_id')
+      .eq('is_approved', true);
     if (usersError) return NextResponse.json({ error: usersError.message }, { status: 500 });
 
     // Members already claimed by some account must never be linked twice.

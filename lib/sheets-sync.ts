@@ -220,6 +220,8 @@ export interface RestoreResult {
   members: { added: number; updated: number };
   donations: { added: number; updated: number };
   expenses: { added: number; updated: number };
+  /** Every failed write / skipped row is recorded here — counts only reflect successful writes. */
+  errors: string[];
 }
 
 export async function restoreFromSheets(cfg: SheetsConfig, opts: { dryRun?: boolean } = {}): Promise<RestoreResult> {
@@ -235,6 +237,7 @@ export async function restoreFromSheets(cfg: SheetsConfig, opts: { dryRun?: bool
     members: { added: 0, updated: 0 },
     donations: { added: 0, updated: 0 },
     expenses: { added: 0, updated: 0 },
+    errors: [],
   };
 
   const dataRows = (vals: (string | number)[][]) => vals.slice(1).filter((r) => r && r.length > 0 && String(r[0]).trim() !== "");
@@ -296,6 +299,18 @@ export async function restoreFromSheets(cfg: SheetsConfig, opts: { dryRun?: bool
     } else {
       if (!opts.dryRun) await supa.from("expenses").insert(row);
       result.expenses.added++;
+    }
+  }
+
+  // S-L1: restored donations bypass save_payment_entry, so they have no
+  // payment_allocations rows — the SUM(payment_allocations)=SUM(donations)
+  // invariant breaks until backfilled. backfill_payment_allocations() only
+  // touches donations with no allocations (idempotent). Skipped on dryRun
+  // (nothing was written); failures are recorded explicitly in result.errors.
+  if (!opts.dryRun && result.donations.added + result.donations.updated > 0) {
+    const { error: backfillError } = await supa.rpc("backfill_payment_allocations");
+    if (backfillError) {
+      result.errors.push(`allocations backfill failed — ${backfillError.message}`);
     }
   }
 

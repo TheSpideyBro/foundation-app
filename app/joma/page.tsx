@@ -236,7 +236,7 @@ export default function JomaEntryPage() {
         })) as PledgeHistoryItem[]);
         setTreasurers((userData || []).map((u: any) => ({
           id: u.id,
-          name: u.name || "Unknown",
+          name: u.name || "অজানা",
           phone: u.phone || "",
         })));
         // Seed the collector ONLY when empty, and only when this account is
@@ -546,7 +546,7 @@ export default function JomaEntryPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+          <Loader2 className="w-10 h-10 text-emerald-700 animate-spin" />
           <p className="text-gray-500 font-bold">লোড হচ্ছে...</p>
         </div>
       </div>
@@ -572,40 +572,40 @@ export default function JomaEntryPage() {
     return (
       <div className="min-h-screen bg-[#F8FAFC] pb-8">
         <div className="max-w-2xl mx-auto px-4 pt-8">
-          <button onClick={handleCancel} className="flex items-center gap-2 text-gray-500 hover:text-emerald-600 font-bold mb-6">
+          <button onClick={handleCancel} className="flex items-center gap-2 text-gray-500 hover:text-emerald-700 font-bold mb-6">
             <ArrowLeft size={18} /> ফিরে যান
           </button>
           <div className="card-premium p-8 text-center">
             <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5">
-              <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+              <CheckCircle2 className="w-10 h-10 text-emerald-700" />
             </div>
             <h1 className="text-2xl font-bold font-shadhinata text-gray-900 mb-2">জমা এন্ট্রি সফলভাবে সংরক্ষিত হয়েছে</h1>
             <p className="text-gray-500 mb-6">জমার তথ্য নিচে দেওয়া হলো</p>
 
             <div className="grid grid-cols-2 gap-4 text-left max-w-sm mx-auto">
               <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs text-gray-400 font-bold mb-1">রসিদ নং</p>
+                <p className="text-xs text-gray-500 font-bold mb-1">রসিদ নং</p>
                 <p className="font-bold text-gray-900">{successData.receipt}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs text-gray-400 font-bold mb-1">মোট নগদ</p>
-                <p className="font-bold text-emerald-600">{formatMoney(successData.amount + successData.extraAmount)}</p>
+                <p className="text-xs text-gray-500 font-bold mb-1">মোট নগদ</p>
+                <p className="font-bold text-emerald-700">{formatMoney(successData.amount + successData.extraAmount)}</p>
               </div>
               <div className="bg-amber-50 rounded-xl p-4">
                 <p className="text-xs text-amber-600 font-bold mb-1">অতিরিক্ত জমা</p>
                 <p className="font-bold text-amber-700">{formatMoney(successData.extraAmount)}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 col-span-2">
-                <p className="text-xs text-gray-400 font-bold mb-1">বরাদ্দ</p>
+                <p className="text-xs text-gray-500 font-bold mb-1">বরাদ্দ</p>
                 <p className="font-bold text-gray-900">{formatMoney(successData.allocatedAmount)}</p>
               </div>
             </div>
 
             <div className="flex gap-3 mt-8 justify-center flex-wrap">
-              <a href={`/api/receipts/${successData.id}`} target="_blank" rel="noreferrer" className="btn-emerald">
+              <a href={`/donations/${successData.id}/receipt`} target="_blank" rel="noreferrer" className="btn-emerald">
                 <Eye size={17} /> রসিদ প্রিভিউ
               </a>
-              <a href={`/api/receipts/${successData.id}?download=1`} download={`Receipt-${successData.receipt}.jpg`} className="btn-outline">
+              <a href={`/donations/${successData.id}/receipt?print=1`} target="_blank" rel="noopener noreferrer" className="btn-outline">
                 <Download size={17} /> ডাউনলোড
               </a>
               <button onClick={() => setSuccessData(null)} className="btn-outline">
@@ -639,7 +639,7 @@ export default function JomaEntryPage() {
           role="dialog"
           aria-modal="true"
           aria-label="জমা এন্ট্রি নিশ্চিত করুন"
-          className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
+          className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
         >
           <div className="bg-emerald-600 p-6 text-white">
             <h2 className="text-xl font-black font-shadhinata">জমা এন্ট্রি নিশ্চিত করুন</h2>
@@ -648,19 +648,19 @@ export default function JomaEntryPage() {
           <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
             {/* Member */}
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <User className="w-5 h-5 text-emerald-600 shrink-0" />
+              <User className="w-5 h-5 text-emerald-700 shrink-0" />
               <div>
-                <p className="text-xs text-gray-400 font-bold">সদস্য</p>
+                <p className="text-xs text-gray-500 font-bold">সদস্য</p>
                 <p className="font-bold text-gray-900">{selectedMember?.name || "—"}</p>
               </div>
             </div>
 
             {/* Payment — the cash handed over; the split below derives from it */}
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <Banknote className="w-5 h-5 text-emerald-600 shrink-0" />
+              <Banknote className="w-5 h-5 text-emerald-700 shrink-0" />
               <div>
-                <p className="text-xs text-gray-400 font-bold">মোট নগদ</p>
-                <p className="font-black text-emerald-600 text-lg">{formatMoney(parseFloat(form.paymentAmount) || 0)}</p>
+                <p className="text-xs text-gray-500 font-bold">মোট নগদ</p>
+                <p className="font-black text-emerald-700 text-lg">{formatMoney(parseFloat(form.paymentAmount) || 0)}</p>
               </div>
             </div>
 
@@ -682,9 +682,9 @@ export default function JomaEntryPage() {
 
             {/* Coverage */}
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <Calendar className="w-5 h-5 text-emerald-600 shrink-0" />
+              <Calendar className="w-5 h-5 text-emerald-700 shrink-0" />
               <div>
-                <p className="text-xs text-gray-400 font-bold">যে মাসের জন্য জমা</p>
+                <p className="text-xs text-gray-500 font-bold">যে মাসের জন্য জমা</p>
                 <p className="font-bold text-gray-900">
                   {form.coverageMode === "range"
                     ? `${monthLabel(form.coverageStartMonth)} → ${monthLabel(form.coverageEndMonth)}`
@@ -695,7 +695,7 @@ export default function JomaEntryPage() {
 
             {/* Allocation breakdown */}
             <div className="p-4 bg-gray-50 rounded-xl">
-              <p className="text-xs text-gray-400 font-bold mb-3">বরাদ্দ বিবরণ</p>
+              <p className="text-xs text-gray-500 font-bold mb-3">বরাদ্দ বিবরণ</p>
               <div className="space-y-2">
                 {allocationRows.map((row) => (
                   <div key={row.month} className="flex justify-between text-sm">
@@ -711,7 +711,7 @@ export default function JomaEntryPage() {
                 )}
                 <div className="flex justify-between text-sm font-black pt-2 border-t-2 border-gray-200">
                   <span>মোট বরাদ্দ</span>
-                  <span className="text-emerald-600">{formatMoney(autoAllocatable)}</span>
+                  <span className="text-emerald-700">{formatMoney(autoAllocatable)}</span>
                 </div>
               </div>
             </div>
@@ -723,15 +723,15 @@ export default function JomaEntryPage() {
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-gray-500">{selectedMember ? formatMoney(currentMonthPledge) : "—"}</span>
                   <TrendingDown className="w-4 h-4 text-amber-500" />
-                  <span className="font-bold text-emerald-600">{formatMoney(parseFloat(form.newPledgeAmount) || 0)}</span>
-                  <span className="text-gray-400 text-xs">থেকে {monthLabel(form.pledgeEffectiveMonth)}</span>
+                  <span className="font-bold text-emerald-700">{formatMoney(parseFloat(form.newPledgeAmount) || 0)}</span>
+                  <span className="text-gray-500 text-xs">থেকে {monthLabel(form.pledgeEffectiveMonth)}</span>
                 </div>
               </div>
             )}
 
             {form.note && (
               <div className="p-3 bg-gray-50 rounded-xl">
-                <p className="text-xs text-gray-400 font-bold mb-1">জমার নোট</p>
+                <p className="text-xs text-gray-500 font-bold mb-1">জমার নোট</p>
                 <p className="text-sm text-gray-700">{form.note}</p>
               </div>
             )}
@@ -763,13 +763,13 @@ export default function JomaEntryPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-12">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-30">
+      <div className="bg-white border-b border-gray-100 sticky top-16 lg:top-0 z-30">
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-          <button onClick={handleCancel} className="flex items-center gap-2 text-gray-500 hover:text-emerald-600 font-bold transition-colors">
+          <button onClick={handleCancel} className="flex items-center gap-2 text-gray-500 hover:text-emerald-700 font-bold transition-colors">
             <ArrowLeft size={18} /> ফিরে যান
           </button>
           <div className="flex items-center gap-2">
-            <ReceiptText className="w-5 h-5 text-emerald-600" />
+            <ReceiptText className="w-5 h-5 text-emerald-700" />
             <h1 className="text-lg font-black text-gray-900 font-shadhinata">জমা এন্ট্রি</h1>
           </div>
           <div className="w-20" /> {/* spacer */}
@@ -791,14 +791,14 @@ export default function JomaEntryPage() {
             {/* Member & Payment Details */}
             <div className="card-premium p-5 space-y-5">
               <h2 className="font-bold text-gray-900 flex items-center gap-2">
-                <User className="w-4 h-4 text-emerald-600" /> সদস্য ও জমার তথ্য
+                <User className="w-4 h-4 text-emerald-700" /> সদস্য ও জমার তথ্য
               </h2>
 
               {/* Member search */}
               <div className="relative">
                 <label className="text-xs font-bold text-gray-500 mb-1 block">সদস্য নির্বাচন করুন *</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input
                     type="text"
                     role="combobox"
@@ -838,11 +838,11 @@ export default function JomaEntryPage() {
                         className="w-full text-left px-4 py-3 hover:bg-emerald-50 transition-colors border-b border-gray-50 last:border-0"
                       >
                         <p className="font-bold text-gray-900 text-sm">{m.name}</p>
-                        <p className="text-xs text-gray-400">{m.phone || "ফোন নেই"} · {m.status === "inactive" ? "নিষ্ক্রিয়" : "সক্রিয়"}</p>
+                        <p className="text-xs text-gray-500">{m.phone || "ফোন নেই"} · {m.status === "inactive" ? "নিষ্ক্রিয়" : "সক্রিয়"}</p>
                       </button>
                       ))
                     ) : (
-                      <p className="px-4 py-3 text-sm text-gray-400 font-medium">কোনো সদস্য পাওয়া যায়নি</p>
+                      <p className="px-4 py-3 text-sm text-gray-500 font-medium">কোনো সদস্য পাওয়া যায়নি</p>
                     )}
                   </div>
                 )}
@@ -853,17 +853,17 @@ export default function JomaEntryPage() {
                 <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-emerald-600 font-bold">বর্তমান মাসিক অঙ্গীকার</p>
+                      <p className="text-xs text-emerald-700 font-bold">বর্তমান মাসিক অঙ্গীকার</p>
                       <p className="text-lg font-black text-emerald-700">{formatMoney(currentMonthPledge)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-emerald-600 font-bold">মাসিক চাঁদা</p>
+                      <p className="text-xs text-emerald-700 font-bold">মাসিক চাঁদা</p>
                       <p className="text-sm font-bold text-gray-700">{monthLabel(curMonth)}</p>
                     </div>
                   </div>
                   {memberPledgeHistory.length > 0 && (
                     <details className="mt-2">
-                      <summary className="text-xs text-emerald-600 cursor-pointer font-bold">ইতিহাস দেখুন</summary>
+                      <summary className="text-xs text-emerald-700 cursor-pointer font-bold">ইতিহাস দেখুন</summary>
                       <div className="mt-2 space-y-1 text-xs">
                         {memberPledgeHistory.map((h, i) => (
                           <div key={i} className="flex justify-between text-gray-600">
@@ -881,7 +881,7 @@ export default function JomaEntryPage() {
               <div>
                 <label className="text-xs font-bold text-gray-500 mb-1 block">মোট নগদ *</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">৳</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">৳</span>
                   <input
                     type="number"
                     inputMode="decimal"
@@ -925,7 +925,7 @@ export default function JomaEntryPage() {
                 <div className="w-full px-3 py-3 bg-amber-50 border border-amber-100 rounded-xl text-sm font-black text-amber-700">
                   {formatMoney(autoExtra)}
                 </div>
-                <p className="text-[11px] text-gray-400 mt-1">জমার পরিমাণ থেকে কভারেজ যতটুকু নেয় না, বাকিটুকু এখানে চলে আসে; মাসিক বরাদ্দে যাবে না, রসিদে আলাদাভাবে দেখানো হবে।</p>
+                <p className="text-[11px] text-gray-500 mt-1">জমার পরিমাণ থেকে কভারেজ যতটুকু নেয় না, বাকিটুকু এখানে চলে আসে; মাসিক বরাদ্দে যাবে না, রসিদে আলাদাভাবে দেখানো হবে।</p>
               </div>
 
               {/* Payment date */}
@@ -948,10 +948,10 @@ export default function JomaEntryPage() {
                   onChange={(e) => set("paymentMethod", e.target.value)}
                   className="w-full px-3 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
                 >
-                  <option value="cash">নগদ (Cash)</option>
-                  <option value="bkash">বিকাশ (bKash)</option>
-                  <option value="nagad">নগদ (Nagad)</option>
-                  <option value="bank">ব্যাংক (Bank)</option>
+                  <option value="cash">ক্যাশ</option>
+                  <option value="bkash">বিকাশ</option>
+                  <option value="nagad">নগদ</option>
+                  <option value="bank">ব্যাংক</option>
                 </select>
               </div>
 
@@ -998,7 +998,7 @@ export default function JomaEntryPage() {
             {/* Coverage & Allocation */}
             <div className="card-premium p-5 space-y-4">
               <h2 className="font-bold text-gray-900 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-emerald-600" /> জমার কভারেজ ও বরাদ্দ
+                <Calendar className="w-4 h-4 text-emerald-700" /> জমার কভারেজ ও বরাদ্দ
               </h2>
 
               {/* Coverage mode */}
@@ -1011,7 +1011,7 @@ export default function JomaEntryPage() {
                       set("coverageMode", "single");
                       set("coverageEndMonth", form.coverageStartMonth);
                     }}
-                    className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                    className="w-4 h-4 text-emerald-700 focus:ring-emerald-500"
                   />
                   <span className="text-sm font-bold text-gray-700">একক মাস</span>
                 </label>
@@ -1020,7 +1020,7 @@ export default function JomaEntryPage() {
                     type="radio"
                     checked={form.coverageMode === "range"}
                     onChange={() => set("coverageMode", "range")}
-                    className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                    className="w-4 h-4 text-emerald-700 focus:ring-emerald-500"
                   />
                   <span className="text-sm font-bold text-gray-700">মাস সীমা</span>
                 </label>
@@ -1074,7 +1074,7 @@ export default function JomaEntryPage() {
             <div className="card-premium p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-bold text-gray-900 flex items-center gap-2">
-                  <Pencil className="w-4 h-4 text-emerald-600" /> মাসিক অঙ্গীকার পরিবর্তন
+                  <Pencil className="w-4 h-4 text-emerald-700" /> মাসিক অঙ্গীকার পরিবর্তন
                 </h2>
                 <button
                   type="button"
@@ -1093,7 +1093,7 @@ export default function JomaEntryPage() {
                 <div className="space-y-4">
                   {selectedMember && (
                     <div className="p-3 bg-gray-50 rounded-xl">
-                      <p className="text-xs text-gray-400 font-bold">বর্তমান চাঁদা</p>
+                      <p className="text-xs text-gray-500 font-bold">বর্তমান চাঁদা</p>
                       <p className="text-lg font-black text-gray-900">{formatMoney(currentMonthPledge)}</p>
                     </div>
                   )}
@@ -1101,7 +1101,7 @@ export default function JomaEntryPage() {
                     <div>
                       <label className="text-xs font-bold text-gray-500 mb-1 block">নতুন চাঁদা *</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">৳</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">৳</span>
                         <input
                           type="number"
                           inputMode="decimal"
@@ -1151,7 +1151,7 @@ export default function JomaEntryPage() {
           <div className="lg:col-span-2 space-y-5">
             <div className="card-premium p-5 sticky top-20">
               <h2 className="font-bold text-gray-900 flex items-center gap-2 mb-4">
-                <Info className="w-4 h-4 text-emerald-600" /> বরাদ্দ পর্বীক্ষণ
+                <Info className="w-4 h-4 text-emerald-700" /> বরাদ্দ পর্বীক্ষণ
               </h2>
 
               {/* Payment summary — the same three numbers the confirmation
@@ -1182,10 +1182,10 @@ export default function JomaEntryPage() {
                     <div key={row.month} className="flex justify-between items-center text-sm py-2 border-b border-gray-50 last:border-0">
                       <div>
                         <span className="text-gray-700 font-medium">{monthLabel(row.month)}</span>
-                        <span className="text-xs text-gray-400 ml-2">{formatMoney(row.expected)}</span>
+                        <span className="text-xs text-gray-500 ml-2">{formatMoney(row.expected)}</span>
                       </div>
                       <span className={`font-bold ${
-                        row.allocationType === "unallocated" ? "text-amber-600" : "text-emerald-600"
+                        row.allocationType === "unallocated" ? "text-amber-600" : "text-emerald-700"
                       }`}>
                         {formatMoney(row.allocated)}
                       </span>
@@ -1193,7 +1193,7 @@ export default function JomaEntryPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 text-center py-6">সদস্য ও জমার পরিমাণ নির্বাচন করুন</p>
+                <p className="text-xs text-gray-500 text-center py-6">সদস্য ও জমার পরিমাণ নির্বাচন করুন</p>
               )}
 
               {/* Status — মোট নগদ / বরাদ্দ / অতিরিক্ত জমা are in the summary
@@ -1226,7 +1226,7 @@ export default function JomaEntryPage() {
                 {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> সংরক্ষণ হচ্ছে...</> : <><CheckCircle2 className="w-4 h-4" /> জমা এন্ট্রি সংরক্ষণ করুন</>}
               </button>
               {saveHint && (
-                <p className="text-[11px] text-gray-400 text-center mt-2 font-medium">{saveHint}</p>
+                <p className="text-[11px] text-gray-500 text-center mt-2 font-medium">{saveHint}</p>
               )}
             </div>
           </div>

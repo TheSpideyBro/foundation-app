@@ -4,7 +4,7 @@
 
 - **Provider**: Supabase Auth (email + phone)
 - **Session Management**: Cookie-based via `@supabase/ssr`
-- **Middleware**: `middleware.ts` checks session on every request, redirects unauthenticated users to `/login`
+- **Middleware**: `proxy.ts` checks session on every request, redirects unauthenticated users to `/login`
 - **Public Routes**: `/`, `/login`, `/signup`, PWA assets (`/manifest.json`, `/sw.js`, icons)
 - **Phone Login**: Converted to virtual email format `{phone}@foundation.local` for Supabase Auth compatibility
 

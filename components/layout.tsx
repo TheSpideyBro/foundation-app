@@ -52,8 +52,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
 
     document.addEventListener("keydown", handleKeyDown);
+    // U-L7: lock body scroll while the drawer is open
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = prevOverflow;
       // Return focus to the hamburger on close
       hamburgerRef.current?.focus();
     };

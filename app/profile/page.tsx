@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
+import { formatMoney } from "@/lib/utils";
+import Modal from "@/components/Modal";
 import { 
   User, Phone, MapPin, Award, 
   Calendar, Download, ShieldCheck, 
@@ -130,7 +132,7 @@ export default function ProfilePage() {
         <h2 className="text-xl font-bold font-shadhinata text-gray-900 mb-3">সদস্য তথ্য পাওয়া যায়নি</h2>
         <p className="text-sm text-gray-500 mb-6">আপনার অ্যাকাউন্টের সাথে কোনো মেম্বার প্রোফাইল লিঙ্ক করা নেই।</p>
         <div className="p-4 bg-emerald-50 rounded-2xl">
-          <p className="text-xs text-emerald-600 font-bold uppercase mb-1">আপনার আইডি</p>
+          <p className="text-xs text-emerald-700 font-bold uppercase mb-1">আপনার আইডি</p>
           <p className="text-sm font-bold text-gray-700">{phone || user?.email}</p>
         </div>
       </div>
@@ -155,7 +157,7 @@ export default function ProfilePage() {
           </div>
           <button 
             onClick={() => setIsEditing(true)}
-            className="px-6 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl text-sm font-bold transition-all"
+            className="px-6 py-3 min-h-[44px] inline-flex items-center bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl text-sm font-bold transition-all"
           >
             এডিট প্রোফাইল
           </button>
@@ -163,24 +165,22 @@ export default function ProfilePage() {
       </div>
 
       {/* Edit Modal */}
-      {isEditing && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsEditing(false)}></div>
-          <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+      <Modal open={isEditing} onClose={() => setIsEditing(false)} label="প্রোফাইল এডিট করুন">
             <div className="p-6 sm:p-8 border-b border-gray-100 flex items-center justify-between bg-emerald-600 text-white">
               <div>
                 <h2 className="text-xl font-bold font-shadhinata">প্রোফাইল এডিট করুন</h2>
                 <p className="text-emerald-100 text-xs mt-1">আপনার ব্যক্তিগত তথ্য আপডেট করুন</p>
               </div>
-              <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+              <button onClick={() => setIsEditing(false)} aria-label="বন্ধ" className="p-2 hover:bg-white/10 rounded-xl transition-colors">
                 <X size={24} />
               </button>
             </div>
 
             <form onSubmit={handleUpdateProfile} className="p-6 sm:p-8 space-y-5">
               <div className="space-y-2">
-                <label className="text-[13px] font-bold text-gray-700 ml-1">পূর্ণ নাম (বাংলায়) *</label>
+                <label htmlFor="profile-name" className="text-[13px] font-bold text-gray-700 ml-1">পূর্ণ নাম (বাংলায়) *</label>
                 <input 
+                  id="profile-name"
                   type="text"
                   value={editForm.name}
                   onChange={(e) => setEditForm({...editForm, name: e.target.value})}
@@ -190,8 +190,9 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[13px] font-bold text-gray-700 ml-1">ফোন নম্বর</label>
+                <label htmlFor="profile-phone" className="text-[13px] font-bold text-gray-700 ml-1">ফোন নম্বর</label>
                 <input 
+                  id="profile-phone"
                   type="tel"
                   value={editForm.phone}
                   onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
@@ -200,8 +201,9 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[13px] font-bold text-gray-700 ml-1">ঠিকানা</label>
+                <label htmlFor="profile-address" className="text-[13px] font-bold text-gray-700 ml-1">ঠিকানা</label>
                 <input 
+                  id="profile-address"
                   type="text"
                   value={editForm.address}
                   onChange={(e) => setEditForm({...editForm, address: e.target.value})}
@@ -233,20 +235,18 @@ export default function ProfilePage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-1 space-y-6">
           <div className="card-premium p-6">
             <h3 className="font-bold font-shadhinata mb-4 flex items-center gap-2">
-              <Activity size={18} className="text-emerald-600" /> অবদান
+              <Activity size={18} className="text-emerald-700" /> অবদান
             </h3>
             <div className="space-y-4">
               <div className="p-4 bg-emerald-50 rounded-2xl">
-                <p className="text-[10px] text-emerald-600 font-bold uppercase mb-1">মোট অনুদান</p>
-                <p className="text-2xl font-bold text-emerald-700 font-baloo">৳{donations.reduce((sum, d) => sum + Number(d.amount), 0).toLocaleString()}</p>
+                <p className="text-[10px] text-emerald-700 font-bold uppercase mb-1">মোট অনুদান</p>
+                <p className="text-2xl font-bold text-emerald-700 font-baloo">{formatMoney(donations.reduce((sum, d) => sum + Number(d.amount), 0))}</p>
               </div>
             </div>
           </div>
@@ -262,9 +262,9 @@ export default function ProfilePage() {
                 <div key={i} className="p-6 flex items-center justify-between hover:bg-gray-50 transition-all">
                   <div>
                     <p className="font-bold text-gray-900">{new Date(d.date).toLocaleDateString('bn-BD')}</p>
-                    <p className="text-xs text-gray-400">{d.donation_month || 'সাধারণ'}</p>
+                    <p className="text-xs text-gray-500">{d.donation_month || 'সাধারণ'}</p>
                   </div>
-                  <p className="text-lg font-bold text-emerald-600 font-shadhinata">৳{Number(d.amount).toLocaleString()}</p>
+                  <p className="text-lg font-bold text-emerald-700 font-baloo">{formatMoney(Number(d.amount))}</p>
                 </div>
               ))}
             </div>
@@ -273,8 +273,8 @@ export default function ProfilePage() {
       </div>
       <div className="mt-12 pt-8 border-t border-gray-100 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-full border border-gray-100">
-          <ShieldCheck size={14} className="text-emerald-600" />
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+          <ShieldCheck size={14} className="text-emerald-700" />
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
             Developed by Saddam Hossain Akash
           </p>
         </div>

@@ -3,7 +3,6 @@ import {
   Heart, ChevronRight, ArrowRight, 
   Phone, Globe, Zap, Calendar, Award, ShieldCheck
 } from "lucide-react";
-import Image from "next/image";
 
 export default function LandingPage() {
   return (
@@ -26,6 +25,10 @@ export default function LandingPage() {
               সদস্য হন <ArrowRight size={16} />
             </Link>
           </div>
+          {/* U-M19: mobile nav showed brand only — compact login CTA for small screens */}
+          <Link href="/login" className="md:hidden inline-flex items-center min-h-[44px] px-4 text-sm font-bold text-emerald-700">
+            লগইন
+          </Link>
         </div>
       </nav>
 
@@ -103,7 +106,7 @@ export default function LandingPage() {
       <section className="py-20">
         <div className="max-w-5xl mx-auto px-6">
           <div className="bg-emerald-900 rounded-[3rem] p-12 md:p-20 text-center relative overflow-hidden shadow-2xl shadow-emerald-900/40">
-            <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+            <div className="absolute top-0 left-0 w-full h-full bg-[url('/patterns/cubes.png')] opacity-10"></div>
             <div className="relative z-10">
               <h2 className="text-4xl md:text-5xl font-bold text-white font-shadhinata mb-8">আজই আমাদের ফাউন্ডেশনের অংশ হোন</h2>
               <p className="text-emerald-100/70 text-lg mb-12 max-w-xl mx-auto">একত্রে আমরা গড়বো এক সুন্দর আগামী। আপনার সামান্য অবদান হতে পারে কারো জীবনের বড় পরিবর্তন।</p>
@@ -129,8 +132,8 @@ export default function LandingPage() {
             <p className="text-[10px] text-gray-300 font-medium mt-1">Developed by Saddam Hossain Akash</p>
           </div>
           <div className="flex items-center gap-6">
-            <span className="text-gray-400" aria-hidden="true"><Phone size={20} /></span>
-            <span className="text-gray-400" aria-hidden="true"><Globe size={20} /></span>
+            <a href="tel:01840828010" aria-label="ফোন করুন: ০১৮৪০-৮২৮০১০" className="text-gray-400 hover:text-emerald-600 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center"><Phone size={20} /></a>
+            <a href="tel:01814948224" aria-label="ফোন করুন: ০১৮১৪-৯৪৮২২৪" className="text-gray-400 hover:text-emerald-600 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center"><Globe size={20} /></a>
           </div>
         </div>
       </footer>
