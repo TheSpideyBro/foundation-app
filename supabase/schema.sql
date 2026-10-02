@@ -314,6 +314,10 @@ BEGIN
 
   UPDATE public.donations SET created_by = NULL WHERE created_by = target_user_id;
   UPDATE public.donations SET collected_by = NULL WHERE collected_by = target_user_id;
+  UPDATE public.member_pledge_history SET created_by = NULL WHERE created_by = target_user_id;
+  UPDATE public.payment_allocations SET created_by = NULL WHERE created_by = target_user_id;
+  UPDATE public.expenses SET created_by = NULL WHERE created_by = target_user_id;
+  UPDATE public.notices SET created_by = NULL WHERE created_by = target_user_id;
   DELETE FROM auth.users WHERE id = target_user_id;
 END;
 $function$;
@@ -394,12 +398,6 @@ BEGIN
   IF v_token_role = 'service_role' THEN RETURN NEW; END IF;
   SELECT role INTO v_role FROM public.users WHERE id = auth.uid();
   IF v_role IN ('admin', 'treasurer') THEN RETURN NEW; END IF;
-  IF NEW.id IS DISTINCT FROM OLD.id
-     OR NEW.name IS DISTINCT FROM OLD.name
-     OR NEW.address IS DISTINCT FROM OLD.address
-     OR NEW.phone IS DISTINCT FROM OLD.phone THEN
-    RETURN NEW;
-  END IF;
   IF NEW.monthly_pledge IS DISTINCT FROM OLD.monthly_pledge
      OR NEW.status IS DISTINCT FROM OLD.status
      OR NEW.join_date IS DISTINCT FROM OLD.join_date
