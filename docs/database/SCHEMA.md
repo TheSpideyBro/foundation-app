@@ -36,6 +36,7 @@ Foundation members who pay monthly pledges.
 | Column | Type | Notes |
 |--------|------|-------|
 | id | UUID PK | |
+| member_code | TEXT | Excel-based member ID (1-44), unique, nullable |
 | name | TEXT | Bengali name |
 | phone | TEXT | |
 | address | TEXT | |
