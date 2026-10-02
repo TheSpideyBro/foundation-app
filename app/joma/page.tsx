@@ -20,6 +20,7 @@ import {
 } from "@/lib/payment-ledger";
 import { useAuth } from "@/components/providers";
 import { isStaff as hasStaffRole } from "@/lib/auth";
+import ReceiptJpegButton from "@/components/ReceiptJpegButton";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -620,9 +621,9 @@ export default function JomaEntryPage() {
               <a href={`/donations/${successData.id}/receipt`} target="_blank" rel="noreferrer" className="btn-emerald">
                 <Eye size={17} /> রসিদ প্রিভিউ
               </a>
-              <a href={`/donations/${successData.id}/receipt?print=1`} target="_blank" rel="noopener noreferrer" className="btn-outline">
+              <ReceiptJpegButton donationId={successData.id} mode="download" className="btn-outline" title="রসিদ ডাউনলোড (JPG)" ariaLabel="রসিদ ডাউনলোড">
                 <Download size={17} /> ডাউনলোড
-              </a>
+              </ReceiptJpegButton>
               <button onClick={() => setSuccessData(null)} className="btn-outline">
                 <Plus size={17} /> নতুন জমা
               </button>

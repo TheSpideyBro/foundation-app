@@ -61,8 +61,8 @@ Complete feature inventory with route, role access, and implementation status.
 ### 7b. Automatic Receipt Delivery (WhatsApp) — F3
 - **Routes**: `POST /api/payments` (auto), `POST /api/notify/whatsapp` (manual resend)
 - **Roles**: staff (treasurer, admin)
-- **Implementation**: `lib/receipt-notify.ts`, `supabase/migrations/20261002_f3_notifications.sql`
-- **Description**: Every জমা automatically sends a WhatsApp receipt text (Bengali, with amount/date/receipt_no + public `/verify` link) to the member's phone — skips gracefully when the member has no phone or WhatsApp isn't configured, and never fails the payment. Joma form has a "WhatsApp-এ রসিদ পাঠান" checkbox (default on); the success screen shows delivery status. Donation cards show a "পাঠানো" badge when delivered and a staff-only resend button otherwise. All attempts are logged to the `notifications` table (recipient, channel, status, provider id, error). The table's `channel` already supports `sms` for a future SMS provider — none is configured yet.
+- **Implementation**: `lib/receipt-notify.ts`, `supabase/migrations/20261002_f3_notifications.sql`, `components/ReceiptJpegButton.tsx`, `lib/receipt-props.ts`
+- **Description**: Every জমা automatically sends a WhatsApp receipt text (Bengali, with amount/date/receipt_no + public `/verify` link) to the member's phone — skips gracefully when the member has no phone or WhatsApp isn't configured, and never fails the payment. Joma form has a "WhatsApp-এ রসিদ পাঠান" checkbox (default on); the success screen shows delivery status. Donation cards show a "পাঠানো" badge when delivered and a staff-only resend button otherwise. All attempts are logged to the `notifications` table (recipient, channel, status, provider id, error). The table's `channel` already supports `sms` for a future SMS provider — none is configured yet. **Receipt share sends the premium receipt as a JPG image** (native share sheet via `ReceiptJpegButton`, rasterized off-screen with `html-to-image`) and **download saves a JPEG file** — on donation cards, the joma success screen, and the receipt page action bar.
 
 ## Admin Features
 

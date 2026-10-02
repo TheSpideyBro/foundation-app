@@ -25,6 +25,13 @@
     border-color: var(--color-border, currentColor);
   }
 
+  html, body {
+    /* overflow-x: clip (not hidden) — clips horizontal overflow without
+       creating a scroll container, so position:fixed descendants (mobile
+       header / bottom nav) stay pinned to the viewport while scrolling. */
+    overflow-x: clip;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-text-primary);
