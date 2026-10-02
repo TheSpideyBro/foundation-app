@@ -59,14 +59,14 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
       <div className="min-h-screen bg-[#FDFDFC] flex flex-col items-center justify-center p-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-md w-full text-center space-y-4">
           <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
-            ⏳
+            <span aria-hidden="true">⏳</span>
           </div>
           <h1 className="text-xl font-bold font-shadhinata text-gray-900">
             অ্যাকাউন্ট অনুমোদনের অপেক্ষায়
           </h1>
           <p className="text-sm text-gray-500 leading-relaxed">
             আপনার অ্যাকাউন্টটি তৈরি হয়েছে, কিন্তু এখনো অ্যাডমিন কর্তৃক অনুমোদিত হয়নি।
-            অ্যাডমিন অনুমোদন দিলে আপনি সমস্ত ফিচার ব্যবহার করতে পারবেন।
+            অ্যাডমিন অনুমোদন দিলে আপনি সব সুবিধা ব্যবহার করতে পারবেন।
           </p>
           <button
             onClick={async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Printer, ArrowLeft, Shield, Loader2 } from "lucide-react";
@@ -117,7 +117,7 @@ export default function ReceiptViewPage() {
           setBatchAmount(
             batchRows.reduce((sum: number, r: { amount: number }) => sum + Number(r.amount), 0)
           );
-          setBatchReceiptNo(d.receipt_no ? `${d.receipt_no} (Batch)` : null);
+          setBatchReceiptNo(d.receipt_no ? `${d.receipt_no} (ব্যাচ)` : null);
         }
       }
     }
@@ -137,6 +137,32 @@ export default function ReceiptViewPage() {
       setVerifyUrl(null);
     }
   }, [donation?.receipt_no]);
+
+  // Query-param modes, read client-side only (same hydration-safe pattern —
+  // no useSearchParams, which would need a Suspense boundary):
+  //   ?embed=1 → chromeless embed for the donations-page preview iframe
+  //               (hides the action bar; the app shell is hidden via <style>)
+  //   ?print=1 → auto-print once the receipt has loaded (download action)
+  const [isEmbed, setIsEmbed] = useState(false);
+  const [autoPrint, setAutoPrint] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setIsEmbed(params.get("embed") === "1");
+    setAutoPrint(params.get("print") === "1");
+  }, []);
+
+  // ?print=1: print exactly once after load, only when the viewer may see
+  // the receipt. The ref guards against StrictMode double-effects.
+  const printedRef = useRef(false);
+  useEffect(() => {
+    if (!autoPrint || loading || !donation) return;
+    const viewable =
+      isStaff || (memberId !== null && memberId === donation.member_id);
+    if (!viewable || printedRef.current) return;
+    printedRef.current = true;
+    const t = window.setTimeout(() => window.print(), 500);
+    return () => window.clearTimeout(t);
+  }, [autoPrint, loading, donation, isStaff, memberId]);
 
   if (loading) {
     return (
@@ -223,6 +249,11 @@ export default function ReceiptViewPage() {
       <style>{`
         @media print {
           .no-print { display: none !important; }
+          /* U-M10: the app shell (fixed mobile header, bottom nav, desktop
+             sidebar) is not .no-print — hide it explicitly so only the
+             receipt prints. The ?print=1 download tab depends on this. */
+          header, aside, nav { display: none !important; }
+          main { margin-left: 0 !important; padding: 0 !important; }
           body { background: #fff !important; }
           .receipt-stage { background: #fff !important; padding: 0 !important; }
           .receipt-paper {
@@ -233,25 +264,35 @@ export default function ReceiptViewPage() {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
+      {isEmbed && (
+        <style>{`
+          /* ?embed=1: the page renders inside the donations preview iframe —
+             hide the app shell and reset the shell's main offsets. */
+          header, aside, nav { display: none !important; }
+          main { margin-left: 0 !important; padding: 0 !important; }
+        `}</style>
+      )}
 
-      <div className="receipt-stage min-h-screen bg-[#0a0f0d] px-4 py-8 font-akkas sm:py-12">
-        <div className="no-print mx-auto mb-8 flex max-w-2xl items-center justify-between">
-          <Link
-            href="/donations"
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-stone-200 transition hover:border-white/30 hover:text-white"
-          >
-            <ArrowLeft size={16} />
-            জমা তালিকা
-          </Link>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-full bg-[#C9A227] px-5 py-2 text-sm font-bold text-[#022C22] shadow-[0_8px_24px_rgba(201,162,39,0.35)] transition hover:brightness-110"
-          >
-            <Printer size={16} />
-            প্রিন্ট করুন
-          </button>
-        </div>
+      <div className={`receipt-stage min-h-screen px-4 py-8 font-akkas sm:py-12 ${isEmbed ? "bg-[#F4F1EA]" : "bg-[#0a0f0d]"}`}>
+        {!isEmbed && (
+          <div className="no-print mx-auto mb-8 flex max-w-2xl items-center justify-between">
+            <Link
+              href="/donations"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-stone-200 transition hover:border-white/30 hover:text-white"
+            >
+              <ArrowLeft size={16} />
+              জমা তালিকা
+            </Link>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-2 rounded-full bg-[#C9A227] px-5 py-2 text-sm font-bold text-[#022C22] shadow-[0_8px_24px_rgba(201,162,39,0.35)] transition hover:brightness-110"
+            >
+              <Printer size={16} />
+              প্রিন্ট করুন
+            </button>
+          </div>
+        )}
 
         <ReceiptPaper
           receiptNo={batchReceiptNo ?? donation.receipt_no}
@@ -276,9 +317,11 @@ export default function ReceiptViewPage() {
           verifyUrl={verifyUrl}
         />
 
-        <p className="no-print mx-auto mt-6 max-w-2xl text-center text-xs text-stone-500">
-          প্রিন্ট করলে উপরের বাটনগুলো বাদ যাবে — শুধু রসিদটি কাগজে আসবে।
-        </p>
+        {!isEmbed && (
+          <p className="no-print mx-auto mt-6 max-w-2xl text-center text-xs text-stone-500">
+            প্রিন্ট করলে উপরের বাটনগুলো বাদ যাবে — শুধু রসিদটি কাগজে আসবে।
+          </p>
+        )}
       </div>
     </>
   );

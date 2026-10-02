@@ -280,7 +280,7 @@ export default function AdminUsersPage() {
       <div className="card-premium overflow-hidden">
         <div className="p-6 border-b border-gray-100">
           <div className="relative max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
             <input 
               type="text" 
               placeholder="ইউজার বা ফোন খুঁজুন..." 
@@ -298,7 +298,7 @@ export default function AdminUsersPage() {
             <div className="p-12 text-center text-red-500 flex flex-col items-center gap-2">
               <AlertCircle size={24} />
               <p>{error}</p>
-              <button onClick={() => fetchUsers()} className="mt-2 text-emerald-600 font-bold">আবার চেষ্টা করুন</button>
+              <button onClick={() => fetchUsers()} className="mt-2 text-emerald-700 font-bold">আবার চেষ্টা করুন</button>
             </div>
           ) : users.length === 0 ? (
             <div className="p-12 text-center text-gray-500 text-[14px]">কোনো ইউজার পাওয়া যায়নি।</div>
@@ -310,19 +310,19 @@ export default function AdminUsersPage() {
             <div key={user.id} className="p-6 hover:bg-gray-50/50 transition-all">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400">
+                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-500">
                     <Users size={20} />
                   </div>
                   <div>
                     <p className="text-[15px] font-bold text-gray-900">{user.members?.name || user.name || 'নাম নেই'}</p>
                     <p className="text-[12px] text-gray-500">{user.email}</p>
-                    {user.phone && <p className="text-[11px] text-gray-400 font-bold">{user.phone}</p>}
+                    {user.phone && <p className="text-[11px] text-gray-500 font-bold">{user.phone}</p>}
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[9px] font-bold uppercase rounded-lg tracking-wider">
-                        {user.role}
+                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-bold rounded-lg">
+                        {user.role === "admin" ? "প্রশাসক" : user.role === "treasurer" ? "কোষাধ্যক্ষ" : "সদস্য"}
                       </span>
                       {user.is_approved ? (
-                        <span className="flex items-center gap-1 text-[9px] text-emerald-600 font-bold uppercase">
+                        <span className="flex items-center gap-1 text-[9px] text-emerald-700 font-bold uppercase">
                           <CheckCircle size={10} /> অনুমোদিত
                         </span>
                       ) : (
@@ -354,7 +354,7 @@ export default function AdminUsersPage() {
                     <div className="flex gap-2">
                       <button 
                         onClick={() => handleOpenLinkModal(user)}
-                        className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-[12px] font-bold hover:bg-emerald-100 transition-all"
+                        className="px-4 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-[12px] font-bold hover:bg-emerald-100 transition-all"
                       >
                         লিঙ্ক করুন
                       </button>
@@ -378,7 +378,7 @@ export default function AdminUsersPage() {
                   <button 
                     onClick={() => handleToggleApproval(user.id, user.is_approved)}
                     className={`px-4 py-1.5 rounded-lg text-[12px] font-bold transition-all ${
-                      user.is_approved ? 'bg-rose-50 text-rose-600 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                      user.is_approved ? 'bg-rose-50 text-rose-600 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                     }`}
                   >
                     {user.is_approved ? 'বাতিল' : 'অনুমোদন'}

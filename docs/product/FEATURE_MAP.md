@@ -183,7 +183,7 @@ Complete feature inventory with route, role access, and implementation status.
 
 ### 27. Receipt Verification (রসিদ যাচাই)
 - **Route**: `/verify/[receipt_no]`
-- **Roles**: public (no login; whitelisted in `middleware.ts`)
+- **Roles**: public (no login; whitelisted in `proxy.ts`)
 - **Implementation**: `app/verify/[receipt_no]/page.tsx`
 - **Description**: Public receipt authenticity check — the QR code printed on every receipt points here. Shows a "যাচাইকৃত রসিদ" badge, receipt number, amount in Bengali digits + words, covered month(s), date, and collector. Donor name is masked (first 3 code points + •••) for privacy. Unknown receipt numbers render a branded "রসিদ পাওয়া যায়নি" card. Lookup runs server-side with the service-role key; only verification fields are selected.
 
@@ -191,4 +191,10 @@ Complete feature inventory with route, role access, and implementation status.
 - **Route**: `/donations/[id]/receipt`
 - **Roles**: admin, treasurer (staff-gated, same pattern as other protected pages)
 - **Implementation**: `app/donations/[id]/receipt/page.tsx`
-- **Description**: Accessible HTML version of the donation receipt (the JPEG is invisible to screen readers). Same data as the JPEG including batch consolidation, with a print button and scoped `@media print` stylesheet. Links out to the public verify page for sharing.
+- **Description**: Accessible HTML version of the donation receipt (the JPEG is invisible to screen readers). Same data as the JPEG including batch consolidation, with a print button and scoped `@media print` stylesheet. Links out to the public verify page for sharing. Supports `?embed=1` (chromeless paper-only render for the donations-page preview iframe) and `?print=1` (auto-opens the print dialog, used by the download flow).
+
+### 29. Offline Fallback
+- **Route**: `/offline`
+- **Roles**: public (no login)
+- **Implementation**: `app/offline/page.tsx`
+- **Description**: Minimal Bengali "no connection" page with inline styles only (renders with zero cached assets). The service worker caches it on install and serves it for failed navigations, so the installed PWA shows a branded offline message instead of a dead network-error page.

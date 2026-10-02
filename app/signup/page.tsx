@@ -131,9 +131,9 @@ export default function SignupPage() {
 
           <form onSubmit={handleSignup} className="space-y-5 sm:space-y-6">
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 ml-1">পূর্ণ নাম (বাংলায়)</label>
+              <label className="text-[11px] font-bold text-gray-500 ml-1">পূর্ণ নাম (বাংলায়)</label>
               <div className="relative group">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-emerald-700 transition-colors" size={18} />
                 <input 
                   type="text" 
                   required 
@@ -146,9 +146,9 @@ export default function SignupPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 ml-1">মোবাইল নম্বর</label>
+              <label className="text-[11px] font-bold text-gray-500 ml-1">মোবাইল নম্বর</label>
               <div className="relative group">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-emerald-700 transition-colors" size={18} />
                 <input 
                   type="text" 
                   required 
@@ -163,9 +163,9 @@ export default function SignupPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-gray-400 ml-1">পাসওয়ার্ড</label>
+                <label className="text-[11px] font-bold text-gray-500 ml-1">পাসওয়ার্ড</label>
                 <div className="relative group">
-                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
+                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-emerald-700 transition-colors" size={18} />
                   <input 
                     type={showPassword ? "text" : "password"} 
                     required 
@@ -179,17 +179,17 @@ export default function SignupPage() {
                     aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
                     aria-pressed={showPassword}
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-emerald-700 transition-colors"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 font-medium ml-1">কমপক্ষে ৬ অক্ষর</p>
+                <p className="text-xs text-gray-500 font-medium ml-1">কমপক্ষে ৬ অক্ষর</p>
               </div>
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-gray-400 ml-1">নিশ্চিত করুন</label>
+                <label className="text-[11px] font-bold text-gray-500 ml-1">নিশ্চিত করুন</label>
                 <div className="relative group">
-                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
+                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-emerald-700 transition-colors" size={18} />
                   <input 
                     type={showConfirmPassword ? "text" : "password"} 
                     required 
@@ -203,7 +203,7 @@ export default function SignupPage() {
                     aria-label={showConfirmPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
                     aria-pressed={showConfirmPassword}
                     onClick={() => setShowConfirmPassword((v) => !v)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-emerald-700 transition-colors"
                   >
                     {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -212,14 +212,14 @@ export default function SignupPage() {
             </div>
 
             {error && (
-              <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-sm font-bold animate-shake">
+              <div role="alert" className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-sm font-bold animate-shake">
                 <CircleX size={18} className="shrink-0" />
                 {error}
               </div>
             )}
 
             {success && (
-              <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 text-emerald-700 text-sm font-bold">
+              <div role="status" className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 text-emerald-700 text-sm font-bold">
                 <CircleCheck size={18} className="shrink-0" />
                 {success}
               </div>
@@ -239,9 +239,9 @@ export default function SignupPage() {
           </form>
 
           <div className="mt-12 pt-8 border-t border-gray-100 text-center">
-            <p className="text-gray-400 text-[14px]">
+            <p className="text-gray-500 text-[14px]">
               ইতিমধ্যেই একাউন্ট আছে? {" "}
-              <Link href="/login" className="text-emerald-600 font-bold hover:underline inline-flex items-center gap-1">
+              <Link href="/login" className="text-emerald-700 font-bold hover:underline inline-flex items-center gap-1">
                 লগইন করুন <LogIn size={14} />
               </Link>
             </p>

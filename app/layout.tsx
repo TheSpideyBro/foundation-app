@@ -36,11 +36,11 @@ const galada = Galada({
 
 // Lipighor "Li Alinur Nakkhatra" — custom Bengali font supplied by Akash,
 // used for the receipt detail rows (replaces Anek Bangla). See app/fonts/
-// (Unicode TTFs only; ANSI variants not for web use).
+// (WOFF2, converted from the supplied Unicode TTFs; ANSI variants not for web use).
 const alinurNakkhatra = localFont({
   src: [
     {
-      path: "./fonts/LiAlinurNakkhatraUnicode-Regular.ttf",
+      path: "./fonts/LiAlinurNakkhatraUnicode-Regular.woff2",
       weight: "400",
       style: "normal",
     },
@@ -51,11 +51,11 @@ const alinurNakkhatra = localFont({
 
 // Lipighor "Li Abu J M Akkas" — custom Bengali font supplied by Akash,
 // now the default body font (replaces Hind Siliguri). See app/fonts/
-// (Unicode TTFs only; ANSI variants not for web use).
+// (WOFF2, converted from the supplied Unicode TTFs; ANSI variants not for web use).
 const abuJmAkkas = localFont({
   src: [
     {
-      path: "./fonts/LiAbuJMAkkasUnicode-Regular.ttf",
+      path: "./fonts/LiAbuJMAkkasUnicode-Regular.woff2",
       weight: "400",
       style: "normal",
     },
@@ -66,11 +66,11 @@ const abuJmAkkas = localFont({
 
 // Lipighor "Li Shadhinata 2.0" — custom Bengali font supplied by Akash,
 // used for the receipt masthead (replaces Sabbir Sorolota). See app/fonts/
-// (Unicode TTFs only; ANSI variants not for web use).
+// (WOFF2, converted from the supplied Unicode TTFs; ANSI variants not for web use).
 const shadhinata = localFont({
   src: [
     {
-      path: "./fonts/LiShadhinata2Unicode-Regular.ttf",
+      path: "./fonts/LiShadhinata2Unicode-Regular.woff2",
       weight: "400",
       style: "normal",
     },
@@ -81,11 +81,11 @@ const shadhinata = localFont({
 
 // Lipighor "Li Chayana Teesta" — custom Bengali script font supplied by Akash,
 // used for the gratitude line and the collector signature (replaces Galada).
-// See app/fonts/ (Unicode TTFs only; ANSI variants not for web use).
+// See app/fonts/ (WOFF2, converted from the supplied Unicode TTFs; ANSI variants not for web use).
 const chayanaTeesta = localFont({
   src: [
     {
-      path: "./fonts/LiChayanaTeestaUnicode-Regular.ttf",
+      path: "./fonts/LiChayanaTeestaUnicode-Regular.woff2",
       weight: "400",
       style: "normal",
     },

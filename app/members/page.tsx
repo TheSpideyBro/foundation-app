@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { todayISO, currentMonthStr } from "@/lib/utils";
+import { todayISO, currentMonthStr, toBengaliNumber } from "@/lib/utils";
+import Modal from "@/components/Modal";
 import { 
   Users, UserPlus, Search, Filter, 
   Phone, MapPin, ChevronRight, MoreHorizontal,
@@ -207,7 +208,7 @@ export default function MembersPage() {
   );
 
   return (
-    <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
+    <div className="p-4 sm:p-8 space-y-8 touch-spacing">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold font-shadhinata text-gray-900 mb-1">সদস্য তালিকা</h1>
@@ -227,10 +228,11 @@ export default function MembersPage() {
       <div className="card-premium overflow-hidden border border-emerald-50 shadow-sm">
         <div className="p-6 border-b border-gray-100 bg-white/50 backdrop-blur-sm">
           <div className="relative max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
             <input 
               type="text" 
               placeholder="সদস্যের নাম বা ফোন খুঁজুন..." 
+              aria-label="সদস্যের নাম বা ফোন খুঁজুন"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-[14px] outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all" 
@@ -239,21 +241,27 @@ export default function MembersPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 sm:p-6 bg-gray-50/50">
-          {filteredMembers.map((member) => (
+          {filteredMembers.length === 0 ? (
+            <div className="col-span-full bg-white rounded-3xl border border-dashed border-gray-200 py-16 text-center">
+              <Search className="mx-auto text-gray-300" size={36} />
+              <p className="mt-3 font-bold text-gray-800">কোনো সদস্য পাওয়া যায়নি</p>
+              <p className="text-sm text-gray-500 mt-1">সার্চ বদলে আবার দেখুন অথবা নতুন সদস্য যোগ করুন</p>
+            </div>
+          ) : filteredMembers.map((member) => (
             <div key={member.id} className="bg-white p-6 rounded-3xl border border-emerald-50/50 hover:shadow-xl hover:shadow-emerald-100/20 transition-all group relative">
               <div className="flex items-start justify-between mb-5">
                 <div className="w-14 h-14 rounded-2xl bg-emerald-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-emerald-100 group-hover:scale-105 transition-transform">
                   {member.name[0]}
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <div className={`px-3 py-1 rounded-full text-[10px] font-bold ${member.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
+                  <div className={`px-3 py-1 rounded-full text-[10px] font-bold ${member.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
                     {member.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                   </div>
                   {isStaff && (
                     <div className="flex items-center gap-1">
                       <button 
                         onClick={() => handleOpenModal(member)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all active:scale-90"
+                        className="p-3 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all active:scale-90"
                         title="এডিট"
                         aria-label="এডিট"
                       >
@@ -262,7 +270,7 @@ export default function MembersPage() {
                       {isAdmin && (
                         <button 
                           onClick={() => handleDelete(member.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all active:scale-90"
+                          className="p-3 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all active:scale-90"
                           title="ডিলিট"
                           aria-label="ডিলিট"
                         >
@@ -286,7 +294,7 @@ export default function MembersPage() {
                             alert("কিউআর কোড তৈরি করা যায়নি");
                           }
                         }}
-                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all active:scale-90"
+                        className="p-3 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all active:scale-90"
                         title="কিউআর কোড"
                         aria-label="কিউআর কোড"
                       >
@@ -294,7 +302,7 @@ export default function MembersPage() {
                       </button>
                       <Link
                         href={`/admin/members/${member.id}`}
-                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all active:scale-90 inline-flex"
+                        className="p-3 min-h-[44px] min-w-[44px] text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all active:scale-90 inline-flex items-center justify-center"
                         title="বিস্তারিত দেখুন"
                         aria-label="বিস্তারিত দেখুন"
                       >
@@ -306,24 +314,24 @@ export default function MembersPage() {
               </div>
               
               <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors font-shadhinata">{member.name}</h3>
-              <p className="text-[11px] text-gray-400 font-bold mb-4">{member.role || 'সদস্য'}</p>
+              <p className="text-[11px] text-gray-500 font-bold mb-4">{member.role || 'সদস্য'}</p>
               
               <div className="space-y-3 pt-4 border-t border-gray-50">
                 <div className="flex items-center gap-3 text-sm text-gray-600 font-medium">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700">
                     <Phone size={14} />
                   </div>
-                  {isStaff ? (member.phone || 'ফোন নেই') : 'পাবলিক নয়'}
+                  {isStaff ? (member.phone ? toBengaliNumber(member.phone) : 'ফোন নেই') : 'পাবলিক নয়'}
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-600 font-medium">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700">
                     <MapPin size={14} />
                   </div>
                   <span className="line-clamp-1">{isStaff ? (member.address || 'ঠিকানা নেই') : 'পাবলিক নয়'}</span>
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
-                  <span className="text-[10px] text-gray-400 font-bold">মাসিক অঙ্গীকার</span>
-                  <span className="text-base font-bold text-emerald-600 font-baloo">৳{effectivePledgeOf(member).toLocaleString("bn-BD")}</span>
+                  <span className="text-[10px] text-gray-500 font-bold">মাসিক অঙ্গীকার</span>
+                  <span className="text-base font-bold text-emerald-700 font-baloo">৳{effectivePledgeOf(member).toLocaleString("bn-BD")}</span>
                 </div>
               </div>
             </div>
@@ -334,10 +342,7 @@ export default function MembersPage() {
 
 
       {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsModalOpen(false)}></div>
-          <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+      <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} label={editingMember ? 'সদস্য এডিট করুন' : 'নতুন সদস্য যোগ করুন'}>
             <div className="p-6 sm:p-8 border-b border-gray-100 flex items-center justify-between bg-emerald-600 text-white">
               <div>
                 <h2 className="text-xl font-bold font-shadhinata">{editingMember ? 'সদস্য এডিট করুন' : 'নতুন সদস্য যোগ করুন'}</h2>
@@ -350,8 +355,9 @@ export default function MembersPage() {
 
             <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5 max-h-[70vh] overflow-y-auto">
               <div className="space-y-2">
-                <label className="text-[13px] font-bold text-gray-700 ml-1">সদস্যের নাম *</label>
-                <input 
+                <label htmlFor="member-name" className="text-[13px] font-bold text-gray-700 ml-1">সদস্যের নাম *</label>
+                <input id="member-name"
+                   
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -363,8 +369,9 @@ export default function MembersPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-gray-700 ml-1">ফোন নম্বর</label>
-                  <input 
+                  <label htmlFor="member-phone" className="text-[13px] font-bold text-gray-700 ml-1">ফোন নম্বর</label>
+                  <input id="member-phone"
+                   
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({...formData, phone: e.target.value})}
@@ -373,8 +380,9 @@ export default function MembersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-gray-700 ml-1">যোগদানের তারিখ *</label>
-                  <input 
+                  <label htmlFor="member-join-date" className="text-[13px] font-bold text-gray-700 ml-1">যোগদানের তারিখ *</label>
+                  <input id="member-join-date"
+                   
                     type="date"
                     value={formData.join_date}
                     onChange={(e) => setFormData({...formData, join_date: e.target.value})}
@@ -385,8 +393,9 @@ export default function MembersPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[13px] font-bold text-gray-700 ml-1">ঠিকানা</label>
-                <input 
+                <label htmlFor="member-address" className="text-[13px] font-bold text-gray-700 ml-1">ঠিকানা</label>
+                <input id="member-address"
+                   
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({...formData, address: e.target.value})}
@@ -397,8 +406,9 @@ export default function MembersPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-gray-700 ml-1">মাসিক অঙ্গীকার (৳)</label>
-                  <input 
+                  <label htmlFor="member-pledge" className="text-[13px] font-bold text-gray-700 ml-1">মাসিক অঙ্গীকার (৳)</label>
+                  <input id="member-pledge"
+                   
                     type="number"
                     inputMode="numeric"
                     value={formData.monthly_pledge}
@@ -408,8 +418,9 @@ export default function MembersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-gray-700 ml-1">কার্যকর মাস</label>
-                  <input
+                  <label htmlFor="member-pledge-month" className="text-[13px] font-bold text-gray-700 ml-1">কার্যকর মাস</label>
+                  <input id="member-pledge-month"
+                  
                     type="month"
                     value={formData.pledge_effective_month}
                     onChange={(e) => setFormData({...formData, pledge_effective_month: e.target.value})}
@@ -417,8 +428,9 @@ export default function MembersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-gray-700 ml-1">স্ট্যাটাস</label>
-                  <select 
+                  <label htmlFor="member-status" className="text-[13px] font-bold text-gray-700 ml-1">স্ট্যাটাস</label>
+                  <select id="member-status"
+                   
                     value={formData.status}
                     onChange={(e) => setFormData({...formData, status: e.target.value})}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
@@ -430,8 +442,9 @@ export default function MembersPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[13px] font-bold text-gray-700 ml-1">অঙ্গীকার পরিবর্তনের নোট</label>
-                <input
+                <label htmlFor="member-pledge-note" className="text-[13px] font-bold text-gray-700 ml-1">অঙ্গীকার পরিবর্তনের নোট</label>
+                <input id="member-pledge-note"
+                  
                   type="text"
                   value={formData.pledge_note}
                   onChange={(e) => setFormData({...formData, pledge_note: e.target.value})}
@@ -464,9 +477,7 @@ export default function MembersPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

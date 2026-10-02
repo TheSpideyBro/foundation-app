@@ -2,11 +2,10 @@
 
 @theme {
   --font-tiro: "Tiro Bangla", serif;
-  --font-hind: "Hind Siliguri", sans-serif;
-  --font-baloo: "Baloo Da 2", "Hind Siliguri", sans-serif;
+  --font-baloo: "Baloo Da 2", sans-serif;
   --font-galada: "Galada", "Tiro Bangla", cursive;
   --font-nakkhatra: "Li Alinur Nakkhatra Unicode", "Anek Bangla", sans-serif;
-  --font-akkas: "Li Abu J M Akkas Unicode", "Hind Siliguri", sans-serif;
+  --font-akkas: "Li Abu J M Akkas Unicode", sans-serif;
   --font-shadhinata: "Li Shadhinata 2.0 Unicode", "Baloo Da 2", sans-serif;
   --font-teesta: "Li Chayana Teesta Unicode", "Tiro Bangla", cursive;
   
@@ -35,7 +34,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-tiro), serif;
+    font-family: var(--font-shadhinata), sans-serif;
     letter-spacing: 0;
   }
 }
@@ -86,6 +85,14 @@
   .mobile-list-card {
     @apply p-4 border-b border-gray-50 last:border-0 flex flex-col gap-2;
   }
+
+  /* U-L1: `touch-spacing` is used on 9 page wrappers but was never defined.
+     It gives touch layouts comfortable scroll clearance below the fixed
+     mobile app bar. Plain class (not @utility) so it works everywhere. */
+  .touch-spacing {
+    scroll-padding-top: 4.5rem;
+    scroll-padding-bottom: 5rem;
+  }
 }
 
 /* Animations */
@@ -112,4 +119,15 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #D1D5DB;
+}
+
+/* U-M20: respect the user's motion preference — entrance animations,
+   spinners and skeletons all stand still. */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

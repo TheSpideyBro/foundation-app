@@ -11,6 +11,18 @@ import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 
+// U-M12: the select stores English values; render Bengali labels everywhere
+// (same pattern as methodLabels in lib/utils.ts).
+const categoryLabels: Record<string, string> = {
+  General: "সাধারণ",
+  Utility: "ইউটিলিটি",
+  Maintenance: "রক্ষণাবেক্ষণ",
+  Event: "অনুষ্ঠান",
+  Charity: "দান/সাহায্য",
+  Other: "অন্যান্য",
+};
+const categoryLabel = (value?: string | null) => (value && categoryLabels[value]) || "অন্যান্য";
+
 export default function ExpensesPage() {
   const { user, role } = useAuth();
   const isAdmin = hasAdminRole(role);
@@ -146,7 +158,7 @@ export default function ExpensesPage() {
   ) : expenses;
 
   if (loading) return (
-    <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500">
+    <div className="p-4 sm:p-8 space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
         <div className="space-y-2">
           <div className="h-9 w-48 bg-gray-200 rounded-xl animate-pulse" />
@@ -179,7 +191,7 @@ export default function ExpensesPage() {
   );
 
   return (
-    <div className="p-4 sm:p-8 space-y-8 animate-in fade-in duration-500 touch-spacing">
+    <div className="p-4 sm:p-8 space-y-8 touch-spacing">
       {actionError && (
         <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-between gap-3">
           <p className="text-sm font-bold text-rose-700">{actionError}</p>
@@ -216,7 +228,7 @@ export default function ExpensesPage() {
       <div className="card-premium overflow-hidden border border-red-50 shadow-sm">
         <div className="p-6 border-b border-gray-100 bg-white/50 backdrop-blur-sm">
           <div className="relative max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
             <input 
               type="text" 
               placeholder="খরচের বিবরণ খুঁজুন..." 
@@ -229,7 +241,7 @@ export default function ExpensesPage() {
 
         <div className="divide-y divide-gray-50 bg-gray-50/30">
           {filteredExpenses.length === 0 ? (
-            <div className="p-20 text-center text-gray-400">
+            <div className="p-20 text-center text-gray-500">
               <TrendingDown size={48} className="mx-auto mb-4 opacity-20" />
               <p className="font-bold font-shadhinata text-sm">কোনো খরচের তথ্য পাওয়া যায়নি।</p>
             </div>
@@ -248,7 +260,7 @@ export default function ExpensesPage() {
                           <Calendar size={12} className="text-rose-600" /> {e.date ? formatDateBengali(e.date) : ""}
                         </span>
                         <span className="px-2 py-0.5 bg-rose-50 text-rose-600 text-[9px] font-bold rounded-lg border border-rose-100">
-                          {e.category}
+                          {categoryLabel(e.category)}
                         </span>
                       </div>
                     </div>
@@ -256,23 +268,25 @@ export default function ExpensesPage() {
                   
                   <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-10">
                     <div className="text-right">
-                      <p className="text-lg sm:text-xl font-bold text-rose-600 font-shadhinata">{formatMoney(Number(e.amount))}</p>
+                      <p className="text-lg sm:text-xl font-bold text-rose-600 font-baloo">{formatMoney(Number(e.amount))}</p>
                     </div>
                     
                     {isStaff && (
                       <div className="flex items-center gap-1.5 sm:gap-2">
                         <button 
                           onClick={() => handleOpenModal(e)}
-                          className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all active:scale-90"
+                          className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all active:scale-90"
                           title="এডিট"
+                          aria-label="খরচ এডিট করুন"
                         >
                           <Edit2 size={18} />
                         </button>
                         {isAdmin && (
                           <button 
                             onClick={() => handleDelete(e.id)}
-                            className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-90"
+                            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-90"
                             title="ডিলিট"
+                            aria-label="খরচ ডিলিট করুন"
                           >
                             <Trash2 size={18} />
                           </button>
@@ -290,8 +304,8 @@ export default function ExpensesPage() {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsModalOpen(false)}></div>
-          <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
+          <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden">
             <div className="p-6 sm:p-8 border-b border-gray-100 flex items-center justify-between bg-red-600 text-white">
               <div>
                 <h2 className="text-xl font-bold font-shadhinata">{editingExpense ? 'খরচ এডিট করুন' : 'নতুন খরচ যোগ করুন'}</h2>
@@ -327,7 +341,7 @@ export default function ExpensesPage() {
                 <div className="space-y-2">
                   <label className="text-[13px] font-bold text-gray-700 ml-1">টাকার পরিমাণ *</label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">৳</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">৳</span>
                     <input 
                       type="number"
                       inputMode="decimal"

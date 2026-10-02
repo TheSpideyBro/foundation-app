@@ -4,7 +4,7 @@
   "description": "ফাউন্ডেশন তহবিল ব্যবস্থাপনা — সদস্য, দান ও খরচের হিসাব।",
   "start_url": "/dashboard",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#FDFDFC",
   "theme_color": "#059669",
   "scope": "/",

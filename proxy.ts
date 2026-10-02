@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { cookies as nextCookies } from "next/headers";
 
-export async function middleware(req: Request) {
+export async function proxy(req: Request) {
   const res = NextResponse.next();
   const cookieStore = await nextCookies();
 

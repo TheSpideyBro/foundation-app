@@ -87,9 +87,9 @@ function LoginForm() {
         <div className="p-6 sm:p-10 bg-white rounded-[1.5rem] md:rounded-[2rem] shadow-xl border border-gray-100" style={{ background: 'white', borderRadius: '2rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
           <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
             <div>
-              <label className="block text-[13px] font-bold text-gray-400 mb-2 ml-1">মোবাইল নম্বর</label>
+              <label className="block text-[13px] font-bold text-gray-500 mb-2 ml-1">মোবাইল নম্বর</label>
               <div className="relative group">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={20} />
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-emerald-700 transition-colors" size={20} />
                 <input
                   type="text"
                   inputMode="tel"
@@ -103,9 +103,9 @@ function LoginForm() {
             </div>
 
             <div>
-              <label className="block text-[13px] font-bold text-gray-400 mb-2 ml-1">পাসওয়ার্ড</label>
+              <label className="block text-[13px] font-bold text-gray-500 mb-2 ml-1">পাসওয়ার্ড</label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-600 transition-colors" size={20} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-emerald-700 transition-colors" size={20} />
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
@@ -119,7 +119,7 @@ function LoginForm() {
                   aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
                   aria-pressed={showPassword}
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-emerald-700 transition-colors"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -127,7 +127,7 @@ function LoginForm() {
             </div>
 
             {error && (
-              <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-sm font-bold animate-shake">
+              <div role="alert" className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-sm font-bold animate-shake">
                 <XCircle size={18} />
                 {error}
               </div>
@@ -150,9 +150,9 @@ function LoginForm() {
 
           <div className="mt-10 pt-8 border-t border-gray-50 text-center space-y-4">
             <p className="text-gray-500 text-sm font-medium">
-              একাউন্ট নেই? <Link href="/signup" className="text-emerald-600 font-bold hover:underline">নতুন একাউন্ট খুলুন</Link>
+              একাউন্ট নেই? <Link href="/signup" className="text-emerald-700 font-bold hover:underline">নতুন একাউন্ট খুলুন</Link>
             </p>
-            <div className="flex items-center justify-center gap-6 text-gray-400">
+            <div className="flex items-center justify-center gap-6 text-gray-500">
               <div className="flex items-center gap-1.5 text-[11px] font-bold">
                 <ShieldCheck size={14} className="text-emerald-500" />
                 নিরাপদ

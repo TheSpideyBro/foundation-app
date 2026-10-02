@@ -65,7 +65,7 @@ export default function ReceiptPaper({
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#064E3B] shadow-[0_10px_25px_rgba(6,78,59,0.35)] ring-1 ring-[#C9A227] ring-offset-2 ring-offset-[#FDFCF7]">
             <Landmark size={22} className="text-[#C9A227]" strokeWidth={1.8} />
           </div>
-          <p className="mt-3 text-[11px] font-bold text-[#C9A227]">
+          <p className="mt-3 text-[11px] font-bold text-[#7a5f14]">
             দান রসিদ
           </p>
           <h1 className="mx-auto mt-1 max-w-md font-shadhinata text-[23px] font-bold leading-snug text-black sm:text-[26px]">

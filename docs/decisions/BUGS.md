@@ -856,7 +856,7 @@ The foundation's main anti-fraud affordance (donors verifying their receipt) was
 
 ### Fix
 
-- New public page `app/verify/[receipt_no]/page.tsx`: Server Component, no login required (whitelisted in `middleware.ts`). Shows a "যাচাইকৃত রসিদ" badge, receipt number, amount in Bengali digits + words (`numberToWordsBengali`), covered month(s), date, and collector. Donor name is masked to the first 3 code points + •••. Unknown receipt numbers render a branded "রসিদ পাওয়া যায়নি" card, not the raw Next.js 404.
+- New public page `app/verify/[receipt_no]/page.tsx`: Server Component, no login required (whitelisted in `proxy.ts`). Shows a "যাচাইকৃত রসিদ" badge, receipt number, amount in Bengali digits + words (`numberToWordsBengali`), covered month(s), date, and collector. Donor name is masked to the first 3 code points + •••. Unknown receipt numbers render a branded "রসিদ পাওয়া যায়নি" card, not the raw Next.js 404.
 - Lookup uses the service-role key inside the Server Component only, selecting only verification fields (AGENTS.md rule 1).
 - `app/api/receipts/[id]/route.ts`: QR payload now uses `NEXT_PUBLIC_SITE_URL` with `request.nextUrl.origin` fallback; a "স্ক্যান করে যাচাই করুন" caption was added under the QR.
 
@@ -958,7 +958,7 @@ No CSP protection at all; a broken core UI element (receipt preview).
 
 ### Description
 
-If `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` were unset, `middleware.ts` skipped the Supabase session check and let the request through — protected routes were effectively public in a misconfigured environment.
+If `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` were unset, `proxy.ts` skipped the Supabase session check and let the request through — protected routes were effectively public in a misconfigured environment.
 
 ### Impact
 
@@ -1100,3 +1100,94 @@ Performance degrades as the log grows; one huge initial query per admin visit.
 ### Verification
 
 `npx tsc --noEmit` clean; `pnpm build` green.
+
+## BUG-042: enforce_member_self_update Trigger Lets Members Self-Reduce Pledge / Flip Status
+
+**Status:** fixed (2026-10-02 — `supabase/migrations/20261003_review_v3_db_fixes.sql` applied live to Main ~11:40 +06; premises re-verified at apply time, post-apply checks green)
+**Found:** 2026-10-03 (review v3, S-M1)
+**Region:** database
+
+### Description
+
+The `BEFORE UPDATE` trigger `trg_member_self_update` on `members` is supposed to restrict
+self-service profile updates to name, address, and phone only
+(`docs/decisions/BUGS.md` documents this intent). Its first `IF` returns early —
+allowing the row — whenever *any* allowed field changed:
+
+```sql
+IF NEW.id IS DISTINCT FROM OLD.id
+   OR NEW.name IS DISTINCT FROM OLD.name
+   OR NEW.address IS DISTINCT FROM OLD.address
+   OR NEW.phone IS DISTINCT FROM OLD.phone THEN
+  RETURN NEW;   -- allows EVERYTHING, including protected fields
+END IF;
+```
+
+so the protected-field check below it never runs in that case. A member can run
+
+```sql
+UPDATE members SET address = address || ' ', monthly_pledge = 0 WHERE id = <own id>
+```
+
+via the anon-key PostgREST endpoint and it passes. The RLS policy `members_update_own`
+has **no column restrictions** (USING / WITH CHECK only pin `id`), so this trigger is
+the *only* guard — and it is bypassable.
+
+### Impact
+
+A member can self-reduce `monthly_pledge` to 0 (future payments allocate as
+`unallocated`) or flip `status` to `'inactive'` to vanish from arrears/targets.
+The app UI (`app/profile/page.tsx`) only sends name/address/phone, so exploitation
+needs direct API calls — trivial in devtools for any authenticated member.
+
+### Root Cause
+
+Order of checks: the allowed-field early return precedes the protected-field raise,
+so changing any allowed field alongside a protected field skips the guard entirely.
+
+### Planned fix
+
+Migration `supabase/migrations/20261003_review_v3_db_fixes.sql` (prepared, not yet
+applied to live): check protected fields **first** and raise `ERRCODE 42501` on any
+change to `monthly_pledge`, `status`, `join_date`, or `created_at`; otherwise
+`RETURN NEW`. The allowed-field allowlist is dropped — everything except the four
+protected fields is permitted, which is exactly the documented intent.
+
+## BUG-043: admin_delete_user Fails on FK Constraints — Cannot Delete Staff With History
+
+**Status:** fixed (2026-10-02 — `supabase/migrations/20261003_review_v3_db_fixes.sql` applied live to Main ~11:40 +06; premises re-verified at apply time, post-apply checks green)
+**Found:** 2026-10-03 (review v3, S-M2)
+**Region:** database
+
+### Description
+
+`admin_delete_user(target_user_id)` nulls `donations.created_by` / `donations.collected_by`
+and then `DELETE FROM auth.users`, but four other tables hold `created_by`
+foreign keys to `auth.users(id)` **with no `ON DELETE` action**:
+
+- `member_pledge_history.created_by`
+- `payment_allocations.created_by`
+- `expenses.created_by`
+- `notices.created_by`
+
+(`supabase/schema.sql` constraints `*_created_by_fkey`.) Deleting any treasurer/admin
+who ever created a record in one of these tables raises an FK violation, the whole
+statement rolls back, and `app/api/admin/delete-user/route.ts` returns 409 with a
+raw FK error. (`public.users` is fine — `users_id_fkey` has `ON DELETE CASCADE`;
+the last-admin case is safe because self-deletion is blocked.)
+
+### Impact
+
+The "remove staff" admin control is functionally broken for real staff — an admin
+cannot cleanly revoke a compromised staff account.
+
+### Root Cause
+
+The `created_by` FKs on the four tables were added after the delete-user RPC was
+written; the RPC's null-out list was never extended to cover them.
+
+### Planned fix
+
+Migration `supabase/migrations/20261003_review_v3_db_fixes.sql` (prepared, not yet
+applied to live): `UPDATE ... SET created_by = NULL` on the four tables before
+the `DELETE FROM auth.users`, mirroring the existing `donations` nulling.
