@@ -7,9 +7,12 @@ import AppLayout from "@/components/layout";
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/";
+  // Internal receipt render target for /api/receipt-image — no app chrome,
+  // the page renders only the ReceiptPaper (token-authenticated itself).
+  const isShotPage = pathname.startsWith("/receipt-shot");
   const { user, isApproved, loading, profileError, refreshProfile, signOut } = useAuth();
 
-  if (isAuthPage) {
+  if (isAuthPage || isShotPage) {
     return <>{children}</>;
   }
 

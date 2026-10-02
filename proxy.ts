@@ -49,6 +49,8 @@ export async function proxy(req: Request) {
     pathname.startsWith("/signup/") || 
     pathname === "/verify" ||
     pathname.startsWith("/verify/") ||
+    // Internal receipt render target — HMAC-token authenticated in the page itself
+    pathname.startsWith("/receipt-shot") ||
     isPwaAsset;
 
   if (!isPublic && !session) {

@@ -18,13 +18,15 @@ import { isAdmin, isApproved, isStaff } from "@/lib/auth";
 
 export type AuthLevel = "staff" | "admin";
 
-export type AuthSuccess = {
+export type UserSuccess = {
   ok: true;
   supabase: ReturnType<typeof createClient>;
   userId: string;
   role: string | null;
   email: string | null;
 };
+
+export type AuthSuccess = UserSuccess;
 
 export type AuthFailure = { ok: false; response: NextResponse };
 
@@ -61,4 +63,39 @@ export async function requireAuth(level: AuthLevel): Promise<AuthResult> {
   if (!allowed) return deny(403, level === "admin" ? "Admins only" : "Only staff can do this");
 
   return { ok: true, supabase, userId: session.user.id, role, email };
+}
+
+/**
+ * Any approved authenticated user (staff or member). Data access is then
+ * enforced by RLS on the caller's cookie-scoped client — e.g. members can
+ * only read their own donation rows.
+ */
+export async function requireUser(): Promise<
+  UserSuccess | AuthFailure
+> {
+  const supabase = createClient();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) return deny(401, "Unauthorized");
+
+  const { data: row } = await supabase
+    .from("users")
+    .select("role, is_approved")
+    .eq("id", session.user.id)
+    .maybeSingle();
+
+  if (!isApproved(row?.is_approved)) {
+    return deny(403, "Account not approved");
+  }
+
+  return {
+    ok: true,
+    supabase,
+    userId: session.user.id,
+    role: row?.role ?? null,
+    email: session.user.email ?? null,
+  };
 }
