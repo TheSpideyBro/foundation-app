@@ -9,6 +9,7 @@ type Props = {
   memberName?: string | null;
   receiptNo?: string | null;
   amount?: number;
+  monthLabel?: string | null;
   className?: string;
   title?: string;
   ariaLabel?: string;
@@ -29,6 +30,7 @@ export default function WhatsAppShareButton({
   memberName,
   receiptNo,
   amount,
+  monthLabel,
   className,
   title,
   ariaLabel,
@@ -77,13 +79,18 @@ export default function WhatsAppShareButton({
 
       // 3. Open WhatsApp to the member's chat with pre-filled text
       const lines = [
-        `আসসালামু আলাইকুম${memberName ? ` ${memberName}` : ""},`,
+        `আসসালামু আলাইকুম ওয়ারাহমাতুল্লাহ 🤲`,
         ``,
-        `আপনার জমার রসিদ প্রস্তুত।`,
-        receiptNo ? `রসিদ নং: ${receiptNo}` : null,
-        amount ? `পরিমাণ: ৳${amount.toLocaleString("bn-BD")}` : null,
+        `*দৌলখাঁড় পূর্বপাড়া হিলফুল ফুজুল ফাউন্ডেশন*`,
         ``,
-        `ছবিটি গ্যালারি থেকে attach করে পাঠাচ্ছি।`,
+        `প্রিয় ${memberName || "সদস্য"},`,
+        `আপনার জমার রসিদ প্রস্তুত হয়েছে ✅`,
+        ``,
+        receiptNo ? `🧾 রসিদ নং: ${receiptNo}` : null,
+        monthLabel ? `📆 মাস: ${monthLabel}` : null,
+        amount ? `💰 পরিমাণ: ৳${amount.toLocaleString("bn-BD")}` : null,
+        ``,
+        `জাযাকাল্লাহু খাইরান 🌙`,
       ].filter((l) => l !== null);
       const text = encodeURIComponent(lines.join("\n"));
       window.open(`https://wa.me/${normalized}?text=${text}`, "_blank");
