@@ -184,6 +184,7 @@ export default function CashbookPage() {
             <table className="w-full text-sm min-w-[560px]">
               <thead>
                 <tr className="bg-gray-50 text-gray-500 text-[11px]">
+                  <th className="text-center font-bold px-3 py-3">ক্রঃ</th>
                   <th className="text-left font-bold px-4 py-3">তারিখ</th>
                   <th className="text-left font-bold px-4 py-3">বিবরণ</th>
                   <th className="text-right font-bold px-4 py-3">জমা (৳)</th>
@@ -192,8 +193,11 @@ export default function CashbookPage() {
                 </tr>
               </thead>
               <tbody>
-                {entries.map((e) => (
+                {entries.map((e, idx) => (
                   <tr key={e.id} className="border-t border-gray-100 hover:bg-gray-50/50">
+                    <td className="px-3 py-3 text-center text-gray-400 text-xs font-medium">
+                      {toBengaliNumber(String(idx + 1))}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-xs">
                       {new Date(e.date).toLocaleDateString("bn-BD")}
                     </td>
