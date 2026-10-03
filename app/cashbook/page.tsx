@@ -181,27 +181,27 @@ export default function CashbookPage() {
       ) : (
         <div className="card-premium overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[560px]">
+            <table className="w-full text-sm min-w-[480px] sm:min-w-[560px]">
               <thead>
-                <tr className="bg-gray-50 text-gray-500 text-[11px]">
-                  <th className="text-center font-bold px-3 py-3">ক্রঃ</th>
-                  <th className="text-left font-bold px-4 py-3">তারিখ</th>
-                  <th className="text-left font-bold px-4 py-3">বিবরণ</th>
-                  <th className="text-right font-bold px-4 py-3">জমা (৳)</th>
-                  <th className="text-right font-bold px-4 py-3">খরচ (৳)</th>
-                  <th className="text-right font-bold px-4 py-3">ব্যালেন্স (৳)</th>
+                <tr className="bg-gray-50 text-gray-500 text-[10px] sm:text-[11px]">
+                  <th className="text-center font-bold px-2 sm:px-3 py-2 sm:py-3">ক্রঃ</th>
+                  <th className="text-left font-bold px-2 sm:px-4 py-2 sm:py-3">তারিখ</th>
+                  <th className="text-left font-bold px-2 sm:px-4 py-2 sm:py-3">বিবরণ</th>
+                  <th className="text-right font-bold px-2 sm:px-4 py-2 sm:py-3">জমা</th>
+                  <th className="text-right font-bold px-2 sm:px-4 py-2 sm:py-3">খরচ</th>
+                  <th className="text-right font-bold px-2 sm:px-4 py-2 sm:py-3">ব্যালেন্স</th>
                 </tr>
               </thead>
               <tbody>
                 {entries.map((e, idx) => (
                   <tr key={e.id} className="border-t border-gray-100 hover:bg-gray-50/50">
-                    <td className="px-3 py-3 text-center text-gray-400 text-xs font-medium">
+                    <td className="px-2 sm:px-3 py-2 sm:py-3 text-center text-gray-400 text-[11px] sm:text-xs font-medium">
                       {toBengaliNumber(String(idx + 1))}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-xs">
-                      {new Date(e.date).toLocaleDateString("bn-BD")}
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-gray-500 text-[11px] sm:text-xs">
+                      {new Date(e.date).toLocaleDateString("bn-BD", { day: "numeric", month: "short", year: "numeric" })}
                     </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 font-medium text-gray-900 text-xs sm:text-sm break-words min-w-0">
                       <span className="inline-flex items-center gap-2">
                         <span
                           className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
@@ -216,18 +216,18 @@ export default function CashbookPage() {
                             <ArrowUpRight size={14} />
                           )}
                         </span>
-                        <span className="truncate max-w-[140px] sm:max-w-none">
+                        <span className="break-words">
                           {e.particulars}
                         </span>
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-emerald-700 font-baloo">
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-right font-bold text-emerald-700 font-baloo text-xs sm:text-sm whitespace-nowrap">
                       {e.type === "in" ? toBengaliNumber(e.amount.toLocaleString("en-US")) : "—"}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-rose-600 font-baloo">
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-right font-bold text-rose-600 font-baloo text-xs sm:text-sm whitespace-nowrap">
                       {e.type === "out" ? toBengaliNumber(e.amount.toLocaleString("en-US")) : "—"}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-gray-700 font-baloo">
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-right font-bold text-gray-700 font-baloo text-xs sm:text-sm whitespace-nowrap">
                       {toBengaliNumber(e.balance.toLocaleString("en-US"))}
                     </td>
                   </tr>
