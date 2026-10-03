@@ -57,6 +57,51 @@
 
 ## Commit History
 
+## 03ba796 — fix(whatsapp): normalize server phone to E.164, add delivery badge, harden share
+
+**Date:** 2026-10-04  
+**Author:** AI assistant (opencode)  
+**Branch:** main  
+**Files changed:** `lib/utils.ts`, `lib/whatsapp.ts`, `components/WhatsAppShareButton.tsx`, `components/ReceiptJpegButton.tsx`, `app/donations/page.tsx`, `docs/decisions/BUGS.md`, `CHANGELOG.md`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Server phone format | `sendWhatsAppMessage()` only stripped non-digits → `017…` sent to Meta as an 11-digit national number (400 error); F3 auto-sends to local-format numbers failed while the client button worked | Shared `normalizePhone()` in `lib/utils.ts` converts to E.164-without-`+` (`88017…`); invalid number → warn + `null`, logged as `failed` by `receipt-notify.ts`, never sent to Meta |
+| Delivery visibility | Donation cards showed nothing about WhatsApp delivery even though F3 logged every attempt in `notifications` | `loadDonations()` reads the latest `notifications` row per donation (`channel='whatsapp'`) → `WaStatusBadge` on each card: "পাঠানো হয়েছে" / "ব্যর্থ" (+ error tooltip) / "বাদ" (RLS: staff-only, others see no badge) |
+| Share button fetch | JPEG fetched only on click → slow puppeteer render risks Android user-gesture loss before `wa.me` opens | Prefetch on `hover`/`touchstart` (same pattern as `ReceiptJpegButton`), click reuses the cached blob |
+| iOS download | Bare anchor with `download` attribute — ignored by iOS Safari, image never reached the gallery | iOS branch opens the blob in a new tab (long-press → Save), 60s revoke; other browsers keep the anchor path |
+| Share message | Receipt no / month / amount only | Adds `🔗 যাচাই:` verify link via shared `getVerifyUrl()`; 300ms delay so the download lands before the chat opens |
+| Helper duplication | Phone normalization, filename sanitizing, verify URL copied inline in up to 3 places | Deduplicated into `lib/utils.ts` (`normalizePhone`, `makeReceiptFileName`, `getVerifyUrl`); `ReceiptJpegButton` uses the shared filename helper |
+
+### Why
+
+Donation-page receipt share / WhatsApp / download review (BUG-046): the server
+send path never got the E.164 normalizer the client had, so auto-delivery
+silently failed on exactly the numbers staff test with manually; and staff had
+no way to see the delivery outcome on the page where they resend.
+
+### Tests Run
+
+- [x] `pnpm test:ledger` — 28/28 passed
+- [x] `pnpm test:e2e` (Playwright) — 3 passed / 6 skipped (auth-dependent, skipped as usual)
+- [x] `tsc --noEmit` clean; `eslint .` 0 errors / 165 warnings; `pnpm build` green
+- [x] Manual verification: `notifications` columns (`donation_id`, `channel`, `status`, `error`, `created_at`) confirmed against `supabase/migrations/20261002_f3_notifications.sql`; `normalizePhone` cases (01/880/+880/00880/invalid) traced by hand
+
+### Related
+
+- Bug: BUG-046
+- Tech Debt: —
+
+### Known Risks / Follow-ups
+
+- `normalizePhone()` returns `null` for non-BD/odd formats → F3 logs `failed` instead of attempting the send; if international member numbers appear later, extend the helper.
+- Notifications fetch is a second query per page load (`.in()` over loaded ids); revisit only if the donations list grows large.
+- Legacy canvas route `/api/receipts/[id]` is unlinked dead code — candidate for removal.
+
+---
+
 ## 9ffb4d2 — feat(f2): offline-first sync for joma entry
 
 **Date:** 2026-10-02  
