@@ -10,6 +10,7 @@ import {
   numberToWordsBengali,
   monthLabelBengali,
 } from "@/lib/utils";
+import { getCollectorName } from "@/lib/receipt-props";
 
 export const metadata: Metadata = {
   title: "রসিদ যাচাই",
@@ -157,10 +158,7 @@ export default async function VerifyReceiptPage({
     donation.coverage_start_month || donation.donation_month;
   const coverageEnd =
     donation.coverage_end_month || donation.donation_end_month || coverageStart;
-  const collectorName =
-    donation.collector?.members?.name ||
-    donation.collector?.name ||
-    "অ্যাডমিন";
+  const collectorName = getCollectorName((donation as any).collector);
 
   // The printed batch receipt shows the batch TOTAL, but its QR points at
   // one row. Reconcile the two: when this donation belongs to a batch,

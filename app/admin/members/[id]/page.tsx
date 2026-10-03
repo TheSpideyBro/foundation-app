@@ -93,7 +93,16 @@ export default function AdminMemberDetailPage() {
   const selectedStart = `${year}-01`;
   const selectedEnd = `${year}-12`;
   const ledgerStart = member.join_date && member.join_date.slice(0, 7) > selectedStart ? member.join_date.slice(0, 7) : selectedStart;
-  const ledgerEnd = selectedEnd < currentMonth ? selectedEnd : currentMonth;
+  // Extend ledgerEnd to include future months with advance payments
+  // (e.g., Faruk paid to Jan 2027). Don't cap at current month.
+  let maxAllocMonth: string | null = null;
+  for (const a of allocations) {
+    const m = (a as any).month;
+    if (m && m >= selectedStart && (!maxAllocMonth || m > maxAllocMonth)) maxAllocMonth = m;
+  }
+  let ledgerEnd = selectedEnd;
+  if (maxAllocMonth && maxAllocMonth > ledgerEnd) ledgerEnd = maxAllocMonth;
+  // Also check donations coverage for future months
   const ledger = ledgerStart <= ledgerEnd ? buildMemberLedgerFromAllocations(allocations, donations as LedgerDonation[], Number(member.monthly_pledge) || 0, ledgerStart, ledgerEnd, pledgeHistory) : [];
   const totalExpected = ledger.reduce((sum, row) => sum + row.expected, 0);
   const totalPaid = ledger.reduce((sum, row) => sum + row.paid, 0);

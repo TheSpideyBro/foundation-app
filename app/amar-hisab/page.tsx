@@ -98,12 +98,18 @@ export default function AmarHisabPage() {
   const ledger = useMemo<LedgerMonth[]>(() => {
     if (!member) return [];
     const startMonth = String(member.join_date || `${currentMonthStr()}-01`).slice(0, 7);
+    // Extend to future months with advance payments
+    let endMonth = currentMonthStr();
+    for (const a of allocations) {
+      const m = (a as any).month;
+      if (m && m > endMonth) endMonth = m;
+    }
     return buildMemberLedgerFromAllocations(
       allocations,
       donations,
       Number(member.monthly_pledge) || 0,
       startMonth,
-      currentMonthStr(),
+      endMonth,
       pledgeHistory,
     );
   }, [member, donations, allocations, pledgeHistory]);
