@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Download, Eye, FileText, Loader2, Search, Share2, Trash2, X, Plus, MessageCircle, CheckCheck, RotateCcw } from "lucide-react";
+import { Download, Eye, FileText, Loader2, Search, Share2, Trash2, X, Plus, MessageCircle } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { currentMonthStr, formatDateBengali, methodLabels, monthLabelBengali } from "@/lib/utils";
 import { useAuth } from "@/components/providers";
@@ -43,8 +43,6 @@ export default function DonationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   // F3: donationId -> latest WhatsApp delivery status
-  const [notifyMap, setNotifyMap] = useState<Record<string, string>>({});
-  const [resendingId, setResendingId] = useState<string | null>(null);
 
   useEffect(() => { void loadDonations(); }, []);
 
@@ -54,44 +52,7 @@ export default function DonationsPage() {
     const { data, error: queryError } = await supabase().from("donations").select("id, member_id, amount, extra_amount, date, donation_month, donation_end_month, coverage_start_month, coverage_end_month, receipt_no, method, batch_id, members(name, phone)").order("date", { ascending: false });
     if (queryError) setError(queryError.message);
     setDonations((data || []) as Donation[]);
-    // F3: delivery status per donation (staff-only table; members get {}).
-    if (isStaff && data && data.length > 0) {
-      const ids = data.map((d: any) => d.id);
-      const { data: notes } = await supabase()
-        .from("notifications")
-        .select("donation_id, status, created_at")
-        .eq("channel", "whatsapp")
-        .in("donation_id", ids)
-        .order("created_at", { ascending: false });
-      const map: Record<string, string> = {};
-      for (const n of notes || []) {
-        if (!map[(n as any).donation_id]) map[(n as any).donation_id] = (n as any).status;
-      }
-      setNotifyMap(map);
-    }
     setLoading(false);
-  }
-
-  async function handleResend(donation: Donation) {
-    // F3: manual WhatsApp receipt resend (staff only).
-    if (!isStaff || resendingId) return;
-    setResendingId(donation.id);
-    try {
-      const res = await fetch("/api/notify/whatsapp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ donationId: donation.id }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        throw new Error(data.detail || data.error || "পাঠানো যায়নি");
-      }
-      setNotifyMap((m) => ({ ...m, [donation.id]: "sent" }));
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : "পাঠানো যায়নি");
-    } finally {
-      setResendingId(null);
-    }
   }
 
 async function handleDelete(donation: Donation) {
@@ -157,9 +118,7 @@ async function handleDelete(donation: Donation) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3"><div className="bg-white rounded-2xl p-4 border border-gray-100"><p className="text-xs text-gray-500 font-bold">দেখানো রেকর্ড</p><p className="text-2xl font-bold text-gray-900 mt-1">{filtered.length}</p></div><div className="bg-white rounded-2xl p-4 border border-gray-100"><p className="text-xs text-gray-500 font-bold">মোট জমা (অতিরিক্তসহ)</p><p className="text-2xl font-bold text-emerald-700 mt-1">{money(total)}</p></div><div className="bg-white rounded-2xl p-4 border border-gray-100"><p className="text-xs text-gray-500 font-bold">যার মধ্যে অতিরিক্ত</p><p className="text-2xl font-bold text-amber-600 mt-1">{money(extra)}</p></div><div className="bg-white rounded-2xl p-4 border border-gray-100"><p className="text-xs text-gray-500 font-bold">এই মাসের জমা</p><p className="text-2xl font-bold text-blue-600 mt-1">{money(thisMonthTotal)}</p></div></div>
       <div className="bg-white rounded-2xl border border-gray-100 p-4 grid md:grid-cols-[1fr_180px_180px] gap-3"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="সদস্য, ফোন বা রসিদ দিয়ে খুঁজুন" aria-label="সদস্য, ফোন বা রসিদ দিয়ে খুঁজুন" className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-200 outline-none focus:bg-white focus:ring-4 focus:ring-emerald-500/10" /></div><select value={monthFilter} onChange={(event) => setMonthFilter(event.target.value)} aria-label="মাস অনুযায়ী ফিল্টার" className="px-3 py-3 rounded-xl bg-gray-50 border border-gray-200 outline-none"><option value="all">সব মাস</option>{months.map((month) => <option key={month} value={month}>{monthLabelBengali(month)}</option>)}</select><select value={methodFilter} onChange={(event) => setMethodFilter(event.target.value)} aria-label="পদ্ধতি অনুযায়ী ফিল্টার" className="px-3 py-3 rounded-xl bg-gray-50 border border-gray-200 outline-none"><option value="all">সব পদ্ধতি</option>{Object.entries(methodLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
       {error && <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 text-rose-700 text-sm font-bold">{error}</div>}
-      {loading ? <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="bg-white rounded-3xl p-5 border border-gray-100 space-y-3" aria-hidden="true"><div className="h-5 bg-gray-100 rounded-lg w-2/3 animate-pulse" /><div className="h-3 bg-gray-100 rounded-lg w-1/3 animate-pulse" /><div className="h-3 bg-gray-100 rounded-lg w-full animate-pulse" /><div className="h-3 bg-gray-100 rounded-lg w-full animate-pulse" /><div className="h-9 bg-gray-100 rounded-xl w-full animate-pulse" /></div>)}</div> : filtered.length === 0 ? <div className="bg-white rounded-3xl border border-dashed border-gray-200 py-20 text-center"><Search className="mx-auto text-gray-300" size={36} /><p className="mt-3 font-bold text-gray-800">কোনো জমা পাওয়া যায়নি</p><p className="text-sm text-gray-500 mt-1">ফিল্টার পরিবর্তন করে আবার দেখুন</p><Link href="/joma" className="btn-emerald inline-flex mt-5 mx-auto"><Plus size={16} /> নতুন জমা করুন</Link></div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{filtered.map((donation) => <article key={donation.id} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm"><div className="flex items-start justify-between gap-3"><div><h2 className="font-bold text-gray-900">{donation.members?.name || "সদস্য"}</h2><p className="text-xs text-gray-500 mt-1">{donation.members?.phone || ""}</p></div><p className="text-lg font-bold text-emerald-700">{money(Number(donation.amount) || 0)}</p></div><div className="mt-4 space-y-2 text-xs text-gray-500"><div className="flex justify-between"><span>রসিদ</span><b className="text-gray-800 min-w-0 text-right">#{donation.receipt_no || "—"}</b></div><div className="flex justify-between"><span>তারিখ</span><b className="text-gray-800 min-w-0 text-right">{donation.date ? formatDateBengali(donation.date) : "—"}</b></div><div className="flex justify-between"><span>মাস</span><b className="text-gray-800 min-w-0 text-right">{coverageLabel(donation)}</b></div><div className="flex justify-between"><span>পদ্ধতি</span><b className="text-gray-800 min-w-0 text-right">{methodLabels[donation.method || "cash"] ?? "ক্যাশ"}</b></div>{Number(donation.extra_amount || 0) > 0 && <div className="flex justify-between"><span>অতিরিক্ত জমা</span><b className="text-amber-600 min-w-0 text-right">{money(Number(donation.extra_amount))}</b></div>}</div><div className="flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-dashed border-gray-100"><Link href={`/donations/${donation.id}/receipt`} className="btn-emerald text-xs"><FileText size={15} /> রসিদ দেখুন</Link><button onClick={() => setPreviewUrl(`/donations/${donation.id}/receipt?embed=1`)} className="btn-outline text-xs" aria-label="প্রিভিউ"><Eye size={15} /> প্রিভিউ</button><ReceiptJpegButton donationId={donation.id} mode="share" className="p-3 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 disabled:opacity-50" title="রসিদ শেয়ার (JPG)" ariaLabel="রসিদ শেয়ার"><Share2 size={16} /></ReceiptJpegButton><WhatsAppShareButton donationId={donation.id} phone={donation.members?.phone} memberName={donation.members?.name} receiptNo={donation.receipt_no} amount={Number(donation.amount) || 0} monthLabel={coverageLabel(donation)} className="p-3 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl bg-green-50 text-green-600 disabled:opacity-50" title="WhatsApp-এ পাঠান" ariaLabel="WhatsApp-এ রসিদ পাঠান" /><ReceiptJpegButton donationId={donation.id} mode="download" className="p-3 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl bg-blue-50 text-blue-600 disabled:opacity-50" title="রসিদ ডাউনলোড (JPG)" ariaLabel="রসিদ ডাউনলোড"><Download size={16} /></ReceiptJpegButton>{isStaff && (notifyMap[donation.id] === "sent"
-  ? <span className="p-3 min-h-[44px] inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold" title="WhatsApp-এ রসিদ পাঠানো হয়েছে"><CheckCheck size={16} /> পাঠানো</span>
-  : <button onClick={() => void handleResend(donation)} disabled={resendingId === donation.id} className="p-3 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl bg-green-50 text-green-700 disabled:opacity-50" title="WhatsApp-এ রসিদ পাঠান" aria-label="WhatsApp-এ রসিদ পাঠান">{resendingId === donation.id ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}</button>)}
+      {loading ? <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="bg-white rounded-3xl p-5 border border-gray-100 space-y-3" aria-hidden="true"><div className="h-5 bg-gray-100 rounded-lg w-2/3 animate-pulse" /><div className="h-3 bg-gray-100 rounded-lg w-1/3 animate-pulse" /><div className="h-3 bg-gray-100 rounded-lg w-full animate-pulse" /><div className="h-3 bg-gray-100 rounded-lg w-full animate-pulse" /><div className="h-9 bg-gray-100 rounded-xl w-full animate-pulse" /></div>)}</div> : filtered.length === 0 ? <div className="bg-white rounded-3xl border border-dashed border-gray-200 py-20 text-center"><Search className="mx-auto text-gray-300" size={36} /><p className="mt-3 font-bold text-gray-800">কোনো জমা পাওয়া যায়নি</p><p className="text-sm text-gray-500 mt-1">ফিল্টার পরিবর্তন করে আবার দেখুন</p><Link href="/joma" className="btn-emerald inline-flex mt-5 mx-auto"><Plus size={16} /> নতুন জমা করুন</Link></div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{filtered.map((donation) => <article key={donation.id} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm"><div className="flex items-start justify-between gap-3"><div><h2 className="font-bold text-gray-900">{donation.members?.name || "সদস্য"}</h2><p className="text-xs text-gray-500 mt-1">{donation.members?.phone || ""}</p></div><p className="text-lg font-bold text-emerald-700">{money(Number(donation.amount) || 0)}</p></div><div className="mt-4 space-y-2 text-xs text-gray-500"><div className="flex justify-between"><span>রসিদ</span><b className="text-gray-800 min-w-0 text-right">#{donation.receipt_no || "—"}</b></div><div className="flex justify-between"><span>তারিখ</span><b className="text-gray-800 min-w-0 text-right">{donation.date ? formatDateBengali(donation.date) : "—"}</b></div><div className="flex justify-between"><span>মাস</span><b className="text-gray-800 min-w-0 text-right">{coverageLabel(donation)}</b></div><div className="flex justify-between"><span>পদ্ধতি</span><b className="text-gray-800 min-w-0 text-right">{methodLabels[donation.method || "cash"] ?? "ক্যাশ"}</b></div>{Number(donation.extra_amount || 0) > 0 && <div className="flex justify-between"><span>অতিরিক্ত জমা</span><b className="text-amber-600 min-w-0 text-right">{money(Number(donation.extra_amount))}</b></div>}</div><div className="flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-dashed border-gray-100"><Link href={`/donations/${donation.id}/receipt`} className="btn-emerald text-xs"><FileText size={15} /> রসিদ দেখুন</Link><button onClick={() => setPreviewUrl(`/donations/${donation.id}/receipt?embed=1`)} className="btn-outline text-xs" aria-label="প্রিভিউ"><Eye size={15} /> প্রিভিউ</button><ReceiptJpegButton donationId={donation.id} mode="share" className="p-3 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 disabled:opacity-50" title="রসিদ শেয়ার (JPG)" ariaLabel="রসিদ শেয়ার"><Share2 size={16} /></ReceiptJpegButton><WhatsAppShareButton donationId={donation.id} phone={donation.members?.phone} memberName={donation.members?.name} receiptNo={donation.receipt_no} amount={Number(donation.amount) || 0} monthLabel={coverageLabel(donation)} className="p-3 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl bg-green-50 text-green-600 disabled:opacity-50" title="WhatsApp-এ পাঠান" ariaLabel="WhatsApp-এ রসিদ পাঠান" /><ReceiptJpegButton donationId={donation.id} mode="download" className="p-3 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl bg-blue-50 text-blue-600 disabled:opacity-50" title="রসিদ ডাউনলোড (JPG)" ariaLabel="রসিদ ডাউনলোড"><Download size={16} /></ReceiptJpegButton>
 {isStaff && <button onClick={() => void handleDelete(donation)} disabled={deletingId === donation.id} className="p-3 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 disabled:opacity-50" title="ডিলিট" aria-label="ডিলিট">{deletingId === donation.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button>}</div></article>)}</div>}
     </div>
     <Modal open={previewUrl !== null} onClose={() => setPreviewUrl(null)} label="রসিদ প্রিভিউ" panelClassName="w-full max-w-4xl h-[85vh] flex flex-col">
