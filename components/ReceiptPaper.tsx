@@ -116,7 +116,7 @@ export default function ReceiptPaper({
         <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[14px] font-medium text-[#0B4A38]">
           <span className="inline-flex items-center gap-2">
             <Image
-              src="/receipt-icons/icon-location.png"
+              src="/receipt-icons/icon-location.svg"
               alt=""
               width={28}
               height={28}
@@ -128,7 +128,7 @@ export default function ReceiptPaper({
           <span className="hidden text-[#C9A227] sm:inline">|</span>
           <span className="inline-flex items-center gap-2">
             <Image
-              src="/receipt-icons/icon-phone.png"
+              src="/receipt-icons/icon-phone.svg"
               alt=""
               width={28}
               height={28}
@@ -146,7 +146,7 @@ export default function ReceiptPaper({
         >
           <div className="flex items-center gap-3">
             <Image
-              src="/receipt-icons/icon-receipt.png"
+              src="/receipt-icons/icon-receipt.svg"
               alt=""
               width={24}
               height={24}
@@ -159,7 +159,7 @@ export default function ReceiptPaper({
           <div className="hidden h-8 w-px bg-[#0B4A38]/20 sm:block" aria-hidden="true" />
           <div className="flex items-center gap-3">
             <Image
-              src="/receipt-icons/icon-calendar.png"
+              src="/receipt-icons/icon-calendar.svg"
               alt=""
               width={24}
               height={24}
