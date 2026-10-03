@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Printer, ArrowLeft, Shield, Loader2, Share2, Download } from "lucide-react";
+import { Printer, ArrowLeft, Shield, Loader2, Share2, Download, MessageCircle } from "lucide-react";
 import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
 import { isStaff as hasStaffRole } from "@/lib/auth";
 import ReceiptPaper from "@/components/ReceiptPaper";
 import ReceiptJpegButton from "@/components/ReceiptJpegButton";
+import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 import {
   fetchDonationForReceipt,
   fetchBatchConsolidation,
@@ -223,6 +224,19 @@ export default function ReceiptViewPage() {
                 <Share2 size={16} />
                 শেয়ার
               </ReceiptJpegButton>
+              <WhatsAppShareButton
+                donationId={donation.id}
+                phone={donation.members?.[0]?.phone}
+                memberName={donation.members?.[0]?.name ?? undefined}
+                receiptNo={donation.receipt_no}
+                amount={Number(donation.amount) || 0}
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-stone-200 transition hover:border-white/30 hover:text-white disabled:opacity-50"
+                title="WhatsApp-এ পাঠান"
+                ariaLabel="WhatsApp-এ রসিদ পাঠান"
+              >
+                <MessageCircle size={16} />
+                WhatsApp
+              </WhatsAppShareButton>
               <ReceiptJpegButton
                 donationId={donation.id}
                 mode="download"
