@@ -201,7 +201,7 @@ export default function CashbookPage() {
                     <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-gray-500 text-[11px] sm:text-xs">
                       {new Date(e.date).toLocaleDateString("bn-BD", { day: "numeric", month: "short", year: "numeric" })}
                     </td>
-                    <td className="px-2 sm:px-4 py-2 sm:py-3 font-medium text-gray-900 text-xs sm:text-sm break-words min-w-0">
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 font-medium text-gray-900 text-xs sm:text-sm break-words min-w-0 max-w-[280px]">
                       <span className="inline-flex items-center gap-2">
                         <span
                           className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
