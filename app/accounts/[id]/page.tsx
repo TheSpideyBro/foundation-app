@@ -40,7 +40,7 @@ export default function AccountDetailPage() {
 
   const [account, setAccount] = useState<Account | null>(null);
   const [txns, setTxns] = useState<Txn[]>([]);
-  const [allAccounts, setAllAccounts] = useState<{ id: string; name: string; type: string }[]>([]);
+  const [allAccounts, setAllAccounts] = useState<{ id: string; name: string; type: string; current_balance: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -70,11 +70,11 @@ export default function AccountDetailPage() {
       setAccount(detail.account);
       setTxns(detail.transactions);
       if (listRes.ok) {
-        const others = (list.accounts as { id: string; name: string; type: string }[]).filter((a) => a.id !== id);
+        const others = (list.accounts as { id: string; name: string; type: string; current_balance: number }[]).filter((a) => a.id !== id);
         setAllAccounts(others);
         // Bank accounts: default to deposit mode with cash as source
         if (detail.account?.type === "bank") {
-          const cash = (list.accounts as { id: string; name: string; type: string }[]).find((a) => a.type === "cash");
+          const cash = (list.accounts as { id: string; name: string; type: string; current_balance: number }[]).find((a) => a.type === "cash");
           setForm((f) => ({
             ...f,
             kind: "deposit",
@@ -111,6 +111,20 @@ export default function AccountDetailPage() {
     if (form.kind === "deposit" && !form.from_account_id) {
       setFormError("উৎস হিসাব নির্বাচন করুন");
       return;
+    }
+    // Validate: deposit amount must not exceed source balance
+    if (form.kind === "deposit" && form.from_account_id) {
+      const src = allAccounts.find((a) => a.id === form.from_account_id);
+      const bal = Number(src?.current_balance || 0);
+      const amt = Number(form.amount);
+      if (bal <= 0) {
+        setFormError("উৎস হিসাবে কোনো ব্যালেন্স নেই — জমা করা যাবে না");
+        return;
+      }
+      if (amt > bal) {
+        setFormError(`উৎস হিসাবে মাত্র ৳${bal.toLocaleString("bn-BD")} আছে — ৳${amt.toLocaleString("bn-BD")} জমা করা যাবে না`);
+        return;
+      }
     }
     setSubmitting(true);
     try {
@@ -309,10 +323,18 @@ export default function AccountDetailPage() {
                   >
                     <option value="">নির্বাচন করুন</option>
                     {allAccounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.name}</option>
+                      <option key={a.id} value={a.id}>
+                        {a.name} — ৳{Number(a.current_balance || 0).toLocaleString("bn-BD")}
+                      </option>
                     ))}
                   </select>
                   <p className="text-[11px] text-gray-500 mt-1">সাধারণত ক্যাশ হিসাব থেকে ব্যাংকে জমা হয়</p>
+                  {form.from_account_id && (() => {
+                    const src = allAccounts.find((a) => a.id === form.from_account_id);
+                    const bal = Number(src?.current_balance || 0);
+                    if (bal <= 0) return <p className="text-[11px] font-bold text-rose-600 mt-1">⚠️ এই হিসাবে কোনো ব্যালেন্স নেই — জমা করা যাবে না</p>;
+                    return <p className="text-[11px] font-bold text-emerald-700 mt-1">উপলব্ধ ব্যালেন্স: ৳{bal.toLocaleString("bn-BD")}</p>;
+                  })()}
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">

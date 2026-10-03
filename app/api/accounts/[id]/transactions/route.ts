@@ -102,6 +102,19 @@ export async function POST(
     if (!other) return fail(404, "হিসাব পাওয়া যায়নি");
     if (!other.is_active) return fail(400, "বন্ধ হিসাবে ট্রান্সফার করা যাবে না");
 
+    // Server-side balance check: the OUT account must have enough balance.
+    // Client-side also validates, but this is the security boundary.
+    const outAccountId = isDeposit ? otherId : accountId;
+    const { data: balRow, error: balError } = await auth.supabase
+      .from("account_balances")
+      .select("current_balance")
+      .eq("id", outAccountId)
+      .maybeSingle();
+    if (balError) return fail(500, "ব্যালেন্স যাচাই করা যায়নি");
+    const available = Number((balRow as any)?.current_balance || 0);
+    if (available <= 0) return fail(400, "উৎস হিসাবে কোনো ব্যালেন্স নেই — ট্রান্সফার করা যাবে না");
+    if (amount > available) return fail(400, `উৎস হিসাবে মাত্র ৳${available.toLocaleString("bn-BD")} আছে`);
+
     const transferId = randomUUID();
     const label = isDeposit ? `ব্যাংক জমা — ${other.name}` : `ট্রান্সফার — ${particulars}`;
     const outParticulars = isDeposit ? `${label}` : `ট্রান্সফার — ${particulars}`;
@@ -129,6 +142,18 @@ export async function POST(
       }
     );
   } else {
+    // For direct "out" (expense), also check the account has enough balance.
+    if (kind === "out") {
+      const { data: balRow, error: balError } = await auth.supabase
+        .from("account_balances")
+        .select("current_balance")
+        .eq("id", accountId)
+        .maybeSingle();
+      if (balError) return fail(500, "ব্যালেন্স যাচাই করা যায়নি");
+      const available = Number((balRow as any)?.current_balance || 0);
+      if (available <= 0) return fail(400, "এই হিসাবে কোনো ব্যালেন্স নেই — খরচ করা যাবে না");
+      if (amount > available) return fail(400, `এই হিসাবে মাত্র ৳${available.toLocaleString("bn-BD")} আছে`);
+    }
     rows.push({
       account_id: accountId,
       date,

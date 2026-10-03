@@ -13,6 +13,7 @@ import {
 import { useAuth } from "@/components/providers";
 import { isAdmin as hasAdminRole, isStaff as hasStaffRole } from "@/lib/auth";
 import OfflineIndicator from "@/components/OfflineIndicator";
+import DeveloperCredit from "@/components/DeveloperCredit";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -205,8 +206,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <LogOut size={18} />
             লগআউট
           </button>
-          <div className="mt-4 text-center">
-            <p className="text-[9px] font-bold text-gray-300 uppercase tracking-tighter">Developed by Saddam Hossain Akash</p>
+          <div className="mt-4">
+            <DeveloperCredit variant="dark" />
           </div>
         </div>
       </aside>
@@ -352,6 +353,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 lg:ml-72 min-h-screen relative pt-16 lg:pt-0 pb-20 lg:pb-0">
         <div className="hidden lg:block h-1 bg-emerald-600 w-full fixed top-0 z-20"></div>
         {children}
+        {/* Mobile footer credit — visible only on mobile (desktop has sidebar) */}
+        <div className="lg:hidden mt-8 mb-4 px-4">
+          <DeveloperCredit variant="dark" />
+        </div>
       </main>
       <OfflineIndicator />
     </div>
