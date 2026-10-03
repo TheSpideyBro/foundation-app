@@ -63,7 +63,23 @@ export default function ReceiptJpegButton({
 
       if (mode === "share") {
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: "রসিদ" });
+          try {
+            await navigator.share({ files: [file], title: "রসিদ" });
+          } catch (shareErr) {
+            // "Must be handling a user gesture" — the async fetch broke the
+            // gesture chain (common on Android Chrome). Fall back to download
+            // instead of showing a technical error.
+            if (
+              shareErr instanceof DOMException &&
+              (shareErr.name === "NotAllowedError" ||
+                /user gesture/i.test(shareErr.message))
+            ) {
+              triggerDownload(URL.createObjectURL(file), fileName);
+            } else if (!(shareErr instanceof DOMException && shareErr.name === "AbortError")) {
+              throw shareErr;
+            }
+            // AbortError (user cancelled share sheet) — silent.
+          }
         } else {
           // No file-share support (desktop browsers) — fall back to download.
           triggerDownload(URL.createObjectURL(file), fileName);
