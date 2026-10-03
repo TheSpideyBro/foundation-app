@@ -22,7 +22,7 @@ export default function MembersPage() {
   
   const [members, setMembers] = useState<any[]>([]);
   const [memberTotals, setMemberTotals] = useState<Record<string, number>>({});
-  const [sortBy, setSortBy] = useState<"name" | "total">("name");
+  const [sortBy, setSortBy] = useState<"id" | "name" | "total">("id");
   const [pledgeHistory, setPledgeHistory] = useState<PledgeHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -201,6 +201,11 @@ export default function MembersPage() {
     m.phone?.includes(searchQuery)
   ).sort((a, b) => {
     if (sortBy === "total") return (memberTotals[b.id] || 0) - (memberTotals[a.id] || 0);
+    if (sortBy === "id") {
+      const aId = Number(a.member_code) || Number.MAX_SAFE_INTEGER;
+      const bId = Number(b.member_code) || Number.MAX_SAFE_INTEGER;
+      return aId - bId;
+    }
     return a.name.localeCompare(b.name, "bn");
   });
 
@@ -256,6 +261,12 @@ export default function MembersPage() {
           </div>
           <div className="flex items-center gap-2 mt-3">
             <span className="text-xs font-bold text-gray-500">সাজান:</span>
+            <button
+              onClick={() => setSortBy("id")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold ${sortBy === "id" ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600"}`}
+            >
+              আইডি
+            </button>
             <button
               onClick={() => setSortBy("name")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold ${sortBy === "name" ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600"}`}
