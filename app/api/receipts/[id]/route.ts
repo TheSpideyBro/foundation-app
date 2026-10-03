@@ -271,6 +271,15 @@ export async function GET(
 
     // 7. Content Rows
     const amountInWords = numberToWordsBengali(displayAmount || 0);
+    // Helper: robustly extract collector name (handles object or array structure)
+    const getCollectorName = (collector: any): string => {
+      const c = Array.isArray(collector) ? collector[0] : collector;
+      if (!c) return "অ্যাডমিন";
+      const m = Array.isArray(c.members) ? c.members[0] : c.members;
+      return m?.name || c.name || "অ্যাডমিন";
+    };
+    const collectorName = getCollectorName((donation as any).collector);
+
     const rows = [
       { label: "রসিদ নং", value: displayReceiptNo || 'N/A', icon: 'doc' },
       { label: "তারিখ", value: donation.date, icon: 'cal' },
@@ -281,7 +290,7 @@ export async function GET(
       ...(Number(donation.extra_amount || 0) > 0
         ? [{ label: "অতিরিক্ত জমা", value: `৳ ${Number(donation.extra_amount).toLocaleString('bn-BD')}/-`, icon: 'money' }]
         : []),
-      { label: "আদায়কারী", value: donation.collector?.members?.name || donation.collector?.name || "অ্যাডমিন", icon: 'edit' }
+      { label: "আদায়কারী", value: collectorName, icon: 'edit' }
     ];
 
     rows.forEach((row, i) => {
@@ -402,7 +411,7 @@ export async function GET(
     // Signature text (Black Ink Look with new font)
     ctx.font = '44px SignatureFont';
     ctx.fillStyle = '#000000';
-    ctx.fillText(donation.collector?.members?.name || donation.collector?.name || "অ্যাডমিন", sigX + 120, sigY - 20);
+    ctx.fillText(collectorName, sigX + 120, sigY - 20);
 
     // 9. Footer Message
     ctx.fillStyle = '#064E3B';

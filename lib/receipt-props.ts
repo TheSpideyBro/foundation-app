@@ -115,6 +115,14 @@ export async function fetchBatchConsolidation(
   return out;
 }
 
+/** Robustly extract collector name from Supabase join (object or array). */
+export function getCollectorName(collector: unknown): string {
+  const c = Array.isArray(collector) ? collector[0] : (collector as any);
+  if (!c) return "অ্যাডমিন";
+  const m = Array.isArray(c.members) ? c.members[0] : c.members;
+  return m?.name || c.name || "অ্যাডমিন";
+}
+
 /** Pure builder: donation row (+ optional batch rollup) → ReceiptPaper props. */
 export function buildReceiptPaperProps(
   donation: ReceiptDonation,
@@ -141,10 +149,7 @@ export function buildReceiptPaperProps(
     methodLabel: donation.method
       ? methodLabels[donation.method] || donation.method
       : "—",
-    collectorName:
-      donation.collector?.[0]?.members?.[0]?.name ||
-      donation.collector?.[0]?.name ||
-      "অ্যাডমিন",
+    collectorName: getCollectorName(donation.collector),
     extraAmountLabel:
       donation.extra_amount && Number(donation.extra_amount) > 0
         ? formatMoney(Number(donation.extra_amount))
