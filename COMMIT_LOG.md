@@ -2143,3 +2143,77 @@ Akash wanted: share click → member's WhatsApp chat opens → image attached �
 ### Related
 
 - Feature: F3 WhatsApp delivery (existing)
+
+---
+
+## 5cbf7b6 — feat(whatsapp): polish share message + add month
+
+**Date:** 2026-10-03  
+**Author:** Muse  
+**Branch:** feat/bank-cash-accounts  
+**Files changed:** `components/WhatsAppShareButton.tsx`, `app/donations/page.tsx`, `app/donations/[id]/receipt/page.tsx`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Message format | Plain: greeting, "রসিদ প্রস্তুত", receipt_no, amount, "ছবিটি গ্যালারি থেকে attach করে পাঠাচ্ছি" | Polished: foundation header, 🤲 greeting, ✅ confirmation, 🧾/📆/💰 emoji fields, 🌙 gratitude |
+| Month | Not included | 📆 মাস: coverage period (e.g. "অক্টোবর ২০২৬") via new `monthLabel` prop |
+| Gallery instruction | "ছবিটি গ্যালারি থেকে attach করে পাঠাচ্ছি।" | Removed per Akash |
+
+### Why
+
+Akash reviewed the message on his phone and asked for a more polished/beautiful format, removal of the gallery instruction line, and inclusion of which month's chanda the receipt covers.
+
+### Tests Run
+
+- [x] `npx tsc --noEmit` — clean
+- [ ] Manual verification: pending device test
+
+---
+
+## 448196e — feat(whatsapp): differentiate resend icon from direct share
+
+**Date:** 2026-10-03  
+**Author:** Muse  
+**Branch:** feat/bank-cash-accounts  
+**Files changed:** `app/donations/page.tsx`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| F3 resend button icon | MessageCircle (same as new WhatsAppShareButton) | RotateCcw (retry indicator) |
+
+### Why
+
+Akash saw two identical green MessageCircle buttons on donation cards (new direct share + old F3 resend) and asked to differentiate them visually.
+
+### Tests Run
+
+- [x] `npx tsc --noEmit` — clean
+
+---
+
+## 57f543b — feat(whatsapp): remove F3 resend button from donation cards
+
+**Date:** 2026-10-03  
+**Author:** Muse  
+**Branch:** feat/bank-cash-accounts  
+**Files changed:** `app/donations/page.tsx`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| F3 resend UI | Green button (bottom row) + "পাঠানো" badge + notification status query | Removed entirely |
+| Manual share | Two paths (resend via API, direct via chat) | Single path: WhatsAppShareButton |
+
+### Why
+
+Akash asked to remove the resend button ("resend shoriye daw"). The new direct share button covers the manual use case. F3 automatic send on joma + notifications table logging remain unchanged.
+
+### Tests Run
+
+- [x] `npx tsc --noEmit` — clean
+- [x] `npx eslint` — 0 errors (9 pre-existing warnings)
