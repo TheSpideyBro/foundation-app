@@ -10,7 +10,7 @@ import {
   numberToWordsBengali,
   monthLabelBengali,
 } from "@/lib/utils";
-import { getCollectorName } from "@/lib/receipt-props";
+import { getCollectorName, getDonorName } from "@/lib/receipt-props";
 
 export const metadata: Metadata = {
   title: "রসিদ যাচাই",
@@ -198,7 +198,7 @@ export default async function VerifyReceiptPage({
 
   const rows: Array<[string, ReactNode]> = [
     ["রসিদ নং", <span key="r" className="font-bold text-[#064E3B]">{donation.receipt_no}</span>],
-    ["দাতার নাম", maskName(donation.members?.name)],
+    ["দাতার নাম", maskName(getDonorName((donation as any).members))],
     ["টাকার পরিমাণ", <span key="a" className="font-bold">{formatMoney(amount)}</span>],
     ["কথায়", `${numberToWordsBengali(amount)} টাকা`],
     ["মাসের নাম", monthRangeLabel(coverageStart, coverageEnd)],
