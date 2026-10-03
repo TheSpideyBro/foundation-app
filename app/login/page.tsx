@@ -9,6 +9,7 @@ import {
   Eye, EyeOff
 } from "lucide-react";
 import Link from "next/link";
+import DeveloperCredit from "@/components/DeveloperCredit";
 
 export default function LoginPage() {
   return (
@@ -164,6 +165,10 @@ function LoginForm() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="mt-6">
+          <DeveloperCredit variant="dark" />
         </div>
       </div>
 

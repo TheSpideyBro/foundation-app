@@ -5,6 +5,7 @@ import { getSupabase as supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/components/providers";
 import { formatMoney } from "@/lib/utils";
 import Modal from "@/components/Modal";
+import DeveloperCredit from "@/components/DeveloperCredit";
 import { 
   User, Phone, MapPin, Award, 
   Calendar, Download, ShieldCheck, 
@@ -272,12 +273,7 @@ export default function ProfilePage() {
         </div>
       </div>
       <div className="mt-12 pt-8 border-t border-gray-100 text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-full border border-gray-100">
-          <ShieldCheck size={14} className="text-emerald-700" />
-          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-            Developed by Saddam Hossain Akash
-          </p>
-        </div>
+        <DeveloperCredit variant="dark" className="inline-flex" />
       </div>
     </div>
   );
