@@ -130,7 +130,7 @@ export default function LandingPage() {
           </div>
           <div>
             <p className="text-sm text-gray-400 font-medium">© ২০২৬ দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন। সর্বস্বত্ব সংরক্ষিত।</p>
-            <DeveloperCredit variant="light" className="mt-1 justify-start" />
+            <DeveloperCredit variant="dark" className="mt-1 justify-start" />
           </div>
           <div className="flex items-center gap-6">
             <a href="tel:01840828010" aria-label="ফোন করুন: ০১৮৪০-৮২৮০১০" className="text-gray-400 hover:text-emerald-600 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center"><Phone size={20} /></a>
