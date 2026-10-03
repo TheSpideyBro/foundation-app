@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Loader2, MessageCircle } from "lucide-react";
+import { normalizePhone, makeReceiptFileName, getVerifyUrl } from "@/lib/utils";
 
 type Props = {
   donationId: string;
@@ -37,14 +38,52 @@ export default function WhatsAppShareButton({
   children,
 }: Props) {
   const [busy, setBusy] = useState(false);
+  const prefetched = useRef<{ blob: Blob; objectUrl: string; fileName: string } | null>(null);
+  const prefetching = useRef(false);
 
-  /** Normalize BD phone: 01XXXXXXXXX → 8801XXXXXXXXX */
-  function normalizePhone(p: string): string | null {
-    const digits = p.replace(/\D/g, "");
-    if (digits.startsWith("880") && digits.length === 13) return digits;
-    if (digits.startsWith("01") && digits.length === 11) return "880" + digits.slice(1);
-    if (digits.length === 10 && digits.startsWith("1")) return "880" + digits;
-    return null;
+  async function prefetch() {
+    if (prefetched.current || prefetching.current) return;
+    prefetching.current = true;
+    try {
+      const res = await fetch(
+        `/api/receipt-image?donationId=${encodeURIComponent(donationId)}`,
+        { credentials: "same-origin" }
+      );
+      if (!res.ok) throw new Error("রসিদের ছবি তৈরি করা যায়নি");
+      const blob = await res.blob();
+      const fileName = makeReceiptFileName(receiptNo || donationId);
+      const objectUrl = URL.createObjectURL(blob);
+      prefetched.current = { blob, objectUrl, fileName };
+    } catch {
+      // Prefetch failure is fine — click handler will retry with error UI.
+      prefetching.current = false;
+    }
+  }
+
+  function triggerDownload(href: string, fileName: string) {
+    // iOS Safari ignores the `download` attribute — opening in a new tab lets
+    // the user long-press the image to Share / Save to Photos / Files.
+    if (isIOS()) {
+      window.open(href, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(href), 60000);
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = fileName;
+    // Firefox requires the anchor to be in the DOM.
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 5000);
+  }
+
+  function isIOS(): boolean {
+    if (typeof navigator === "undefined") return false;
+    return (
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+    );
   }
 
   async function handleClick() {
@@ -58,26 +97,24 @@ export default function WhatsAppShareButton({
 
     setBusy(true);
     try {
-      // 1. Fetch receipt JPEG
-      const res = await fetch(
-        `/api/receipt-image?donationId=${encodeURIComponent(donationId)}`,
-        { credentials: "same-origin" }
-      );
-      if (!res.ok) throw new Error("রসিদের ছবি তৈরি করা যায়নি");
-      const blob = await res.blob();
+      // Use pre-fetched file if ready; otherwise fetch now
+      const data = prefetched.current ?? (await (async () => {
+        const res = await fetch(
+          `/api/receipt-image?donationId=${encodeURIComponent(donationId)}`,
+          { credentials: "same-origin" }
+        );
+        if (!res.ok) throw new Error("রসিদের ছবি তৈরি করা যায়নি");
+        const blob = await res.blob();
+        const fileName = makeReceiptFileName(receiptNo || donationId);
+        const objectUrl = URL.createObjectURL(blob);
+        return { blob, objectUrl, fileName };
+      })());
 
-      // 2. Trigger download (lands in gallery → recent images)
-      const receiptLabel = (receiptNo || donationId).replace(/[^a-zA-Z0-9\u0980-\u09FF_-]/g, "-").slice(0, 40);
-      const fileName = `roshid-${receiptLabel}.jpg`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      // Trigger download (lands in gallery → recent images)
+      triggerDownload(data.objectUrl, data.fileName);
 
-      // 3. Open WhatsApp to the member's chat with pre-filled text
+      // Build WhatsApp message with verify URL
+      const verifyUrl = getVerifyUrl(receiptNo ?? null);
       const lines = [
         `আসসালামু আলাইকুম ওয়ারাহমাতুল্লাহ 🤲`,
         ``,
@@ -89,13 +126,15 @@ export default function WhatsAppShareButton({
         receiptNo ? `🧾 রসিদ নং: ${receiptNo}` : null,
         monthLabel ? `📆 মাস: ${monthLabel}` : null,
         amount ? `💰 পরিমাণ: ৳${amount.toLocaleString("bn-BD")}` : null,
+        verifyUrl ? `🔗 যাচাই: ${verifyUrl}` : null,
         ``,
         `জাযাকাল্লাহু খাইরান 🌙`,
       ].filter((l) => l !== null);
       const text = encodeURIComponent(lines.join("\n"));
-      window.open(`https://wa.me/${normalized}?text=${text}`, "_blank");
 
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      // Small delay so the download has time to land in gallery before chat opens
+      await new Promise((r) => setTimeout(r, 300));
+      window.open(`https://wa.me/${normalized}?text=${text}`, "_blank");
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "WhatsApp শেয়ার করা যায়নি");
     } finally {
@@ -107,6 +146,8 @@ export default function WhatsAppShareButton({
     <button
       type="button"
       onClick={handleClick}
+      onTouchStart={prefetch}
+      onMouseEnter={prefetch}
       disabled={busy}
       className={className}
       title={title}

@@ -1251,3 +1251,67 @@ relies on relative paths.
 `serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"]` in
 `next.config.ts` — verified the build emits an `[externals]` chunk. Real
 pipeline test run locally (executablePath → launch → goto → 140KB valid JPEG).
+
+## BUG-046: Donation-Page Share/WhatsApp/Download Gaps — No Delivery Status, Un-normalized Server Phone, iOS Download Loss
+
+**Status:** fixed (2026-10-04 — shared helpers + status badge, see Fix)
+**Found:** 2026-10-04 (code review of the donation-page receipt share / WhatsApp send / download flows)
+**Region:** frontend + backend (WhatsApp integration)
+
+### Description
+
+Four related gaps in the receipt-delivery UX found while reviewing the donation
+page:
+
+1. **No delivery status on donation cards.** F3 logs every send attempt in
+   `notifications`, but the donations list never read it — the F3 status/resend
+   UI was dropped when the direct WhatsApp share button landed. Staff cannot
+   tell whether the auto-sent receipt went out, failed, or was skipped.
+2. **WhatsApp Cloud API got an un-normalized phone server-side.**
+   `sendWhatsAppMessage()` only stripped non-digits
+   (`to.replace(/\D/g, "")`), so a member phone stored as `017…` was submitted
+   to Meta as an 11-digit national number. Meta's Graph API requires
+   E.164-without-`+` (`88017…`), so F3 auto-sends to local-format numbers
+   failed — while the client-side share button (which had its own E.164
+   normalizer) worked, hiding the failure from anyone testing manually.
+3. **Direct WhatsApp share button had no prefetch and no iOS fallback.** The
+   receipt JPEG was fetched only on click (long puppeteer render → Android
+   Chrome can drop the user gesture before `window.open('wa.me')`), and the
+   download used a bare anchor whose `download` attribute iOS Safari ignores —
+   the image never landed in the gallery on iOS.
+4. **Copy-pasted helpers.** Phone normalization, filename sanitizing and the
+   verify URL were each implemented inline in up to 3 places, and the share
+   message omitted the verify link entirely.
+
+### Root Cause
+
+The feature grew in layers (server-side F3 auto-send, then client-side direct
+share) without shared helpers; the server path never received the E.164
+normalizer the client already had.
+
+### Fix
+
+- `lib/utils.ts`: shared `normalizePhone()` (E.164 without `+`, handles
+  `01…` / `880…` / `+880…` / `00880…`), `makeReceiptFileName()`,
+  `getVerifyUrl()`.
+- `lib/whatsapp.ts`: routes through `normalizePhone()`; invalid number →
+  `console.warn` + `null` (logged as `failed` by `lib/receipt-notify.ts`),
+  never sent to Meta un-normalized.
+- `components/WhatsAppShareButton.tsx`: prefetches the JPEG on
+  hover/touchstart (same pattern as `ReceiptJpegButton`), iOS opens the blob
+  in a new tab (long-press → Save) instead of an ignored `download` anchor,
+  300 ms delay so the download lands before the chat opens, message now
+  includes the verify link, filename via the shared helper.
+- `components/ReceiptJpegButton.tsx`: filename via shared `makeReceiptFileName`.
+- `app/donations/page.tsx`: `loadDonations()` also reads the latest
+  `notifications` row per donation (`channel = 'whatsapp'`) and each card
+  shows a `WaStatusBadge` — "পাঠানো হয়েছে" / "ব্যর্থ" (+ error tooltip) /
+  "বাদ". Non-staff see no badge (RLS `notifications_select_staff` limits
+  SELECT to admin/treasurer; the empty result is silent, not an error).
+
+### Verification
+
+`tsc --noEmit` clean, `eslint .` 0 errors, `pnpm build` green,
+`pnpm test:ledger` 28/28, Playwright 3 passed / 6 skipped. `notifications`
+columns (`donation_id`, `channel`, `status`, `error`, `created_at`)
+confirmed against `supabase/migrations/20261002_f3_notifications.sql`.

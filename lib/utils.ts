@@ -105,3 +105,30 @@ export const methodLabels: Record<string, string> = {
   nagad: "নগদ (Nagad)",
   bank: "ব্যাংক",
 };
+
+/**
+ * Normalize BD phone to E.164 without '+' (e.g. 8801XXXXXXXXX).
+ * Handles: 01X..., +8801X..., 8801X..., 008801X..., spaces/dashes.
+ * Returns null if not a valid BD mobile.
+ */
+export function normalizePhone(raw: string): string | null {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("880") && digits.length === 13) return digits;
+  if (digits.startsWith("01") && digits.length === 11) return "880" + digits.slice(1);
+  if (digits.startsWith("00880") && digits.length === 15) return digits.slice(2);
+  if (digits.startsWith("1") && digits.length === 10) return "880" + digits;
+  return null;
+}
+
+/** Consistent receipt filename: roshid-<sanitized>.jpg */
+export function makeReceiptFileName(base: string): string {
+  const safe = base.replace(/[^a-zA-Z0-9\u0980-\u09FF_-]/g, "-").slice(0, 40);
+  return `roshid-${safe}.jpg`;
+}
+
+/** Verify URL for a receipt number (relative to site origin). */
+export function getVerifyUrl(receiptNo: string | null, baseUrl?: string): string | null {
+  if (!receiptNo) return null;
+  const base = baseUrl ?? process.env.NEXT_PUBLIC_SITE_URL;
+  return base ? `${base}/verify/${encodeURIComponent(receiptNo)}` : null;
+}

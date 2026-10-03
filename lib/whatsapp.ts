@@ -3,6 +3,8 @@
  * Uses WhatsApp Cloud API (Meta)
  */
 
+import { normalizePhone } from "./utils";
+
 const WHATSAPP_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
@@ -12,7 +14,11 @@ export async function sendWhatsAppMessage(to: string, message: string, mediaUrl?
     return null;
   }
 
-  const formattedPhone = to.replace(/\D/g, "");
+  const formattedPhone = normalizePhone(to);
+  if (!formattedPhone) {
+    console.warn("Invalid phone number for WhatsApp:", to);
+    return null;
+  }
   
   try {
     const body: any = {

@@ -2,6 +2,7 @@
 
 import { useState, useRef, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
+import { makeReceiptFileName } from "@/lib/utils";
 
 type Props = {
   donationId: string;
@@ -131,7 +132,7 @@ async function fetchReceiptFile(donationId: string): Promise<{
   const base = (receiptNo || donationId)
     .replace(/[^a-zA-Z0-9\u0980-\u09FF_-]/g, "-")
     .slice(0, 40);
-  const fileName = `roshid-${base || donationId.slice(0, 8)}.jpg`;
+  const fileName = makeReceiptFileName(base || donationId.slice(0, 8));
   const file = new File([blob], fileName, { type: "image/jpeg" });
   const objectUrl = URL.createObjectURL(blob);
   return { file, objectUrl, fileName };
