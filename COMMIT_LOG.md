@@ -2115,3 +2115,31 @@ Project inception.
 ## Automation Idea (Future)
 
 A git hook (PostToolUse on `git commit`) could prompt for a COMMIT_LOG.md entry template. See `.claude/settings.json` for hook configuration.
+---
+
+## 882f555 — feat(whatsapp): direct receipt share to member chat
+
+**Date:** 2026-10-03  
+**Author:** Muse  
+**Branch:** feat/bank-cash-accounts  
+**Files changed:** `components/WhatsAppShareButton.tsx` (new), `app/donations/page.tsx`, `app/donations/[id]/receipt/page.tsx`, `docs/product/FEATURE_MAP.md`, `CHANGELOG.md`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Receipt share | Generic share sheet → user picks WhatsApp → picks contact manually | Green WhatsApp button → receipt JPEG downloads → member's chat opens directly via wa.me with pre-filled Bengali message |
+| User taps | 3+ (share → WhatsApp → contact → attach → send) | 2 (attach from recent → send), chat already open |
+
+### Why
+
+Akash wanted: share click → member's WhatsApp chat opens → image attached → just tap send. Browsers cannot programmatically attach files to a WhatsApp chat (wa.me is text-only; `navigator.share` can't target a specific contact) — this is a platform limitation, not a code limitation. Download-then-open is the closest achievable UX.
+
+### Tests Run
+
+- [x] `npx tsc --noEmit` — clean
+- [ ] Manual verification: not yet tested on device (needs Akash to tap the button)
+
+### Related
+
+- Feature: F3 WhatsApp delivery (existing)
