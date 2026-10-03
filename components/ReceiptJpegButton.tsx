@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useRef, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
 type Props = {
@@ -32,50 +32,41 @@ export default function ReceiptJpegButton({
   children,
 }: Props) {
   const [busy, setBusy] = useState(false);
+  // Pre-fetched file: populated on touchstart/hover so that navigator.share()
+  // can be called synchronously inside the click gesture (Android Chrome
+  // throws "user gesture" errors if share follows an async fetch).
+  const prefetched = useRef<{ file: File; objectUrl: string; fileName: string } | null>(null);
+  const prefetching = useRef(false);
+
+  async function prefetch() {
+    if (prefetched.current || prefetching.current) return;
+    prefetching.current = true;
+    try {
+      const { file, objectUrl, fileName } = await fetchReceiptFile(donationId);
+      prefetched.current = { file, objectUrl, fileName };
+    } catch {
+      // Prefetch failure is fine — click handler will retry with error UI.
+      prefetching.current = false;
+    }
+  }
 
   async function handleClick() {
     if (busy) return;
     setBusy(true);
     try {
-      const res = await fetch(
-        `/api/receipt-image?donationId=${encodeURIComponent(donationId)}`,
-        { credentials: "same-origin" }
-      );
-      if (!res.ok) {
-        let msg = "রসিদের ছবি তৈরি করা যায়নি";
-        try {
-          const body = await res.json();
-          if (body?.error) msg = body.error;
-          if (body?.diag) msg += ` [${body.diag}]`;
-        } catch {
-          // Not JSON — capture raw body snippet (e.g. Vercel error page).
-          try {
-            const text = await res.text();
-            const snippet = text.replace(/\s+/g, " ").slice(0, 200);
-            msg += ` [http=${res.status} raw=${snippet}]`;
-          } catch {
-            /* keep default */
-          }
-        }
-        throw new Error(msg);
-      }
-      const blob = await res.blob();
-      const receiptNo = res.headers.get("X-Receipt-No");
-      const base = (receiptNo || donationId)
-        .replace(/[^a-zA-Z0-9\u0980-\u09FF_-]/g, "-")
-        .slice(0, 40);
-      const fileName = `roshid-${base || donationId.slice(0, 8)}.jpg`;
-      const file = new File([blob], fileName, { type: "image/jpeg" });
-      const objectUrl = URL.createObjectURL(blob);
+      // Use pre-fetched file if ready; otherwise fetch now (share may fall
+      // back to download on Android if the gesture was lost).
+      const data =
+        prefetched.current ?? (await fetchReceiptFile(donationId));
+      prefetched.current = null;
+      prefetching.current = false;
+      const { file, objectUrl, fileName } = data;
 
       if (mode === "share") {
         const shared = await tryShare(file);
         if (!shared) {
-          // Share unavailable or failed — download instead. Never show a
-          // technical error for this; the user still gets the file.
           triggerDownload(objectUrl, fileName);
         } else {
-          // Shared successfully — clean up the object URL.
           setTimeout(() => URL.revokeObjectURL(objectUrl), 5000);
         }
       } else {
@@ -96,6 +87,8 @@ export default function ReceiptJpegButton({
     <button
       type="button"
       onClick={() => void handleClick()}
+      onTouchStart={() => void prefetch()}
+      onMouseEnter={() => void prefetch()}
       disabled={busy}
       className={className}
       title={title}
@@ -104,6 +97,44 @@ export default function ReceiptJpegButton({
       {busy ? <Loader2 size={16} className="animate-spin" /> : children}
     </button>
   );
+}
+
+/** Fetch the receipt JPEG from the server and wrap as a File. */
+async function fetchReceiptFile(donationId: string): Promise<{
+  file: File;
+  objectUrl: string;
+  fileName: string;
+}> {
+  const res = await fetch(
+    `/api/receipt-image?donationId=${encodeURIComponent(donationId)}`,
+    { credentials: "same-origin" }
+  );
+  if (!res.ok) {
+    let msg = "রসিদের ছবি তৈরি করা যায়নি";
+    try {
+      const body = await res.json();
+      if (body?.error) msg = body.error;
+      if (body?.diag) msg += ` [${body.diag}]`;
+    } catch {
+      try {
+        const text = await res.text();
+        const snippet = text.replace(/\s+/g, " ").slice(0, 200);
+        msg += ` [http=${res.status} raw=${snippet}]`;
+      } catch {
+        /* keep default */
+      }
+    }
+    throw new Error(msg);
+  }
+  const blob = await res.blob();
+  const receiptNo = res.headers.get("X-Receipt-No");
+  const base = (receiptNo || donationId)
+    .replace(/[^a-zA-Z0-9\u0980-\u09FF_-]/g, "-")
+    .slice(0, 40);
+  const fileName = `roshid-${base || donationId.slice(0, 8)}.jpg`;
+  const file = new File([blob], fileName, { type: "image/jpeg" });
+  const objectUrl = URL.createObjectURL(blob);
+  return { file, objectUrl, fileName };
 }
 
 /**
