@@ -328,7 +328,62 @@ export default function ReceiptPaper({
       </div>
 
       {/* ── Bottom ornamental corners — improved Islamic pattern ── */}
-      <div className="relative h-20" aria-hidden="true">
+      <div className="relative h-28" aria-hidden="true">
+        {/* Side floral watermarks */}
+        <svg viewBox="0 0 120 140" className="absolute bottom-0 left-0 h-28 w-24 opacity-40" preserveAspectRatio="xMinYMax meet">
+          <g fill="none" stroke="#C9A227" strokeWidth="1.2" opacity="0.5">
+            <g transform="translate(40,90)">
+              <ellipse cx="0" cy="-28" rx="10" ry="28" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(45)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(90)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(135)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(180)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(225)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(270)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(315)" />
+              <circle r="8" />
+              <circle r="16" strokeWidth="0.8" />
+            </g>
+            <g transform="translate(75,40)">
+              <ellipse cx="0" cy="-14" rx="6" ry="14" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(60)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(120)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(180)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(240)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(300)" />
+              <circle r="4" />
+            </g>
+            <path d="M10,130 Q30,110 50,120 Q30,130 10,130" />
+            <path d="M90,20 Q105,35 100,50 Q90,35 90,20" />
+          </g>
+        </svg>
+        <svg viewBox="0 0 120 140" className="absolute bottom-0 right-0 h-28 w-24 opacity-40" preserveAspectRatio="xMaxYMax meet">
+          <g fill="none" stroke="#C9A227" strokeWidth="1.2" opacity="0.5">
+            <g transform="translate(80,90)">
+              <ellipse cx="0" cy="-28" rx="10" ry="28" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(45)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(90)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(135)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(180)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(225)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(270)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(315)" />
+              <circle r="8" />
+              <circle r="16" strokeWidth="0.8" />
+            </g>
+            <g transform="translate(45,40)">
+              <ellipse cx="0" cy="-14" rx="6" ry="14" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(60)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(120)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(180)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(240)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(300)" />
+              <circle r="4" />
+            </g>
+            <path d="M110,130 Q90,110 70,120 Q90,130 110,130" />
+            <path d="M30,20 Q15,35 20,50 Q30,35 30,20" />
+          </g>
+        </svg>
         <svg viewBox="0 0 800 80" className="absolute bottom-0 block w-full" preserveAspectRatio="none" style={{ height: 80 }}>
           <defs>
             <pattern id="footer-pattern" width="48" height="48" patternUnits="userSpaceOnUse">
