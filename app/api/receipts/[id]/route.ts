@@ -280,10 +280,16 @@ export async function GET(
     };
     const collectorName = getCollectorName((donation as any).collector);
 
+    // Helper: robustly extract donor name (handles object or array structure)
+    const getDonorNameLocal = (members: any): string => {
+      const m = Array.isArray(members) ? members[0] : members;
+      return m?.name || 'অজ্ঞাত';
+    };
+
     const rows = [
       { label: "রসিদ নং", value: displayReceiptNo || 'N/A', icon: 'doc' },
       { label: "তারিখ", value: donation.date, icon: 'cal' },
-      { label: "জনাব/জনাবা", value: donation.members?.name || 'অজ্ঞাত', icon: 'user' },
+      { label: "জনাব/জনাবা", value: getDonorNameLocal((donation as any).members), icon: 'user' },
       { label: "মাসের নাম", value: displayMonth, icon: 'month' },
       { label: "টাকার পরিমাণ কথায়", value: `${amountInWords} টাকা`, icon: 'text' },
       { label: "টাকার পরিমাণ", value: `৳ ${displayAmount}/-`, icon: 'money' },

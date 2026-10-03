@@ -115,6 +115,12 @@ export async function fetchBatchConsolidation(
   return out;
 }
 
+/** Robustly extract donor/member name from Supabase join (object or array). */
+export function getDonorName(members: unknown): string {
+  const m = Array.isArray(members) ? members[0] : (members as any);
+  return m?.name || "অজ্ঞাত";
+}
+
 /** Robustly extract collector name from Supabase join (object or array). */
 export function getCollectorName(collector: unknown): string {
   const c = Array.isArray(collector) ? collector[0] : (collector as any);
@@ -144,7 +150,7 @@ export function buildReceiptPaperProps(
     dateLabel: formatDateBengali(donation.date),
     amountLabel: formatMoney(amount),
     amountWords: numberToWordsBengali(amount),
-    donorName: donation.members?.[0]?.name || "অজ্ঞাত",
+    donorName: getDonorName(donation.members),
     monthLabel,
     methodLabel: donation.method
       ? methodLabels[donation.method] || donation.method
