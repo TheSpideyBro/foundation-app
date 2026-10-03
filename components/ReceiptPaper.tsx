@@ -236,70 +236,131 @@ export default function ReceiptPaper({
           </p>
         </div>
 
-        {/* ── QR + Signature ── */}
+        {/* ── QR + Signature — improved footer ── */}
         {verifyUrl ? (
-          <div className="mx-auto mt-6 flex max-w-lg flex-row items-end justify-between gap-4">
+          <div className="mx-auto mt-8 flex max-w-lg flex-row items-end justify-between gap-6">
+            {/* QR with ornate double frame */}
             <div className="shrink-0 text-center">
-              <div
-                className="mx-auto w-fit rounded-xl bg-white p-2"
-                style={{ border: "2px solid #0B4A38", boxShadow: "0 6px 18px rgba(11,74,56,0.12)" }}
-              >
-                <Image
-                  src={`/api/qr?text=${encodeURIComponent(verifyUrl)}`}
-                  alt="রসিদ যাচাই QR কোড"
-                  width={96}
-                  height={96}
-                  className="h-[96px] w-[96px]"
-                  unoptimized
-                />
+              <div className="relative mx-auto w-fit">
+                {/* outer gold frame */}
+                <div
+                  className="rounded-2xl p-[3px]"
+                  style={{ background: "linear-gradient(135deg, #C9A227, #F5E6C4, #C9A227)" }}
+                >
+                  {/* inner green frame */}
+                  <div
+                    className="rounded-xl bg-white p-2.5"
+                    style={{ border: "2px solid #0B4A38", boxShadow: "0 8px 24px rgba(11,74,56,0.15)" }}
+                  >
+                    <Image
+                      src={`/api/qr?text=${encodeURIComponent(verifyUrl)}`}
+                      alt="রসিদ যাচাই QR কোড"
+                      width={96}
+                      height={96}
+                      className="h-[96px] w-[96px]"
+                      unoptimized
+                    />
+                  </div>
+                </div>
+                {/* corner accents */}
+                <span className="absolute -left-1 -top-1 h-4 w-4 rounded-tl-lg border-l-[3px] border-t-[3px] border-[#C9A227]" aria-hidden="true" />
+                <span className="absolute -right-1 -top-1 h-4 w-4 rounded-tr-lg border-r-[3px] border-t-[3px] border-[#C9A227]" aria-hidden="true" />
+                <span className="absolute -bottom-1 -left-1 h-4 w-4 rounded-bl-lg border-b-[3px] border-l-[3px] border-[#C9A227]" aria-hidden="true" />
+                <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-br-lg border-b-[3px] border-r-[3px] border-[#C9A227]" aria-hidden="true" />
               </div>
-              <p className="mt-2 flex items-center justify-center gap-1.5 text-[14px] font-bold text-[#0B4A38]">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B4A38" strokeWidth="2">
-                  <rect x="3" y="3" width="7" height="7" rx="1" />
-                  <rect x="14" y="3" width="7" height="7" rx="1" />
-                  <rect x="3" y="14" width="7" height="7" rx="1" />
+              <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0B4A38]/5 px-4 py-1.5 text-[13px] font-bold text-[#0B4A38]">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0B4A38" strokeWidth="2.2">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="3" y="14" width="7" height="7" rx="1.5" />
                   <path d="M14 14h3v3h-3zM21 14v.01M14 21v.01M21 21v.01M18 18h.01" strokeLinecap="round" />
                 </svg>
                 স্ক্যান করে যাচাই করুন
               </p>
             </div>
-            <div className="min-w-0 flex-1 max-w-[280px] px-2 text-center">
-              <p className="-mb-2 font-teesta text-[22px] leading-tight text-[#0B3D2E]">{collectorName}</p>
-              <div className="border-b border-stone-400/70 pb-6" aria-hidden="true" />
-              <p className="mt-2 text-[13px] font-bold text-stone-500">আদায়কারীর স্বাক্ষর</p>
+            {/* Signature with elegant card */}
+            <div className="min-w-0 flex-1 max-w-[290px] px-2 text-center">
+              <div
+                className="rounded-xl px-4 pb-3 pt-4"
+                style={{ background: "linear-gradient(180deg, rgba(201,162,39,0.08), rgba(201,162,39,0.02))", border: "1px solid rgba(201,162,39,0.25)" }}
+              >
+                <p className="font-teesta text-[24px] leading-tight text-[#0B3D2E]">{collectorName}</p>
+                <div className="relative mx-auto mt-1 max-w-[200px]" aria-hidden="true">
+                  <div className="border-b-2 border-[#0B4A38]/30 pb-5" />
+                  <span className="absolute -bottom-[5px] left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-[#C9A227]" />
+                </div>
+                <p className="mt-2.5 inline-block rounded-full bg-[#0B4A38] px-4 py-1 text-[12px] font-bold text-white">
+                  আদায়কারীর স্বাক্ষর
+                </p>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="mx-auto mt-6 max-w-xs text-center">
-            <p className="-mb-2 font-teesta text-[22px] leading-tight text-[#0B3D2E]">{collectorName}</p>
-            <div className="border-b border-stone-400/70 pb-6" aria-hidden="true" />
-            <p className="mt-2 text-[13px] font-bold text-stone-500">আদায়কারীর স্বাক্ষর</p>
+          <div className="mx-auto mt-8 max-w-xs text-center">
+            <div
+              className="rounded-xl px-4 pb-3 pt-4"
+              style={{ background: "linear-gradient(180deg, rgba(201,162,39,0.08), rgba(201,162,39,0.02))", border: "1px solid rgba(201,162,39,0.25)" }}
+            >
+              <p className="font-teesta text-[24px] leading-tight text-[#0B3D2E]">{collectorName}</p>
+              <div className="relative mx-auto mt-1 max-w-[200px]" aria-hidden="true">
+                <div className="border-b-2 border-[#0B4A38]/30 pb-5" />
+                <span className="absolute -bottom-[5px] left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-[#C9A227]" />
+              </div>
+              <p className="mt-2.5 inline-block rounded-full bg-[#0B4A38] px-4 py-1 text-[12px] font-bold text-white">
+                আদায়কারীর স্বাক্ষর
+              </p>
+            </div>
           </div>
         )}
 
-        {/* ── Footer ── */}
-        <div className="mt-7 flex items-center justify-center gap-4">
-          <span className="h-px w-20 bg-[#C9A227]/60" aria-hidden="true" />
-          <p className="text-[13px] font-medium text-[#0B4A38]">
+        {/* ── Footer — improved with diamond dividers ── */}
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <span className="h-px w-16 bg-gradient-to-r from-transparent to-[#C9A227] sm:w-24" aria-hidden="true" />
+          <span className="h-1.5 w-1.5 rotate-45 bg-[#C9A227]" aria-hidden="true" />
+          <span className="h-2 w-2 rounded-full border-2 border-[#C9A227]" aria-hidden="true" />
+          <p className="text-[14px] font-bold text-[#0B4A38]">
             নির্দিষ্ট কর্তৃক সত্যতা যাচাইকৃত রসিদ
           </p>
-          <span className="h-px w-20 bg-[#C9A227]/60" aria-hidden="true" />
+          <span className="h-2 w-2 rounded-full border-2 border-[#C9A227]" aria-hidden="true" />
+          <span className="h-1.5 w-1.5 rotate-45 bg-[#C9A227]" aria-hidden="true" />
+          <span className="h-px w-16 bg-gradient-to-l from-transparent to-[#C9A227] sm:w-24" aria-hidden="true" />
         </div>
       </div>
 
-      {/* ── Bottom ornamental corners ── */}
-      <div className="relative h-16" aria-hidden="true">
-        <svg viewBox="0 0 800 64" className="absolute bottom-0 block w-full" preserveAspectRatio="none" style={{ height: 64 }}>
-          <path d="M0,64 C150,64 120,20 0,10 L0,64 Z" fill="#0B4A38" />
-          <path d="M800,64 C650,64 680,20 800,64 L800,64 Z" fill="#0B4A38" />
-          <path d="M0,10 C120,20 150,64 0,64" fill="none" stroke="#C9A227" strokeWidth="2" />
-          <path d="M800,10 C680,20 650,64 800,64" fill="none" stroke="#C9A227" strokeWidth="2" />
-          {/* corner flourishes */}
-          <g opacity="0.25" stroke="#C9A227" fill="none" strokeWidth="1.5">
-            <path d="M30,45 Q45,30 60,35 Q50,45 30,45" />
-            <path d="M770,45 Q755,30 740,35 Q750,45 770,45" />
-            <circle cx="45" cy="40" r="2" fill="#C9A227" stroke="none" />
-            <circle cx="755" cy="40" r="2" fill="#C9A227" stroke="none" />
+      {/* ── Bottom ornamental corners — improved Islamic pattern ── */}
+      <div className="relative h-20" aria-hidden="true">
+        <svg viewBox="0 0 800 80" className="absolute bottom-0 block w-full" preserveAspectRatio="none" style={{ height: 80 }}>
+          <defs>
+            <pattern id="footer-pattern" width="48" height="48" patternUnits="userSpaceOnUse">
+              {/* 8-pointed star motif */}
+              <g fill="none" stroke="rgba(201,162,39,0.18)" strokeWidth="1">
+                <path d="M24 8 L28 20 L40 24 L28 28 L24 40 L20 28 L8 24 L20 20 Z" />
+                <circle cx="24" cy="24" r="2.5" />
+              </g>
+            </pattern>
+          </defs>
+          {/* dark green corner shapes with pattern */}
+          <path d="M0,80 C180,80 140,24 0,12 L0,80 Z" fill="#0B4A38" />
+          <path d="M0,80 C180,80 140,24 0,12 L0,80 Z" fill="url(#footer-pattern)" />
+          <path d="M800,80 C620,80 660,24 800,12 L800,80 Z" fill="#0B4A38" />
+          <path d="M800,80 C620,80 660,24 800,12 L800,80 Z" fill="url(#footer-pattern)" />
+          {/* gold trim curves */}
+          <path d="M0,12 C140,24 180,80 0,80" fill="none" stroke="#C9A227" strokeWidth="2.5" />
+          <path d="M800,12 C660,24 620,80 800,80" fill="none" stroke="#C9A227" strokeWidth="2.5" />
+          <path d="M0,20 C120,30 150,70 0,72" fill="none" stroke="rgba(201,162,39,0.4)" strokeWidth="1" />
+          <path d="M800,20 C680,30 650,70 800,72" fill="none" stroke="rgba(201,162,39,0.4)" strokeWidth="1" />
+          {/* floral flourishes */}
+          <g stroke="#C9A227" fill="none" strokeWidth="1.5" opacity="0.5">
+            <path d="M40,58 Q55,42 72,48 Q60,58 40,58" />
+            <path d="M760,58 Q745,42 728,48 Q740,58 760,58" />
+            <path d="M52,52 Q58,44 66,46" />
+            <path d="M748,52 Q742,44 734,46" />
+          </g>
+          <g fill="#C9A227" opacity="0.6">
+            <circle cx="58" cy="52" r="2.5" />
+            <circle cx="742" cy="52" r="2.5" />
+            <circle cx="72" cy="46" r="1.5" />
+            <circle cx="728" cy="46" r="1.5" />
           </g>
         </svg>
       </div>
