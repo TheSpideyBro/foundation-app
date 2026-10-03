@@ -166,10 +166,11 @@ function LoginForm() {
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="mt-6">
-          <DeveloperCredit variant="dark" />
-        </div>
+      {/* Fixed bottom credit — always visible */}
+      <div className="fixed bottom-0 left-0 right-0 pb-4 pt-8 bg-gradient-to-t from-[#FDFDFC] via-[#FDFDFC]/90 to-transparent pointer-events-none">
+        <DeveloperCredit variant="dark" />
       </div>
 
       <style jsx>{`
