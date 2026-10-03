@@ -16,6 +16,7 @@ import {
   buildReceiptPaperProps,
   type ReceiptDonation as Donation,
   type BatchConsolidation,
+  monthRangeLabel,
 } from "@/lib/receipt-props";
 
 export default function ReceiptViewPage() {
@@ -230,6 +231,10 @@ export default function ReceiptViewPage() {
                 memberName={donation.members?.[0]?.name ?? undefined}
                 receiptNo={donation.receipt_no}
                 amount={Number(donation.amount) || 0}
+                monthLabel={monthRangeLabel(
+                  donation.coverage_start_month || donation.donation_month,
+                  donation.coverage_end_month || donation.donation_end_month
+                )}
                 className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-stone-200 transition hover:border-white/30 hover:text-white disabled:opacity-50"
                 title="WhatsApp-এ পাঠান"
                 ariaLabel="WhatsApp-এ রসিদ পাঠান"
