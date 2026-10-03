@@ -46,7 +46,7 @@ export default function ReceiptPaper({
     <div className="min-w-0 flex-1 max-w-[280px] px-2 text-center">
       <p className="-mb-3 font-teesta text-[20px] leading-tight text-[#022C22]">{collectorName}</p>
       <div className="border-b border-stone-400/70 pb-6" aria-hidden="true" />
-      <p className="mt-2 text-[10.5px] font-bold text-stone-500">
+      <p className="mt-2 text-[12px] font-bold text-stone-500">
         আদায়কারীর স্বাক্ষর
       </p>
     </div>
@@ -71,7 +71,7 @@ export default function ReceiptPaper({
           <h1 className="mx-auto mt-1 max-w-md font-shadhinata text-[23px] font-bold leading-snug text-black sm:text-[26px]">
             দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন
           </h1>
-          <p className="mx-auto mt-1.5 flex max-w-md flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11.5px] font-medium text-stone-500">
+          <p className="mx-auto mt-1.5 flex max-w-md flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[13px] font-medium text-stone-500">
             <span className="inline-flex items-center gap-1.5">
               <MapPin size={12} className="shrink-0 text-[#C9A227]" />
               দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা
@@ -91,7 +91,7 @@ export default function ReceiptPaper({
         {/* meta band */}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-x-8 gap-y-1.5 border-y border-[#022C22]/10 bg-[#064E3B]/[0.04] px-4 py-2">
           <div className="flex items-baseline gap-3">
-            <span className="text-[10.5px] font-bold text-stone-500">
+            <span className="text-[12px] font-bold text-stone-500">
               রসিদ নং
             </span>
             <span className="font-mono text-[15px] font-bold tracking-[0.08em] text-[#022C22]">
@@ -99,7 +99,7 @@ export default function ReceiptPaper({
             </span>
           </div>
           <div className="flex items-baseline gap-3">
-            <span className="text-[10.5px] font-bold text-stone-500">
+            <span className="text-[12px] font-bold text-stone-500">
               তারিখ
             </span>
             <span className="text-[15px] font-bold text-[#022C22]">{dateLabel}</span>
@@ -108,7 +108,7 @@ export default function ReceiptPaper({
 
         {/* amount hero — editorial, on paper */}
         <div className="mt-5 text-center">
-          <p className="text-[11px] font-bold text-stone-500">
+          <p className="text-[13px] font-bold text-stone-500">
             সর্বমোট প্রাপ্তি
           </p>
           <div className="mx-auto mt-2 max-w-[260px] border-y-2 border-[#C9A227] py-2.5">
@@ -116,7 +116,7 @@ export default function ReceiptPaper({
               {amountLabel}
             </p>
           </div>
-          <p className="mx-auto mt-2.5 max-w-md font-tiro text-[14.5px] italic leading-relaxed text-stone-600">
+          <p className="mx-auto mt-2.5 max-w-md font-tiro text-[16px] italic leading-relaxed text-stone-600">
             কথায়: {amountWords} টাকা মাত্র
           </p>
         </div>
@@ -128,7 +128,7 @@ export default function ReceiptPaper({
               key={label}
               className="flex items-baseline justify-between gap-6 border-b border-stone-200/80 py-2 last:border-0"
             >
-              <dt className="shrink-0 text-[12px] font-bold text-stone-500">
+              <dt className="shrink-0 text-[14px] font-bold text-stone-500">
                 {label}
               </dt>
               <dd className="text-right text-[17px] font-semibold text-stone-900">{value}</dd>
@@ -139,7 +139,7 @@ export default function ReceiptPaper({
         {/* gratitude */}
         <div className="mt-5 text-center">
           <p className="font-galada text-[24px] leading-snug text-[#064E3B]">জাযাকাল্লাহু খাইরান</p>
-          <p className="mx-auto mt-1 max-w-sm text-[12px] leading-relaxed text-stone-500">
+          <p className="mx-auto mt-1 max-w-sm text-[14px] leading-relaxed text-stone-500">
             আপনার মহানুভবতার জন্য আন্তরিক ধন্যবাদ — আল্লাহ তায়ালা আপনার দান কবুল করুন
           </p>
         </div>
@@ -158,7 +158,7 @@ export default function ReceiptPaper({
                   unoptimized
                 />
               </div>
-              <p className="mt-2 flex items-center justify-center gap-1 text-[11px] font-bold text-[#064E3B]">
+              <p className="mt-2 flex items-center justify-center gap-1 text-[13px] font-bold text-[#064E3B]">
                 <BadgeCheck size={13} className="shrink-0 text-[#C9A227]" />
                 স্ক্যান করে যাচাই করুন
               </p>
