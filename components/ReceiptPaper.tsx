@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { MapPin, Phone } from "lucide-react";
 
 export type ReceiptPaperProps = {
   receiptNo: string | null;
@@ -91,21 +90,16 @@ export default function ReceiptPaper({
       </div>
 
       <div className="relative px-6 pb-8 sm:px-10" style={{ marginTop: -30 }}>
-        {/* ── Logo emblem ── */}
+        {/* ── Logo emblem — from reference image ── */}
         <div className="flex justify-center">
-          <div
-            className="flex h-20 w-20 items-center justify-center"
-            style={{
-              background: "#0B4A38",
-              clipPath: "polygon(50% 0%, 100% 15%, 100% 70%, 50% 100%, 0% 70%, 0% 15%)",
-              border: "3px solid #C9A227",
-            }}
-          >
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="1.8">
-              <path d="M3 21h18M4 21V10m4 11V10m4 11V10m4 11V10m4 11V10M2 10l10-6 10 6" strokeLinecap="round" strokeLinejoin="round" />
-              <circle cx="12" cy="2.5" r="1" fill="#C9A227" />
-            </svg>
-          </div>
+          <Image
+            src="/receipt-icons/logo-shield.png"
+            alt="ফাউন্ডেশন লোগো"
+            width={96}
+            height={96}
+            className="h-24 w-24 object-contain"
+            unoptimized
+          />
         </div>
 
         {/* ── Tagline ── */}
@@ -118,19 +112,29 @@ export default function ReceiptPaper({
           দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন
         </h1>
 
-        {/* ── Contact ── */}
+        {/* ── Contact — icons from reference image ── */}
         <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[14px] font-medium text-[#0B4A38]">
           <span className="inline-flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0B4A38]/10">
-              <MapPin size={14} className="text-[#0B4A38]" />
-            </span>
+            <Image
+              src="/receipt-icons/icon-location.png"
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain"
+              unoptimized
+            />
             দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা
           </span>
           <span className="hidden text-[#C9A227] sm:inline">|</span>
           <span className="inline-flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0B4A38]/10">
-              <Phone size={14} className="text-[#0B4A38]" />
-            </span>
+            <Image
+              src="/receipt-icons/icon-phone.png"
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain"
+              unoptimized
+            />
             <span className="font-bold">০১৬৪০-৮২৮৩০১ • ০১৬৪৮-৪৩৮২৯৪</span>
           </span>
         </div>
@@ -141,19 +145,27 @@ export default function ReceiptPaper({
           style={{ background: "#EAF2EA", border: "1px solid #D4E2D4" }}
         >
           <div className="flex items-center gap-3">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B4A38" strokeWidth="2">
-              <rect x="4" y="3" width="16" height="18" rx="2" />
-              <path d="M8 7h8M8 11h8M8 15h5" strokeLinecap="round" />
-            </svg>
+            <Image
+              src="/receipt-icons/icon-receipt.png"
+              alt=""
+              width={24}
+              height={24}
+              className="h-6 w-6 object-contain"
+              unoptimized
+            />
             <span className="text-[16px] font-bold text-[#0B4A38]">রসিদ নং:</span>
             <span className="font-mono text-[17px] font-bold text-[#0B3D2E]">{receiptNo || "—"}</span>
           </div>
           <div className="hidden h-8 w-px bg-[#0B4A38]/20 sm:block" aria-hidden="true" />
           <div className="flex items-center gap-3">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B4A38" strokeWidth="2">
-              <rect x="3" y="5" width="18" height="16" rx="2" />
-              <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
-            </svg>
+            <Image
+              src="/receipt-icons/icon-calendar.png"
+              alt=""
+              width={24}
+              height={24}
+              className="h-6 w-6 object-contain"
+              unoptimized
+            />
             <span className="text-[16px] font-bold text-[#0B4A38]">তারিখ:</span>
             <span className="text-[16px] font-bold text-[#0B3D2E]">{dateLabel}</span>
           </div>
