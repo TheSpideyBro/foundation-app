@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { BadgeCheck, Landmark, MapPin, Phone } from "lucide-react";
 
 export type ReceiptPaperProps = {
   receiptNo: string | null;
@@ -14,7 +13,13 @@ export type ReceiptPaperProps = {
   verifyUrl: string | null;
 };
 
-/** Premium paper receipt — pure presentational, used by the live page and the dev preview. */
+/**
+ * Premium paper receipt — ornate Islamic-style design.
+ * Dark emerald + gold on ivory. Used by the live page, JPG export,
+ * and the dev preview. Pure presentational.
+ *
+ * IMPORTANT: No letter-spacing on Bengali text (breaks conjunct shaping).
+ */
 export default function ReceiptPaper({
   receiptNo,
   dateLabel,
@@ -31,9 +36,9 @@ export default function ReceiptPaper({
     { label: "প্রদানকারী", value: donorName },
     { label: "মাসের নাম", value: monthLabel },
     {
-      label: "মাধ্যম",
+      label: "পদবি",
       value: (
-        <span className="inline-block rounded-full border border-[#C9A227]/50 bg-[#C9A227]/10 px-3 py-0.5 text-[13px] font-bold text-[#7a5f14]">
+        <span className="inline-block rounded-full border border-[#C9A227] bg-[#F5E6C4] px-4 py-1 text-[15px] font-bold text-[#7a5f14]">
           {methodLabel}
         </span>
       ),
@@ -42,140 +47,378 @@ export default function ReceiptPaper({
     ...(extraAmountLabel ? [{ label: "অতিরিক্ত জমা", value: extraAmountLabel }] : []),
   ];
 
-  const signatureBlock = (
-    <div className="min-w-0 flex-1 max-w-[280px] px-2 text-center">
-      <p className="-mb-3 font-teesta text-[20px] leading-tight text-[#022C22]">{collectorName}</p>
-      <div className="border-b border-stone-400/70 pb-6" aria-hidden="true" />
-      <p className="mt-2 text-[12px] font-bold text-stone-500">
-        আদায়কারীর স্বাক্ষর
-      </p>
-    </div>
-  );
-
   return (
-    <article className="receipt-paper relative mx-auto w-full max-w-2xl bg-[#FDFCF7] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.8)]">
-      {/* brand band */}
-      <div className="h-1.5 bg-gradient-to-r from-[#022C22] via-[#064E3B] to-[#022C22]" aria-hidden="true" />
-      {/* hairline frame */}
-      <div className="pointer-events-none absolute inset-2.5 border border-[#C9A227]/60" aria-hidden="true" />
+    <article
+      className="receipt-paper relative mx-auto w-full max-w-2xl overflow-hidden bg-[#FFFEF8]"
+      style={{ boxShadow: "0 40px 90px -30px rgba(0,0,0,0.4)" }}
+    >
+      {/* ── Top arch: dark green dome with gold trim ── */}
+      <div className="relative" aria-hidden="true">
+        <svg viewBox="0 0 800 130" className="block w-full" preserveAspectRatio="none" style={{ height: 110 }}>
+          <defs>
+            <pattern id="islamic-pattern" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path
+                d="M20 0 L40 20 L20 40 L0 20 Z"
+                fill="none"
+                stroke="rgba(201,162,39,0.12)"
+                strokeWidth="1"
+              />
+              <circle cx="20" cy="20" r="3" fill="none" stroke="rgba(201,162,39,0.08)" strokeWidth="1" />
+            </pattern>
+          </defs>
+          {/* dark green base */}
+          <rect width="800" height="130" fill="#0B4A38" />
+          <rect width="800" height="130" fill="url(#islamic-pattern)" />
+          {/* gold trim curve */}
+          <path
+            d="M0,130 C200,60 300,90 400,30 C500,90 600,60 800,130 L800,130 L0,130 Z"
+            fill="#FFFEF8"
+          />
+          <path
+            d="M0,122 C200,52 300,82 400,22 C500,82 600,52 800,122"
+            fill="none"
+            stroke="#C9A227"
+            strokeWidth="5"
+          />
+          <path
+            d="M0,130 C200,60 300,90 400,30 C500,90 600,60 800,130"
+            fill="none"
+            stroke="#0B4A38"
+            strokeWidth="2"
+          />
+        </svg>
+      </div>
 
-      <div className="relative px-6 pb-6 pt-6 sm:px-10">
-        {/* masthead */}
-        <header className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#064E3B] shadow-[0_10px_25px_rgba(6,78,59,0.35)] ring-1 ring-[#C9A227] ring-offset-2 ring-offset-[#FDFCF7]">
-            <Landmark size={22} className="text-[#C9A227]" strokeWidth={1.8} />
-          </div>
-          <p className="mt-3 text-[11px] font-bold text-[#7a5f14]">
-            দান রসিদ
-          </p>
-          <h1 className="mx-auto mt-1 max-w-md font-shadhinata text-[23px] font-bold leading-snug text-black sm:text-[26px]">
-            দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন
-          </h1>
-          <p className="mx-auto mt-1.5 flex max-w-md flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[13px] font-medium text-stone-500">
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin size={12} className="shrink-0 text-[#C9A227]" />
-              দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Phone size={12} className="shrink-0 text-[#C9A227]" />
-              <span className="font-semibold">০১৮৪০-৮২৮০১০ · ০১৮১৪-৯৪৮২২৪</span>
-            </span>
-          </p>
-          <div className="mx-auto mt-3 flex max-w-[200px] items-center gap-3" aria-hidden="true">
-            <span className="h-px flex-1 bg-[#C9A227]" />
-            <span className="text-[10px] text-[#C9A227]">✦</span>
-            <span className="h-px flex-1 bg-[#C9A227]" />
-          </div>
-        </header>
+      <div className="relative px-6 pb-8 sm:px-10" style={{ marginTop: -30 }}>
+        {/* ── Logo emblem — from reference image ── */}
+        <div className="flex justify-center">
+          <Image
+            src="/receipt-icons/logo-shield.png"
+            alt="ফাউন্ডেশন লোগো"
+            width={96}
+            height={96}
+            className="h-24 w-24 object-contain"
+            unoptimized
+          />
+        </div>
 
-        {/* meta band */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-x-8 gap-y-1.5 border-y border-[#022C22]/10 bg-[#064E3B]/[0.04] px-4 py-2">
-          <div className="flex items-baseline gap-3">
-            <span className="text-[12px] font-bold text-stone-500">
-              রসিদ নং
-            </span>
-            <span className="font-mono text-[15px] font-bold tracking-[0.08em] text-[#022C22]">
-              {receiptNo || "—"}
-            </span>
+        {/* ── Tagline ── */}
+        <p className="mt-3 text-center text-[15px] font-bold text-[#B8912A]">
+          <span className="mx-2">—</span>সেবা <span className="mx-1">•</span> সহায়তা <span className="mx-1">•</span> মানবিকতা<span className="mx-2">—</span>
+        </p>
+
+        {/* ── Foundation name ── */}
+        <h1 className="mx-auto mt-2 max-w-lg text-center font-shadhinata text-[30px] font-bold leading-tight text-[#0B3D2E] sm:text-[34px]">
+          দৌলখাঁড় পূর্বপাড়া হিলফুল ফুযুল ফাউন্ডেশন
+        </h1>
+
+        {/* ── Contact — icons from reference image ── */}
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[14px] font-medium text-[#0B4A38]">
+          <span className="inline-flex items-center gap-2">
+            <Image
+              src="/receipt-icons/icon-location.png"
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain"
+              unoptimized
+            />
+            দৌলখাঁড় পূর্বপাড়া, নাঙ্গলকোট, কুমিল্লা
+          </span>
+          <span className="hidden text-[#C9A227] sm:inline">|</span>
+          <span className="inline-flex items-center gap-2">
+            <Image
+              src="/receipt-icons/icon-phone.png"
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain"
+              unoptimized
+            />
+            <span className="font-bold">০১৬৪০-৮২৮৩০১ • ০১৬৪৮-৪৩৮২৯৪</span>
+          </span>
+        </div>
+
+        {/* ── Receipt meta pill ── */}
+        <div
+          className="mx-auto mt-5 flex max-w-xl flex-wrap items-center justify-between gap-x-8 gap-y-2 rounded-2xl px-6 py-3.5"
+          style={{ background: "#EAF2EA", border: "1px solid #D4E2D4" }}
+        >
+          <div className="flex items-center gap-3">
+            <Image
+              src="/receipt-icons/icon-receipt.png"
+              alt=""
+              width={24}
+              height={24}
+              className="h-6 w-6 object-contain"
+              unoptimized
+            />
+            <span className="text-[16px] font-bold text-[#0B4A38]">রসিদ নং:</span>
+            <span className="font-mono text-[17px] font-bold text-[#0B3D2E]">{receiptNo || "—"}</span>
           </div>
-          <div className="flex items-baseline gap-3">
-            <span className="text-[12px] font-bold text-stone-500">
-              তারিখ
-            </span>
-            <span className="text-[15px] font-bold text-[#022C22]">{dateLabel}</span>
+          <div className="hidden h-8 w-px bg-[#0B4A38]/20 sm:block" aria-hidden="true" />
+          <div className="flex items-center gap-3">
+            <Image
+              src="/receipt-icons/icon-calendar.png"
+              alt=""
+              width={24}
+              height={24}
+              className="h-6 w-6 object-contain"
+              unoptimized
+            />
+            <span className="text-[16px] font-bold text-[#0B4A38]">তারিখ:</span>
+            <span className="text-[16px] font-bold text-[#0B3D2E]">{dateLabel}</span>
           </div>
         </div>
 
-        {/* amount hero — editorial, on paper */}
-        <div className="mt-5 text-center">
-          <p className="text-[13px] font-bold text-stone-500">
-            সর্বমোট প্রাপ্তি
-          </p>
-          <div className="mx-auto mt-2 max-w-[260px] border-y-2 border-[#C9A227] py-2.5">
-            <p className="font-baloo text-[42px] font-bold leading-none text-[#064E3B] sm:text-[50px]">
-              {amountLabel}
-            </p>
+        {/* ── Amount hero ── */}
+        <div className="mt-7 text-center">
+          {/* badge */}
+          <div className="flex items-center justify-center gap-3">
+            <span className="h-px w-16 bg-[#C9A227] sm:w-24" aria-hidden="true" />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#C9A227" aria-hidden="true">
+              <path d="M12 2 C13 8, 18 10, 22 12 C18 14, 13 16, 12 22 C11 16, 6 14, 2 12 C6 10, 11 8, 12 2 Z" />
+            </svg>
+            <span
+              className="rounded-full px-6 py-1.5 text-[17px] font-bold text-white"
+              style={{ background: "#0B4A38" }}
+            >
+              সর্বমোট প্রাপ্তি
+            </span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#C9A227" aria-hidden="true" style={{ transform: "scaleX(-1)" }}>
+              <path d="M12 2 C13 8, 18 10, 22 12 C18 14, 13 16, 12 22 C11 16, 6 14, 2 12 C6 10, 11 8, 12 2 Z" />
+            </svg>
+            <span className="h-px w-16 bg-[#C9A227] sm:w-24" aria-hidden="true" />
           </div>
-          <p className="mx-auto mt-2.5 max-w-md font-tiro text-[16px] italic leading-relaxed text-stone-600">
+
+          {/* amount */}
+          <p className="mt-3 font-baloo text-[56px] font-bold leading-none text-[#0B4A38] sm:text-[64px]">
+            {amountLabel}
+          </p>
+
+          {/* divider + words */}
+          <div className="mx-auto mt-3 flex max-w-xs items-center gap-2" aria-hidden="true">
+            <span className="h-px flex-1 bg-[#C9A227]" />
+            <span className="h-1.5 w-1.5 rotate-45 bg-[#C9A227]" />
+            <span className="h-px flex-1 bg-[#C9A227]" />
+          </div>
+          <p className="mt-2 text-[16px] font-medium text-[#0B4A38]">
             কথায়: {amountWords} টাকা মাত্র
           </p>
         </div>
 
-        {/* details */}
-        <dl className="mx-auto mt-5 max-w-lg font-nakkhatra">
+        {/* ── Details ── */}
+        <dl className="mx-auto mt-6 max-w-lg">
           {detailRows.map(({ label, value }) => (
             <div
               key={label}
-              className="flex items-baseline justify-between gap-6 border-b border-stone-200/80 py-2 last:border-0"
+              className="flex items-center justify-between gap-6 border-b border-dashed border-[#0B4A38]/15 py-2.5 last:border-0"
             >
-              <dt className="shrink-0 text-[14px] font-bold text-stone-500">
-                {label}
-              </dt>
-              <dd className="text-right text-[17px] font-semibold text-stone-900">{value}</dd>
+              <dt className="shrink-0 text-[16px] font-medium text-[#0B4A38]">{label}</dt>
+              <dd className="text-right text-[18px] font-bold text-[#0B3D2E]">{value}</dd>
             </div>
           ))}
         </dl>
 
-        {/* gratitude */}
-        <div className="mt-5 text-center">
-          <p className="font-galada text-[24px] leading-snug text-[#064E3B]">জাযাকাল্লাহু খাইরান</p>
-          <p className="mx-auto mt-1 max-w-sm text-[14px] leading-relaxed text-stone-500">
-            আপনার মহানুভবতার জন্য আন্তরিক ধন্যবাদ — আল্লাহ তায়ালা আপনার দান কবুল করুন
+        {/* ── Gratitude ── */}
+        <div className="mt-6 text-center">
+          <div className="flex items-center justify-center gap-4">
+            <span className="h-px w-12 bg-[#C9A227]" aria-hidden="true" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#C9A227]" aria-hidden="true" />
+            <p className="font-galada text-[28px] leading-snug text-[#0B4A38]">জাযাকাল্লাহু খাইরান</p>
+            <span className="h-1.5 w-1.5 rounded-full bg-[#C9A227]" aria-hidden="true" />
+            <span className="h-px w-12 bg-[#C9A227]" aria-hidden="true" />
+          </div>
+          <p className="mx-auto mt-2 max-w-md text-[15px] leading-relaxed text-[#0B4A38]">
+            আপনার মহানুভবতার জন্য আন্তরিক ধন্যবাদ — আল্লাহ তায়ালা
+            <br />
+            আপনার দান কবুল করুন
           </p>
         </div>
 
-        {/* verify + signature — QR left, signature right, spread apart */}
+        {/* ── QR + Signature — improved footer ── */}
         {verifyUrl ? (
-          <div className="mx-auto mt-5 flex max-w-lg flex-row items-end justify-between gap-4">
+          <div className="mx-auto mt-8 flex max-w-lg flex-row items-end justify-between gap-6">
+            {/* QR with ornate double frame */}
             <div className="shrink-0 text-center">
-              <div className="mx-auto w-fit rounded-md bg-white p-1.5 shadow-[0_6px_18px_rgba(6,78,59,0.12)] ring-1 ring-[#C9A227]/70">
-                <Image
-                  src={`/api/qr?text=${encodeURIComponent(verifyUrl)}`}
-                  alt="রসিদ যাচাই QR কোড"
-                  width={88}
-                  height={88}
-                  className="h-[88px] w-[88px]"
-                  unoptimized
-                />
+              <div className="relative mx-auto w-fit">
+                {/* outer gold frame */}
+                <div
+                  className="rounded-2xl p-[3px]"
+                  style={{ background: "linear-gradient(135deg, #C9A227, #F5E6C4, #C9A227)" }}
+                >
+                  {/* inner green frame */}
+                  <div
+                    className="rounded-xl bg-white p-2.5"
+                    style={{ border: "2px solid #0B4A38", boxShadow: "0 8px 24px rgba(11,74,56,0.15)" }}
+                  >
+                    <Image
+                      src={`/api/qr?text=${encodeURIComponent(verifyUrl)}`}
+                      alt="রসিদ যাচাই QR কোড"
+                      width={96}
+                      height={96}
+                      className="h-[96px] w-[96px]"
+                      unoptimized
+                    />
+                  </div>
+                </div>
+                {/* corner accents */}
+                <span className="absolute -left-1 -top-1 h-4 w-4 rounded-tl-lg border-l-[3px] border-t-[3px] border-[#C9A227]" aria-hidden="true" />
+                <span className="absolute -right-1 -top-1 h-4 w-4 rounded-tr-lg border-r-[3px] border-t-[3px] border-[#C9A227]" aria-hidden="true" />
+                <span className="absolute -bottom-1 -left-1 h-4 w-4 rounded-bl-lg border-b-[3px] border-l-[3px] border-[#C9A227]" aria-hidden="true" />
+                <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-br-lg border-b-[3px] border-r-[3px] border-[#C9A227]" aria-hidden="true" />
               </div>
-              <p className="mt-2 flex items-center justify-center gap-1 text-[13px] font-bold text-[#064E3B]">
-                <BadgeCheck size={13} className="shrink-0 text-[#C9A227]" />
+              <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0B4A38]/5 px-4 py-1.5 text-[13px] font-bold text-[#0B4A38]">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0B4A38" strokeWidth="2.2">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                  <path d="M14 14h3v3h-3zM21 14v.01M14 21v.01M21 21v.01M18 18h.01" strokeLinecap="round" />
+                </svg>
                 স্ক্যান করে যাচাই করুন
               </p>
             </div>
-            {signatureBlock}
+            {/* Signature with elegant card */}
+            <div className="min-w-0 flex-1 max-w-[290px] px-2 text-center">
+              <div
+                className="rounded-xl px-4 pb-3 pt-4"
+                style={{ background: "linear-gradient(180deg, rgba(201,162,39,0.08), rgba(201,162,39,0.02))", border: "1px solid rgba(201,162,39,0.25)" }}
+              >
+                <p className="font-teesta text-[24px] leading-tight text-[#0B3D2E]">{collectorName}</p>
+                <div className="relative mx-auto mt-1 max-w-[200px]" aria-hidden="true">
+                  <div className="border-b-2 border-[#0B4A38]/30 pb-5" />
+                  <span className="absolute -bottom-[5px] left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-[#C9A227]" />
+                </div>
+                <p className="mt-2.5 inline-block rounded-full bg-[#0B4A38] px-4 py-1 text-[12px] font-bold text-white">
+                  আদায়কারীর স্বাক্ষর
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="mx-auto mt-5 max-w-xs">{signatureBlock}</div>
+          <div className="mx-auto mt-8 max-w-xs text-center">
+            <div
+              className="rounded-xl px-4 pb-3 pt-4"
+              style={{ background: "linear-gradient(180deg, rgba(201,162,39,0.08), rgba(201,162,39,0.02))", border: "1px solid rgba(201,162,39,0.25)" }}
+            >
+              <p className="font-teesta text-[24px] leading-tight text-[#0B3D2E]">{collectorName}</p>
+              <div className="relative mx-auto mt-1 max-w-[200px]" aria-hidden="true">
+                <div className="border-b-2 border-[#0B4A38]/30 pb-5" />
+                <span className="absolute -bottom-[5px] left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-[#C9A227]" />
+              </div>
+              <p className="mt-2.5 inline-block rounded-full bg-[#0B4A38] px-4 py-1 text-[12px] font-bold text-white">
+                আদায়কারীর স্বাক্ষর
+              </p>
+            </div>
+          </div>
         )}
 
-        <p className="mt-5 text-center text-[10.5px] text-stone-400">
-          সিস্টেম কর্তৃক স্বয়ংক্রিয়ভাবে প্রস্তুতকৃত রসিদ
-        </p>
+        {/* ── Footer — improved with diamond dividers ── */}
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <span className="h-px w-16 bg-gradient-to-r from-transparent to-[#C9A227] sm:w-24" aria-hidden="true" />
+          <span className="h-1.5 w-1.5 rotate-45 bg-[#C9A227]" aria-hidden="true" />
+          <span className="h-2 w-2 rounded-full border-2 border-[#C9A227]" aria-hidden="true" />
+          <p className="text-[14px] font-bold text-[#0B4A38]">
+            নির্দিষ্ট কর্তৃক সত্যতা যাচাইকৃত রসিদ
+          </p>
+          <span className="h-2 w-2 rounded-full border-2 border-[#C9A227]" aria-hidden="true" />
+          <span className="h-1.5 w-1.5 rotate-45 bg-[#C9A227]" aria-hidden="true" />
+          <span className="h-px w-16 bg-gradient-to-l from-transparent to-[#C9A227] sm:w-24" aria-hidden="true" />
+        </div>
       </div>
 
-      {/* brand band */}
-      <div className="h-1.5 bg-gradient-to-r from-[#022C22] via-[#064E3B] to-[#022C22]" aria-hidden="true" />
+      {/* ── Bottom ornamental corners — improved Islamic pattern ── */}
+      <div className="relative h-28" aria-hidden="true">
+        {/* Side floral watermarks */}
+        <svg viewBox="0 0 120 140" className="absolute bottom-0 left-0 h-28 w-24 opacity-40" preserveAspectRatio="xMinYMax meet">
+          <g fill="none" stroke="#C9A227" strokeWidth="1.2" opacity="0.5">
+            <g transform="translate(40,90)">
+              <ellipse cx="0" cy="-28" rx="10" ry="28" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(45)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(90)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(135)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(180)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(225)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(270)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(315)" />
+              <circle r="8" />
+              <circle r="16" strokeWidth="0.8" />
+            </g>
+            <g transform="translate(75,40)">
+              <ellipse cx="0" cy="-14" rx="6" ry="14" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(60)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(120)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(180)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(240)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(300)" />
+              <circle r="4" />
+            </g>
+            <path d="M10,130 Q30,110 50,120 Q30,130 10,130" />
+            <path d="M90,20 Q105,35 100,50 Q90,35 90,20" />
+          </g>
+        </svg>
+        <svg viewBox="0 0 120 140" className="absolute bottom-0 right-0 h-28 w-24 opacity-40" preserveAspectRatio="xMaxYMax meet">
+          <g fill="none" stroke="#C9A227" strokeWidth="1.2" opacity="0.5">
+            <g transform="translate(80,90)">
+              <ellipse cx="0" cy="-28" rx="10" ry="28" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(45)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(90)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(135)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(180)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(225)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(270)" />
+              <ellipse cx="0" cy="-28" rx="10" ry="28" transform="rotate(315)" />
+              <circle r="8" />
+              <circle r="16" strokeWidth="0.8" />
+            </g>
+            <g transform="translate(45,40)">
+              <ellipse cx="0" cy="-14" rx="6" ry="14" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(60)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(120)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(180)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(240)" />
+              <ellipse cx="0" cy="-14" rx="6" ry="14" transform="rotate(300)" />
+              <circle r="4" />
+            </g>
+            <path d="M110,130 Q90,110 70,120 Q90,130 110,130" />
+            <path d="M30,20 Q15,35 20,50 Q30,35 30,20" />
+          </g>
+        </svg>
+        <svg viewBox="0 0 800 80" className="absolute bottom-0 block w-full" preserveAspectRatio="none" style={{ height: 80 }}>
+          <defs>
+            <pattern id="footer-pattern" width="48" height="48" patternUnits="userSpaceOnUse">
+              {/* 8-pointed star motif */}
+              <g fill="none" stroke="rgba(201,162,39,0.18)" strokeWidth="1">
+                <path d="M24 8 L28 20 L40 24 L28 28 L24 40 L20 28 L8 24 L20 20 Z" />
+                <circle cx="24" cy="24" r="2.5" />
+              </g>
+            </pattern>
+          </defs>
+          {/* dark green corner shapes with pattern */}
+          <path d="M0,80 C180,80 140,24 0,12 L0,80 Z" fill="#0B4A38" />
+          <path d="M0,80 C180,80 140,24 0,12 L0,80 Z" fill="url(#footer-pattern)" />
+          <path d="M800,80 C620,80 660,24 800,12 L800,80 Z" fill="#0B4A38" />
+          <path d="M800,80 C620,80 660,24 800,12 L800,80 Z" fill="url(#footer-pattern)" />
+          {/* gold trim curves */}
+          <path d="M0,12 C140,24 180,80 0,80" fill="none" stroke="#C9A227" strokeWidth="2.5" />
+          <path d="M800,12 C660,24 620,80 800,80" fill="none" stroke="#C9A227" strokeWidth="2.5" />
+          <path d="M0,20 C120,30 150,70 0,72" fill="none" stroke="rgba(201,162,39,0.4)" strokeWidth="1" />
+          <path d="M800,20 C680,30 650,70 800,72" fill="none" stroke="rgba(201,162,39,0.4)" strokeWidth="1" />
+          {/* floral flourishes */}
+          <g stroke="#C9A227" fill="none" strokeWidth="1.5" opacity="0.5">
+            <path d="M40,58 Q55,42 72,48 Q60,58 40,58" />
+            <path d="M760,58 Q745,42 728,48 Q740,58 760,58" />
+            <path d="M52,52 Q58,44 66,46" />
+            <path d="M748,52 Q742,44 734,46" />
+          </g>
+          <g fill="#C9A227" opacity="0.6">
+            <circle cx="58" cy="52" r="2.5" />
+            <circle cx="742" cy="52" r="2.5" />
+            <circle cx="72" cy="46" r="1.5" />
+            <circle cx="728" cy="46" r="1.5" />
+          </g>
+        </svg>
+      </div>
     </article>
   );
 }
