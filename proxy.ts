@@ -40,7 +40,9 @@ export async function proxy(req: Request) {
     pathname === "/manifest.json" ||
     pathname.startsWith("/icons/") ||
     pathname.startsWith("/icon") ||
-    pathname === "/favicon.ico";
+    pathname === "/favicon.ico" ||
+    // Receipt icons (logo, location, phone, etc.) — used on public receipts
+    pathname.startsWith("/receipt-icons/");
   const isPublic = 
     pathname === "/" || 
     pathname === "/login" || 
