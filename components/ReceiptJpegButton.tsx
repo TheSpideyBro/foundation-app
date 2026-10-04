@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
-import { makeReceiptFileName } from "@/lib/utils";
+import {
+  fetchReceiptImage,
+  scheduleReceiptPrefetch,
+  triggerDownload,
+} from "@/lib/receipt-image";
 
 type Props = {
   donationId: string;
@@ -23,6 +27,12 @@ type Props = {
  *    falls back to download. We don't trust navigator.canShare alone.
  * 2. Download mode: anchor download; on iOS Safari (where `download`
  *    attribute is ignored) open in a new tab so the user can long-press.
+ *
+ * Speed (BUG-048): the image comes from the shared lib/receipt-image cache
+ * (one render per donation, reused by the WhatsApp button too) and a
+ * background prefetch starts when the card scrolls into view — so the click
+ * path usually resolves in a microtask and navigator.share still fires
+ * inside the browser's ~5s user-activation window.
  */
 export default function ReceiptJpegButton({
   donationId,
@@ -33,45 +43,55 @@ export default function ReceiptJpegButton({
   children,
 }: Props) {
   const [busy, setBusy] = useState(false);
-  // Pre-fetched file: populated on touchstart/hover so that navigator.share()
-  // can be called synchronously inside the click gesture (Android Chrome
-  // throws "user gesture" errors if share follows an async fetch).
-  const prefetched = useRef<{ file: File; objectUrl: string; fileName: string } | null>(null);
-  const prefetching = useRef(false);
+  const prefetchStarted = useRef(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  async function prefetch() {
-    if (prefetched.current || prefetching.current) return;
-    prefetching.current = true;
-    try {
-      const { file, objectUrl, fileName } = await fetchReceiptFile(donationId);
-      prefetched.current = { file, objectUrl, fileName };
-    } catch {
-      // Prefetch failure is fine — click handler will retry with error UI.
-      prefetching.current = false;
-    }
-  }
+  // Early prefetch: warm the server render while the user is still reading
+  // the card, not only on touchstart (which leaves no head start at all).
+  useEffect(() => {
+    const el = buttonRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && !prefetchStarted.current) {
+          prefetchStarted.current = true;
+          scheduleReceiptPrefetch(donationId);
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [donationId]);
 
   async function handleClick() {
     if (busy) return;
     setBusy(true);
     try {
-      // Use pre-fetched file if ready; otherwise fetch now (share may fall
-      // back to download on Android if the gesture was lost).
-      const data =
-        prefetched.current ?? (await fetchReceiptFile(donationId));
-      prefetched.current = null;
-      prefetching.current = false;
-      const { file, objectUrl, fileName } = data;
+      // Cache hit → resolves in a microtask, keeping navigator.share inside
+      // the click's activation window; a cold fetch may exceed it (see
+      // activation handling below).
+      const entry = await fetchReceiptImage(donationId);
+      const file = new File([entry.blob], entry.fileName, {
+        type: "image/jpeg",
+      });
+      const objectUrl = URL.createObjectURL(entry.blob);
 
       if (mode === "share") {
-        const shared = await tryShare(file);
-        if (!shared) {
-          triggerDownload(objectUrl, fileName);
-        } else {
+        const result = await tryShare(file);
+        if (result === "shared") {
           setTimeout(() => URL.revokeObjectURL(objectUrl), 5000);
+        } else {
+          triggerDownload(objectUrl, entry.fileName);
+          if (result === "activation") {
+            // NotAllowedError: the long cold render outlived the user
+            // gesture. The image is now cached — tell the user one more
+            // tap will open the share sheet instantly.
+            window.alert("রসিদ তৈরি হয়ে গেছে — শেয়ার খুলতে আবার চাপুন");
+          }
         }
       } else {
-        triggerDownload(objectUrl, fileName);
+        triggerDownload(objectUrl, entry.fileName);
       }
     } catch (err) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
@@ -86,10 +106,11 @@ export default function ReceiptJpegButton({
 
   return (
     <button
+      ref={buttonRef}
       type="button"
       onClick={() => void handleClick()}
-      onTouchStart={() => void prefetch()}
-      onMouseEnter={() => void prefetch()}
+      onTouchStart={() => void fetchReceiptImage(donationId).catch(() => undefined)}
+      onMouseEnter={() => void fetchReceiptImage(donationId).catch(() => undefined)}
       disabled={busy}
       className={className}
       title={title}
@@ -100,90 +121,33 @@ export default function ReceiptJpegButton({
   );
 }
 
-/** Fetch the receipt JPEG from the server and wrap as a File. */
-async function fetchReceiptFile(donationId: string): Promise<{
-  file: File;
-  objectUrl: string;
-  fileName: string;
-}> {
-  const res = await fetch(
-    `/api/receipt-image?donationId=${encodeURIComponent(donationId)}`,
-    { credentials: "same-origin" }
-  );
-  if (!res.ok) {
-    let msg = "রসিদের ছবি তৈরি করা যায়নি";
-    try {
-      const body = await res.json();
-      if (body?.error) msg = body.error;
-      if (body?.diag) msg += ` [${body.diag}]`;
-    } catch {
-      try {
-        const text = await res.text();
-        const snippet = text.replace(/\s+/g, " ").slice(0, 200);
-        msg += ` [http=${res.status} raw=${snippet}]`;
-      } catch {
-        /* keep default */
-      }
-    }
-    throw new Error(msg);
-  }
-  const blob = await res.blob();
-  const receiptNo = res.headers.get("X-Receipt-No");
-  const base = (receiptNo || donationId)
-    .replace(/[^a-zA-Z0-9\u0980-\u09FF_-]/g, "-")
-    .slice(0, 40);
-  const fileName = makeReceiptFileName(base || donationId.slice(0, 8));
-  const file = new File([blob], fileName, { type: "image/jpeg" });
-  const objectUrl = URL.createObjectURL(blob);
-  return { file, objectUrl, fileName };
-}
+type ShareResult = "shared" | "activation" | "unsupported";
 
 /**
- * Try the Web Share API with a file. Returns true if the share sheet was
- * shown (user may still cancel — that's fine, returns true). Returns false
- * when sharing isn't possible so the caller can fall back to download.
+ * Try the Web Share API with a file.
+ *  - "shared":    share sheet shown (or user cancelled — handled either way)
+ *  - "activation": NotAllowedError — the gesture expired during a slow fetch;
+ *                  caller should download and prompt a retry
+ *  - "unsupported": no navigator.share / file-share errors — caller falls
+ *                  back to download silently
  *
  * We attempt share even when navigator.canShare is missing/false-negative,
  * because some browsers (older Samsung Internet, in-app webviews) support
  * share but don't implement canShare correctly.
  */
-async function tryShare(file: File): Promise<boolean> {
+async function tryShare(file: File): Promise<ShareResult> {
   try {
-    if (typeof navigator === "undefined" || !navigator.share) return false;
+    if (typeof navigator === "undefined" || !navigator.share) {
+      return "unsupported";
+    }
     await navigator.share({ files: [file], title: "রসিদ" });
-    return true;
+    return "shared";
   } catch (err) {
     // User dismissed the share sheet — treat as handled, not a failure.
-    if (err instanceof DOMException && err.name === "AbortError") return true;
-    // Anything else (NotAllowedError from lost user gesture on Android,
-    // DataError/TypeError on browsers without file-share support, etc.)
-    // → caller falls back to download.
-    return false;
+    if (err instanceof DOMException && err.name === "AbortError") return "shared";
+    if (err instanceof DOMException && err.name === "NotAllowedError") {
+      return "activation";
+    }
+    return "unsupported";
   }
-}
-
-function isIOS(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  );
-}
-
-function triggerDownload(href: string, fileName: string) {
-  // iOS Safari ignores the `download` attribute — opening in a new tab lets
-  // the user long-press the image to Share / Save to Photos / Files.
-  if (isIOS()) {
-    window.open(href, "_blank", "noopener");
-    setTimeout(() => URL.revokeObjectURL(href), 60000);
-    return;
-  }
-  const a = document.createElement("a");
-  a.href = href;
-  a.download = fileName;
-  // Firefox requires the anchor to be in the DOM.
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(href), 5000);
 }

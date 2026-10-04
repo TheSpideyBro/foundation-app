@@ -1,29 +1,39 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Loader2, MessageCircle } from "lucide-react";
-import { normalizePhone, makeReceiptFileName, getVerifyUrl } from "@/lib/utils";
+import { normalizePhone, getVerifyUrl } from "@/lib/utils";
+import {
+  fetchReceiptImage,
+  scheduleReceiptPrefetch,
+  triggerDownload,
+} from "@/lib/receipt-image";
 
 type Props = {
   donationId: string;
   phone?: string | null;
   memberName?: string | null;
   receiptNo?: string | null;
-  amount?: number;
+  amount?: number | null;
   monthLabel?: string | null;
   className?: string;
   title?: string;
   ariaLabel?: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
 };
 
 /**
  * WhatsApp direct share: downloads the receipt JPEG (so it's in the
  * gallery's recent images) then opens wa.me to the member's chat with a
- * pre-filled message. The user taps attach → recent → sends.
+ * pre-filled Bengali message — the user taps attach → recent images →
+ * sends. Browsers cannot attach files programmatically or pre-select a
+ * contact with a file (wa.me supports text only), so this is the closest
+ * achievable UX.
  *
- * Note: browsers cannot programmatically attach an image to a WhatsApp
- * chat — this is the closest achievable UX (wa.me only supports text).
+ * Speed (BUG-048): the image comes from the shared lib/receipt-image cache
+ * (one render per donation, shared with the receipt share button) with an
+ * IntersectionObserver prefetch on the card, so the click path rarely waits
+ * for a render at all.
  */
 export default function WhatsAppShareButton({
   donationId,
@@ -38,53 +48,26 @@ export default function WhatsAppShareButton({
   children,
 }: Props) {
   const [busy, setBusy] = useState(false);
-  const prefetched = useRef<{ blob: Blob; objectUrl: string; fileName: string } | null>(null);
-  const prefetching = useRef(false);
+  const prefetchStarted = useRef(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  async function prefetch() {
-    if (prefetched.current || prefetching.current) return;
-    prefetching.current = true;
-    try {
-      const res = await fetch(
-        `/api/receipt-image?donationId=${encodeURIComponent(donationId)}`,
-        { credentials: "same-origin" }
-      );
-      if (!res.ok) throw new Error("রসিদের ছবি তৈরি করা যায়নি");
-      const blob = await res.blob();
-      const fileName = makeReceiptFileName(receiptNo || donationId);
-      const objectUrl = URL.createObjectURL(blob);
-      prefetched.current = { blob, objectUrl, fileName };
-    } catch {
-      // Prefetch failure is fine — click handler will retry with error UI.
-      prefetching.current = false;
-    }
-  }
-
-  function triggerDownload(href: string, fileName: string) {
-    // iOS Safari ignores the `download` attribute — opening in a new tab lets
-    // the user long-press the image to Share / Save to Photos / Files.
-    if (isIOS()) {
-      window.open(href, "_blank", "noopener");
-      setTimeout(() => URL.revokeObjectURL(href), 60000);
-      return;
-    }
-    const a = document.createElement("a");
-    a.href = href;
-    a.download = fileName;
-    // Firefox requires the anchor to be in the DOM.
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(href), 5000);
-  }
-
-  function isIOS(): boolean {
-    if (typeof navigator === "undefined") return false;
-    return (
-      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  // Early prefetch: warm the server render while the user is reading the
+  // card instead of only at touchstart (no head start there).
+  useEffect(() => {
+    const el = buttonRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && !prefetchStarted.current) {
+          prefetchStarted.current = true;
+          scheduleReceiptPrefetch(donationId);
+        }
+      },
+      { rootMargin: "200px" }
     );
-  }
+    io.observe(el);
+    return () => io.disconnect();
+  }, [donationId]);
 
   async function handleClick() {
     if (busy) return;
@@ -97,25 +80,11 @@ export default function WhatsAppShareButton({
 
     setBusy(true);
     try {
-      // Use pre-fetched file if ready; otherwise fetch now
-      const data = prefetched.current ?? (await (async () => {
-        const res = await fetch(
-          `/api/receipt-image?donationId=${encodeURIComponent(donationId)}`,
-          { credentials: "same-origin" }
-        );
-        if (!res.ok) throw new Error("রসিদের ছবি তৈরি করা যায়নি");
-        const blob = await res.blob();
-        const fileName = makeReceiptFileName(receiptNo || donationId);
-        const objectUrl = URL.createObjectURL(blob);
-        return { blob, objectUrl, fileName };
-      })());
-      // Consume the cache — the objectUrl is revoked after download, so a
-      // stale hit would silently fail to download on the next click.
-      prefetched.current = null;
-      prefetching.current = false;
+      const entry = await fetchReceiptImage(donationId);
+      const objectUrl = URL.createObjectURL(entry.blob);
 
       // Trigger download (lands in gallery → recent images)
-      triggerDownload(data.objectUrl, data.fileName);
+      triggerDownload(objectUrl, entry.fileName);
 
       // Build WhatsApp message with verify URL
       const verifyUrl = getVerifyUrl(receiptNo ?? null);
@@ -153,10 +122,11 @@ export default function WhatsAppShareButton({
 
   return (
     <button
+      ref={buttonRef}
       type="button"
-      onClick={handleClick}
-      onTouchStart={prefetch}
-      onMouseEnter={prefetch}
+      onClick={() => void handleClick()}
+      onTouchStart={() => void fetchReceiptImage(donationId).catch(() => undefined)}
+      onMouseEnter={() => void fetchReceiptImage(donationId).catch(() => undefined)}
       disabled={busy}
       className={className}
       title={title}

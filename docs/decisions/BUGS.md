@@ -1354,3 +1354,68 @@ Cache populated on prefetch but never reset after use — missed the
 `pnpm test:ledger` 28/28, Playwright 3 passed / 6 skipped. Manual trace:
 each click now either consumes a live cache entry (and clears it) or fetches
 a fresh blob; the revoked URL can never be reused.
+
+## BUG-048: Receipt Share Took 30–40s and Only Worked on the Second Click
+
+**Status:** fixed (2026-10-04 — shared client cache + prefetch, server memoization/in-memory cache, faster navigation)
+**Found:** 2026-10-04 (user report: share button click korle 30–40s lage, share option duibar click korle ashe)
+**Region:** frontend + backend (render pipeline)
+
+### Description
+
+Clicking the receipt share button took 30–40 seconds and the share sheet
+usually never appeared; a second click opened it instantly.
+
+Two independent causes combined:
+
+1. **Cold render was extremely slow.** `@sparticuz/chromium-min` ships no
+   binary — every cold server instance downloads the ~85MB Chromium pack
+   from GitHub to `/tmp` (tens of seconds on a slow path), then launches,
+   navigates with `waitUntil: "networkidle0"` (mandatory 500ms+ idle tail),
+   screenshots, and closes the browser for **every** request. The two buttons
+   on a card (receipt share + WhatsApp) each rendered the same receipt
+   separately, doubling the work.
+2. **User activation expired.** `navigator.share()` fired after the 30–40s
+   await — browsers only keep a click's transient activation for ~5s →
+   `NotAllowedError` → `ReceiptJpegButton` silently fell back to a download,
+   so no share sheet appeared. The second click worked because the response
+   was already in the browser HTTP cache (`max-age=300`) → instant → share
+   fired inside the activation window.
+
+### Root Cause
+
+No shared client-side cache/prefetch (per-click, per-button fetches), no
+server-side render reuse, binary download not memoized, and an over-strict
+`networkidle0` wait — with share-after-slow-await losing the gesture.
+
+### Fix
+
+Client (`lib/receipt-image.ts`, both buttons):
+- One fetch per donation: in-flight dedupe + 5-minute blob cache shared by
+  `ReceiptJpegButton` and `WhatsAppShareButton`; consumers create/revoke
+  their own object URLs per click (a revoked URL can never poison the cache).
+- IntersectionObserver prefetch (`rootMargin 200px`, 800ms delay,
+  concurrency 1, queue cap 8) warms the render while the card is on screen;
+  touchstart/hover still trigger an immediate fetch on the shared cache.
+- `NotAllowedError` now surfaces "রসিদ তৈরি হয়ে গেছে — শেয়ার খুলতে আবার চাপুন"
+  after falling back to download (the retry is instant from cache).
+
+Server (`app/api/receipt-image/route.ts`):
+- Module-level memoized `chromium.executablePath()` promise (one download
+  per warm instance, shared across concurrent renders; failed downloads
+  retry).
+- In-memory JPEG cache (TTL 5min, cap 50) — repeat shares skip render.
+- `waitUntil: "networkidle0"` → `"load"` + bounded `document.fonts.ready`
+  + 150ms settle (the target is a server component with no client fetches).
+- `Server-Timing` + `X-Render-Timings` (`import/executablePath/launch/goto/
+  find-element/page-ready/screenshot/total`) and `X-Receipt-Cache: hit|miss`
+  for future diagnosis.
+
+Trade-off: up to 5 minutes of staleness after a receipt-affecting edit
+(matches the pre-existing HTTP `max-age=300`); donation edits are rare.
+
+### Verification
+
+`tsc --noEmit` clean, `eslint .` 0 errors, `pnpm build` green,
+`pnpm test:ledger` 28/28, Playwright 3 passed / 6 skipped. Cold/warm timing
+to be confirmed in production via the `X-Render-Timings` header.
