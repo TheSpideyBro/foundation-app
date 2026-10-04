@@ -57,6 +57,50 @@
 
 ## Commit History
 
+## 1763e1c — fix(receipt): first-click share within seconds via shared cache + faster render
+
+**Date:** 2026-10-04  
+**Author:** AI assistant (opencode)  
+**Branch:** main  
+**Files changed:** `lib/receipt-image.ts` (new), `app/api/receipt-image/route.ts`, `components/ReceiptJpegButton.tsx`, `components/WhatsAppShareButton.tsx`, `docs/decisions/BUGS.md`, `CHANGELOG.md`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Client fetch | Each button did its own `fetch("/api/receipt-image")` per click; each card's two buttons rendered the same receipt twice; nothing reused across clicks except the 5min HTTP cache | New `lib/receipt-image.ts`: one shared cache (in-flight dedupe, 5min blob TTL, LRU 30) both buttons read from; consumers create/revoke their own object URLs per click so a revoked URL can never poison the cache |
+| Prefetch | Local per-button prefetch only on touchstart/hover (no head start — click path awaited a cold render) | IntersectionObserver prefetch (`rootMargin 200px`, 800ms delay, concurrency 1, queue cap 8) warms the render while the card is on screen; touchstart/hover still trigger an immediate fetch on the shared cache |
+| Share activation | 30–40s await → `navigator.share()` outside the ~5s user-activation window → `NotAllowedError` → silent download fallback (no sheet) | `tryShare` returns `shared \| activation \| unsupported`; `NotAllowedError` falls back to download + alert "রসিদ তৈরি হয়ে গেছে — শেয়ার খুলতে আবার চাপুন" (retry is instant from cache) |
+| Chromium binary | `chromium.executablePath(GITHUB_PACK_URL)` downloaded ~85MB pack per cold instance, un-memoized — concurrent first renders could double-download | Module-level memoized promise (one download per warm instance, shared across concurrent renders; failure clears for retry) |
+| Render reuse | Full pipeline (launch → goto → screenshot → close) ran on every request even for the same donation | In-memory JPEG cache after the auth+RLS check (TTL 5min, LRU cap 50); repeat shares serve in ms (`X-Receipt-Cache: hit`) |
+| Page navigation | `waitUntil: "networkidle0"` added a mandatory 500ms+ idle tail every render | `waitUntil: "load"` + bounded `document.fonts.ready` (5s cap) + 150ms settle — target is a server component with no client fetches |
+| Diagnostics | Errors logged only as `[api/receipt-image] render failed` | Stage-tracking (`import/executablePath/launch/goto/find-element/page-ready/screenshot/total`) exposed in `Server-Timing` + `X-Render-Timings` headers; `X-Receipt-Cache: hit\|miss`; failure `diag` names the stage |
+| User flow | click → 30–40s wait → download (no sheet) → 2nd click → sheet | click → sheet in ~5–6s (usually instant once warmed); user flow otherwise unchanged |
+
+### Why
+
+User report (BUG-048): share button click korle 30–40s lage, share option duibar click korle ashe. Root causes: cold-render cost (GitHub binary download + launch per request + `networkidle0` + duplicate renders per card) plus the browser's transient user-activation window expiring during the slow await.
+
+### Tests Run
+
+- [x] `tsc --noEmit` — clean
+- [x] `eslint .` — 0 errors, 165 warnings (baseline)
+- [x] `pnpm build` — green
+- [x] `pnpm test:ledger` — 28/28 passed (no ledger code touched)
+- [x] Playwright e2e (placeholder env) — 3 passed / 6 skipped
+- [ ] Production timing via `X-Render-Timings` after deploy (user to confirm cold/warm click feel on phone)
+
+### Related
+
+- Bug: BUG-048
+
+### Known Risks / Follow-ups
+
+- In-memory JPEG cache can serve up to 5min-stale receipt after a receipt-affecting edit (matches pre-existing HTTP `max-age=300`; edits are rare)
+- Cache lives per warm instance — cold instances still pay the one-time binary download; `Server-Timing` `executablePath` stage will show it if it recurs
+- Two warm instances each hold one Chromium pack in `/tmp` (serverless memory/disk footprint unchanged from before, just memoized)
+- Real-phone timing (5–6s target) unconfirmed until user tests post-deploy
+
 ## 0e171d4 — fix(whatsapp): consume prefetched receipt blob so repeat clicks still download
 
 **Date:** 2026-10-04  
