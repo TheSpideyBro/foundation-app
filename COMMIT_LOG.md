@@ -57,6 +57,46 @@
 
 ## Commit History
 
+## 0e171d4 — fix(whatsapp): consume prefetched receipt blob so repeat clicks still download
+
+**Date:** 2026-10-04  
+**Author:** AI assistant (opencode)  
+**Branch:** main  
+**Files changed:** `components/WhatsAppShareButton.tsx`, `docs/decisions/BUGS.md`, `CHANGELOG.md`
+
+### What Changed (Before → After)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Prefetch cache | Populated on hover/touchstart, never consumed after a click → 2nd click onward reused an objectUrl already revoked by `triggerDownload` (5s after 1st download) → image silently stopped landing in the gallery; chat still opened, hiding the failure | `handleClick` consumes `prefetched.current` and resets `prefetching.current` right after reading (same pattern as `ReceiptJpegButton.tsx:62-63`); every click uses a live entry or fetches a fresh blob |
+| Popup blocker | `window.open(waUrl)` return value ignored — blocked popups after the async download + 300ms chain silently lost the member's chat | Null-checked; falls back to `window.location.href = waUrl` (same-tab navigation) so the chat still opens |
+| User flow | image download → member chat (text pre-filled) → manual attach → send | unchanged |
+
+### Why
+
+Regression from `03ba796` (BUG-046 hardening): the new prefetch path added the
+cache but missed the consume-after-use reset the receipt button already had.
+User-reported: "age korte partam ekhon keno parbo na" — nothing to attach
+after the first use.
+
+### Tests Run
+
+- [x] `pnpm test:ledger` — 28/28 passed
+- [x] `pnpm test:e2e` (Playwright) — 3 passed / 6 skipped
+- [x] `tsc --noEmit` clean; `eslint .` 0 errors / 165 warnings; `pnpm build` green
+- [x] Manual verification: click-path trace — cache consumed before `triggerDownload` revokes it; revoked URL can never be reused
+
+### Related
+
+- Bug: BUG-047 (regression from `03ba796` / BUG-046)
+
+### Known Risks / Follow-ups
+
+- Browser still cannot pre-attach an image to a specific `wa.me` chat (no media param) — flow stays download + manual attach by design.
+- `window.location.href` fallback navigates the current tab away from the app if the popup is blocked (chat still opens).
+
+---
+
 ## 03ba796 — fix(whatsapp): normalize server phone to E.164, add delivery badge, harden share
 
 **Date:** 2026-10-04  
