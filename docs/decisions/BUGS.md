@@ -1315,3 +1315,42 @@ normalizer the client already had.
 `pnpm test:ledger` 28/28, Playwright 3 passed / 6 skipped. `notifications`
 columns (`donation_id`, `channel`, `status`, `error`, `created_at`)
 confirmed against `supabase/migrations/20261002_f3_notifications.sql`.
+
+## BUG-047: WhatsApp Share Downloads the Receipt Only Once — Prefetch Cache Never Cleared
+
+**Status:** fixed (2026-10-04 — consume cache after use, mirror ReceiptJpegButton)
+**Found:** 2026-10-04 (user report: "age korte partam ekhon keno parbo na" — the image stopped landing in the gallery on repeat clicks)
+**Region:** frontend
+
+### Description
+
+Regression from `03ba796` (BUG-046 share hardening). The WhatsApp share button
+started prefetching the receipt JPEG on hover/touchstart, but — unlike
+`ReceiptJpegButton` — it never consumed the cache after a click:
+
+- 1st click: prefetch hit → download + member chat opens ✅
+- 2nd click onward: `prefetched.current` still points at the objectUrl that
+  `triggerDownload` revoked (5 s after the first download) → the anchor
+  download silently fails, no image lands in the gallery, so there is nothing
+  to attach in WhatsApp ❌ (the chat still opened, hiding the failure).
+
+### Root Cause
+
+Cache populated on prefetch but never reset after use — missed the
+`prefetched.current = null; prefetching.current = false` pair that
+`ReceiptJpegButton.tsx` already performs.
+
+### Fix
+
+- `WhatsAppShareButton.handleClick()` consumes the cache immediately after
+  reading `prefetched.current` (same two-line reset as ReceiptJpegButton).
+- Also: `window.open()` is now null-checked — popup blockers can reject it
+  after the async download/delay chain; fallback is same-tab navigation to
+  the same `wa.me` URL so the member's chat still opens.
+
+### Verification
+
+`tsc --noEmit` clean, `eslint .` 0 errors, `pnpm build` green,
+`pnpm test:ledger` 28/28, Playwright 3 passed / 6 skipped. Manual trace:
+each click now either consumes a live cache entry (and clears it) or fetches
+a fresh blob; the revoked URL can never be reused.

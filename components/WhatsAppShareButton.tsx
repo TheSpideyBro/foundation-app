@@ -109,6 +109,10 @@ export default function WhatsAppShareButton({
         const objectUrl = URL.createObjectURL(blob);
         return { blob, objectUrl, fileName };
       })());
+      // Consume the cache — the objectUrl is revoked after download, so a
+      // stale hit would silently fail to download on the next click.
+      prefetched.current = null;
+      prefetching.current = false;
 
       // Trigger download (lands in gallery → recent images)
       triggerDownload(data.objectUrl, data.fileName);
@@ -134,7 +138,12 @@ export default function WhatsAppShareButton({
 
       // Small delay so the download has time to land in gallery before chat opens
       await new Promise((r) => setTimeout(r, 300));
-      window.open(`https://wa.me/${normalized}?text=${text}`, "_blank");
+      const waUrl = `https://wa.me/${normalized}?text=${text}`;
+      // Popup blockers can reject window.open after async work — fall back to
+      // same-tab navigation so the member's chat still opens.
+      if (window.open(waUrl, "_blank") === null) {
+        window.location.href = waUrl;
+      }
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "WhatsApp শেয়ার করা যায়নি");
     } finally {
